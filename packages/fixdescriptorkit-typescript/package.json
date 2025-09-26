@@ -1,0 +1,38 @@
+{
+  "name": "fixdescriptorkit-typescript",
+  "version": "1.0.0",
+  "main": "dist/src/index.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "FIXPARSER_LICENSE_KEY=FIXParser_QjtkyzBGvFLS0tLS1CRUdJTiBQR1AgU0lHTkVEIE1FU1NBR0UtLS0tLQpIYXNoOiBTSEE1MTIKCjguMy4zfHN3cEBuZXRoZXJtaW5kLmlvfDE3ODgzOTM2MDAwMDB8ZnJlZQotLS0tLUJFR0lOIFBHUCBTSUdOQVRVUkUtLS0tLQoKd3JzRUFSWUtBRzBGZ21pNGZYZ0pFQ0p3M09mWVRzVEpSUlFBQUFBQUFCd0FJSE5oYkhSQWJtOTBZWFJwCmIyNXpMbTl3Wlc1d1ozQnFjeTV2Y21jaHZ2SS9ZQnR1QlB1R3ozKzY3Y3hWcitPeEZveE8xNzhLL1dtdApUSlAxeGhZaEJDVmdXQ2dKSU50bVgrZVpnaUp3M09mWVRzVEpBQUNHYWdEK0o3ZTN4ZzByc0d4TVYwZlEKMzlIM29EUjFlTitPb2xCR2VKM002djkxVGhBQS8yeEFlSUlhbi9VaS9qT2xyNVdRdGdGR1BpemYrbjdwCmpZMWllZEJVTkxnTgo9eGZNWgotLS0tLUVORCBQR vitest run",
+    "dev:test": "vitest",
+    "clean": "rm -rf dist"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "type": "module",
+  "module": "dist/src/index.js",
+  "types": "dist/src/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/src/index.js",
+      "types": "./dist/src/index.d.ts"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "dependencies": {
+    "cbor-x": "^1.6.0",
+    "fixparser": "^9.3.13",
+    "typescript": "^5.9.2",
+    "viem": "^2.37.8",
+    "vitest": "^3.2.4",
+    "zod": "^4.1.11"
+  },
+  "devDependencies": {
+    "@types/node": "^24.5.2"
+  }
+}
