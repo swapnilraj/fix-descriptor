@@ -243,6 +243,9 @@ build/
 dist/
 lib/
 
+# Generated ABI files are tracked (generated from contracts)
+# apps/web/lib/abis/*.ts
+
 # Package manager lock files (keep only one)
 # yarn.lock
 # pnpm-lock.yaml

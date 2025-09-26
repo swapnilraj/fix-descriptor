@@ -7,7 +7,8 @@
     "test": "npm -ws run test",
     "dev": "npm --workspace apps/web run dev",
     "lint": "eslint .",
-    "vercel-build": "npm -w fixdescriptorkit-typescript run build && npm -w apps/web run build"
+    "vercel-build": "npm run generate-abis && npm -w fixdescriptorkit-typescript run build && npm -w apps/web run build",
+    "generate-abis": "cd contracts && forge build && cd .. && node scripts/generate-abis.js"
   },
   "keywords": [],
   "author": "",

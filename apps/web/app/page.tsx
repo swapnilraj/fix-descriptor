@@ -1,8 +1,8 @@
 "use client";
 import { useState } from 'react';
-import DataFactory from '../lib/abis/DataContractFactory.json';
-import Registry from '../lib/abis/DescriptorRegistry.json';
-import { chainFromEnv } from '../lib/viemClient';
+import { abi as DataFactoryAbi } from '@/lib/abis/DataContractFactory';
+import { abi as RegistryAbi } from '@/lib/abis/DescriptorRegistry';
+import { chainFromEnv } from '@/lib/viemClient';
 import { createWalletClient, custom, type Address } from 'viem';
 
 // Extend Window interface for MetaMask
@@ -112,7 +112,7 @@ export default function Page() {
     const wallet = createWalletClient({ account, chain: chainFromEnv, transport: custom(provider as never) });
     const dataHex = preview.cborHex as `0x${string}`;
     type Abi = readonly unknown[];
-    const factoryAbi: Abi = (DataFactory as { abi: Abi }).abi;
+    const factoryAbi: Abi = DataFactoryAbi;
     const hash = await wallet.writeContract({ address: process.env.NEXT_PUBLIC_FACTORY_ADDRESS as `0x${string}`, abi: factoryAbi, functionName: 'deploy', args: [dataHex] });
     setTxInfo(`Deploy tx: ${hash}`);
   }
@@ -131,18 +131,9 @@ export default function Page() {
       ? fixCBORPtr as `0x${string}`
       : '0x0000000000000000000000000000000000000000' as `0x${string}`;
     
-    const d = {
-      fixMajor: 4,
-      fixMinor: 4,
-      dictHash: `0x${'00'.repeat(32)}` as `0x${string}`, // TODO: Compute actual dict hash
-      fixRoot: preview.root as `0x${string}`,
-      fixCBORPtr: validAddress,
-      fixCBORLen: ((preview.cborHex.length - 2) / 2) | 0,
-      fixURI: '',
-    } as const;
     type Abi = readonly unknown[];
-    const registryAbi: Abi = (Registry as { abi: Abi }).abi;
-    const hash = await wallet.writeContract({ address: process.env.NEXT_PUBLIC_REGISTRY_ADDRESS as `0x${string}`, abi: registryAbi, functionName: 'setDescriptor', args: [assetId, d] });
+    const registryAbi: Abi = RegistryAbi;
+    const hash = await wallet.writeContract({ address: process.env.NEXT_PUBLIC_REGISTRY_ADDRESS as `0x${string}`, abi: registryAbi, functionName: 'registerDescriptor', args: [assetId, validAddress, preview.root as `0x${string}`] });
     setTxInfo(`Register tx: ${hash}`);
   }
 
