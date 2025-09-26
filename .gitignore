@@ -243,8 +243,11 @@ build/
 dist/
 lib/
 
-# Generated ABI files are tracked (generated from contracts)
-# apps/web/lib/abis/*.ts
+# Exception: Track generated ABI files (generated from contracts)
+!apps/web/lib/
+!apps/web/lib/abis/
+!apps/web/lib/abis/*.ts
+!apps/web/lib/abis/*.md
 
 # Package manager lock files (keep only one)
 # yarn.lock
