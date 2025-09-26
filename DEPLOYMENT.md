@@ -2,13 +2,23 @@
 
 ## Deploy to Vercel
 
-### 1. Deploy from apps/web directory
+### Option 1: Deploy from Repository Root (Recommended)
+
+1. **Connect your GitHub repository to Vercel**
+2. **Configure Project Settings in Vercel Dashboard:**
+   - **Framework Preset:** Next.js
+   - **Root Directory:** `apps/web`
+   - **Build Command:** `npm run vercel-build` (from root)
+   - **Output Directory:** `apps/web/.next`
+   - **Install Command:** `npm install` (from root)
+
+### Option 2: Deploy from apps/web directory (Alternative)
 ```bash
 cd /Users/swp/dev/swapnilraj/fixdescriptorkit-evm/apps/web
 vercel --prod
 ```
 
-**Note:** Vercel will auto-detect this as a Next.js app and handle the build process automatically.
+**Note:** The first option is recommended for monorepo deployments as it handles dependencies correctly.
 
 ### 2. Set Environment Variables in Vercel Dashboard
 
