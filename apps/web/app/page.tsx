@@ -778,15 +778,37 @@ export default function Page() {
         background: '#0a0a0a'
       }}>
         <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '2rem 2rem 4rem' }}>
-          <h1 style={{ 
-            fontSize: '3.5rem', 
-            marginBottom: '1rem', 
-            fontWeight: '600',
-            letterSpacing: '-0.02em',
-            lineHeight: '1.1'
-          }}>
-            FixDescriptorKit
-          </h1>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem' }}>
+            <h1 style={{ 
+              fontSize: '3.5rem', 
+              marginBottom: 0, 
+              fontWeight: '600',
+              letterSpacing: '-0.02em',
+              lineHeight: '1.1'
+            }}>
+              FixDescriptorKit
+            </h1>
+            <nav style={{ display: 'flex', gap: '2rem', fontSize: '0.9rem', paddingTop: '0.5rem' }}>
+              <a href="/" style={{ 
+                color: 'rgba(255,255,255,0.9)', 
+                textDecoration: 'none',
+                borderBottom: '2px solid rgba(255,255,255,0.9)',
+                paddingBottom: '0.25rem'
+              }}>
+                Explorer
+              </a>
+              <a href="/spec" style={{ 
+                color: 'rgba(255,255,255,0.6)', 
+                textDecoration: 'none',
+                transition: 'color 0.2s'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.color = 'rgba(255,255,255,0.9)'}
+              onMouseLeave={(e) => e.currentTarget.style.color = 'rgba(255,255,255,0.6)'}
+              >
+                Specification
+              </a>
+            </nav>
+          </div>
           <p style={{ 
             fontSize: '1.25rem', 
             color: 'rgba(255,255,255,0.6)',
@@ -1976,7 +1998,7 @@ export default function Page() {
             </a>
             <span style={{ color: 'rgba(255,255,255,0.2)' }}>·</span>
             <a 
-              href="/SPEC.md" 
+              href="/spec" 
               style={{ color: 'rgba(255,255,255,0.4)', transition: 'color 0.2s' }}
               onMouseEnter={(e) => e.currentTarget.style.color = 'rgba(255,255,255,0.7)'}
               onMouseLeave={(e) => e.currentTarget.style.color = 'rgba(255,255,255,0.4)'}
