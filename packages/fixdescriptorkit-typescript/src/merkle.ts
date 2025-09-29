@@ -195,4 +195,81 @@ export function verifyProofLocal(
   return bytesToHex(node) === root;
 }
 
+// Merkle tree node structure for visualization
+export interface MerkleTreeNode {
+  hash: `0x${string}`;
+  type: 'leaf' | 'parent' | 'root';
+  path?: Path;
+  left?: MerkleTreeNode;
+  right?: MerkleTreeNode;
+}
+
+/**
+ * Build complete Merkle tree structure with all intermediate hashes
+ * @param leaves - Array of leaves with path and value data
+ * @returns Root node of the complete Merkle tree with all hashes
+ */
+export function buildMerkleTreeStructure(
+  leaves: Array<{ path: Path; pathCBOR: Uint8Array; valueBytes: Uint8Array }>
+): MerkleTreeNode {
+  if (leaves.length === 0) {
+    // Empty tree
+    return {
+      hash: keccak256(new Uint8Array(0)) as `0x${string}`,
+      type: 'root'
+    };
+  }
+
+  // Create leaf nodes with their hashes
+  const leafNodes: MerkleTreeNode[] = leaves.map(({ path, pathCBOR, valueBytes }) => {
+    const bytes = new Uint8Array(pathCBOR.length + valueBytes.length);
+    bytes.set(pathCBOR, 0);
+    bytes.set(valueBytes, pathCBOR.length);
+    return {
+      hash: keccak256(bytes) as `0x${string}`,
+      type: 'leaf',
+      path
+    };
+  });
+
+  // Build tree bottom-up, keeping structure
+  function buildLevel(nodes: MerkleTreeNode[], isRoot: boolean): MerkleTreeNode[] {
+    if (nodes.length === 1) {
+      // Mark as root
+      nodes[0].type = 'root';
+      return nodes;
+    }
+
+    const parents: MerkleTreeNode[] = [];
+    for (let i = 0; i < nodes.length; i += 2) {
+      if (i + 1 >= nodes.length) {
+        // Promote odd node
+        parents.push(nodes[i]);
+      } else {
+        const left = nodes[i];
+        const right = nodes[i + 1];
+        
+        // Compute parent hash: keccak256(left || right)
+        const leftBytes = hexToBytes(left.hash);
+        const rightBytes = hexToBytes(right.hash);
+        const combined = new Uint8Array(leftBytes.length + rightBytes.length);
+        combined.set(leftBytes, 0);
+        combined.set(rightBytes, leftBytes.length);
+        
+        parents.push({
+          hash: keccak256(combined) as `0x${string}`,
+          type: 'parent',
+          left,
+          right
+        });
+      }
+    }
+    
+    return buildLevel(parents, parents.length === 1);
+  }
+
+  const tree = buildLevel(leafNodes, leafNodes.length === 1);
+  return tree[0];
+}
+
 

@@ -22,6 +22,8 @@ export {
   computeRoot,
   generateProof,
   verifyProofLocal,
+  buildMerkleTreeStructure,
+  type MerkleTreeNode,
 } from './merkle';
 
 import { parseFixDescriptor } from './parse';

@@ -1,5 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { DEMO_FIX_SCHEMA, parseFixDescriptor, buildCanonicalTree, encodeCanonicalCBOR, enumerateLeaves, computeRoot } from 'fixdescriptorkit-typescript';
+import { 
+  DEMO_FIX_SCHEMA, 
+  parseFixDescriptor, 
+  buildCanonicalTree, 
+  encodeCanonicalCBOR, 
+  enumerateLeaves, 
+  computeRoot,
+  buildMerkleTreeStructure
+} from 'fixdescriptorkit-typescript';
 export const runtime = 'nodejs';
 import { LicenseManager } from 'fixparser';
 
@@ -16,10 +24,21 @@ export async function POST(req: NextRequest) {
     const canonical = buildCanonicalTree(tree);
     const cbor = encodeCanonicalCBOR(canonical);
     const leaves = enumerateLeaves(canonical);
+    
+    // Build complete Merkle tree structure with all real keccak256 hashes
+    const merkleTree = buildMerkleTreeStructure(leaves);
+    
     const paths: number[][] = leaves.map((l) => l.path);
     const root = computeRoot(leaves);
     const cborHex = '0x' + Buffer.from(cbor).toString('hex');
-    return NextResponse.json({ root, cborHex, leavesCount: leaves.length, paths });
+    
+    return NextResponse.json({ 
+      root, 
+      cborHex, 
+      leavesCount: leaves.length, 
+      paths,
+      merkleTree // Return complete tree structure with all real hashes
+    });
   } catch (e: unknown) {
     const msg = e instanceof Error
       ? e.message
