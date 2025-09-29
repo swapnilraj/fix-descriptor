@@ -252,7 +252,7 @@ export default function SpecPage() {
                 Input
               </div>
               <p style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.7', marginBottom: 0 }}>
-                A FIX message (or subset) that describes a financial instrument (the "asset descriptor"), 
+                A FIX message (or subset) that describes a financial instrument (the &quot;asset descriptor&quot;), 
                 using standard FIX tags and groups.
               </p>
             </div>
@@ -302,7 +302,7 @@ export default function SpecPage() {
               </div>
               <p style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.7', margin: 0 }}>
                 This specification does <strong>not</strong> prescribe parsing FIX on-chain or which business 
-                tags an issuer must include (that's policy). This spec defines <strong>how</strong> to encode, 
+                tags an issuer must include (that&apos;s policy). This spec defines <strong>how</strong> to encode, 
                 not <strong>what</strong> to encode.
               </p>
             </div>
@@ -322,7 +322,7 @@ export default function SpecPage() {
                 },
                 {
                   term: 'Group',
-                  definition: 'A repeating structure introduced by a "NoXXX" count tag (e.g., 454, 453), followed by N entries. Each group defines a delimiter field (first field of each entry; e.g., 455 for group 454, 448 for group 453)'
+                  definition: 'A repeating structure introduced by a &quot;NoXXX&quot; count tag (e.g., 454, 453), followed by N entries. Each group defines a delimiter field (first field of each entry; e.g., 455 for group 454, 448 for group 453)'
                 },
                 {
                   term: 'Path',
@@ -493,13 +493,13 @@ export default function SpecPage() {
               </li>
               <li style={{ marginBottom: '1rem' }}>
                 <strong>Scalar values</strong> are text strings; do not convert numerics—preserve FIX string forms 
-                (e.g., "4.250", "20301115")
+                (e.g., &quot;4.250&quot;, &quot;20301115&quot;)
               </li>
               <li style={{ marginBottom: '1rem' }}>
                 <strong>Group entries:</strong>
                 <ul style={{ marginTop: '0.5rem', paddingLeft: '1.5rem' }}>
                   <li style={{ marginBottom: '0.5rem' }}>MUST begin with the delimiter field (for human clarity), but map keys are still sorted</li>
-                  <li style={{ marginBottom: '0.5rem' }}>Optional fields MAY be omitted; absence means "no leaf"</li>
+                  <li style={{ marginBottom: '0.5rem' }}>Optional fields MAY be omitted; absence means &quot;no leaf&quot;</li>
                   <li>Array order is preserved as given by the issuer (indices 0..N-1)</li>
                 </ul>
               </li>
@@ -853,9 +853,9 @@ export default function SpecPage() {
               <li style={{ marginBottom: '0.75rem' }}>
                 <strong>Leaves (examples):</strong>
                 <ul style={{ marginTop: '0.5rem', paddingLeft: '1.5rem' }}>
-                  <li style={{ marginBottom: '0.5rem' }}>path [15], value "USD" → keccak(pathCBOR || "USD")</li>
-                  <li style={{ marginBottom: '0.5rem' }}>path [454,1,456], value "4" → keccak(...)</li>
-                  <li>path [453,0,448], value "US_TREASURY" → keccak(...)</li>
+                  <li style={{ marginBottom: '0.5rem' }}>path [15], value &quot;USD&quot; → keccak(pathCBOR || &quot;USD&quot;)</li>
+                  <li style={{ marginBottom: '0.5rem' }}>path [454,1,456], value &quot;4&quot; → keccak(...)</li>
+                  <li>path [453,0,448], value &quot;US_TREASURY&quot; → keccak(...)</li>
                 </ul>
               </li>
               <li>

@@ -1,5 +1,6 @@
 "use client";
 import { useState } from 'react';
+import Link from 'next/link';
 import { abi as DataFactoryAbi } from '@/lib/abis/DataContractFactory';
 import { abi as RegistryAbi } from '@/lib/abis/DescriptorRegistry';
 import { chainFromEnv } from '@/lib/viemClient';
@@ -789,14 +790,14 @@ export default function Page() {
               FixDescriptorKit
             </h1>
             <nav style={{ display: 'flex', gap: '2rem', fontSize: '0.9rem', paddingTop: '0.5rem' }}>
-              <a href="/" style={{ 
+              <Link href="/" style={{ 
                 color: 'rgba(255,255,255,0.9)', 
                 textDecoration: 'none',
                 borderBottom: '2px solid rgba(255,255,255,0.9)',
                 paddingBottom: '0.25rem'
               }}>
                 Explorer
-              </a>
+              </Link>
               <a href="/spec" style={{ 
                 color: 'rgba(255,255,255,0.6)', 
                 textDecoration: 'none',
