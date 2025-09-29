@@ -1824,7 +1824,7 @@ export default function Page() {
                         marginTop: '0.5rem',
                         fontFamily: 'inherit'
                       }}>
-                        (true = sibling on right, false = sibling on left)
+                        (true = current node is right child / sibling on left, false = current node is left child / sibling on right)
                       </div>
                     </div>
                   </div>
