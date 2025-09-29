@@ -88,7 +88,7 @@ export default function SpecPage() {
             marginBottom: '1rem', 
             color: 'rgba(255,255,255,0.9)',
             cursor: 'pointer',
-            display: 'inline-block',
+            display: 'block',
             transition: 'color 0.2s'
           }}
           onMouseEnter={(e) => {
@@ -880,7 +880,7 @@ export default function SpecPage() {
               <Link href="/" style={{ color: 'rgba(255,255,255,0.6)', marginRight: '1.5rem' }}>
                 Try the Explorer
               </Link>
-              <a href="https://github.com/swapnilraj/fixdescriptorkit-evm" style={{ color: 'rgba(255,255,255,0.6)' }}>
+              <a href="https://github.com/swapnilraj/fix-descriptor" style={{ color: 'rgba(255,255,255,0.6)' }}>
                 View on GitHub
               </a>
             </p>

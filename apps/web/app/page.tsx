@@ -1988,14 +1988,14 @@ export default function Page() {
             Transform FIX descriptors into verifiable on-chain commitments
           </p>
           <div style={{ display: 'flex', justifyContent: 'center', gap: '2rem', fontSize: '0.875rem' }}>
-            <a 
-              href="https://github.com/swapnilraj/fixdescriptorkit-evm" 
-              style={{ color: 'rgba(255,255,255,0.4)', transition: 'color 0.2s' }}
-              onMouseEnter={(e) => e.currentTarget.style.color = 'rgba(255,255,255,0.7)'}
-              onMouseLeave={(e) => e.currentTarget.style.color = 'rgba(255,255,255,0.4)'}
-            >
-              GitHub
-            </a>
+              <a 
+                href="https://github.com/swapnilraj/fix-descriptor" 
+                style={{ color: 'rgba(255,255,255,0.4)', transition: 'color 0.2s' }}
+                onMouseEnter={(e) => e.currentTarget.style.color = 'rgba(255,255,255,0.7)'}
+                onMouseLeave={(e) => e.currentTarget.style.color = 'rgba(255,255,255,0.4)'}
+              >
+                GitHub
+              </a>
             <span style={{ color: 'rgba(255,255,255,0.2)' }}>·</span>
             <a 
               href="/spec" 
