@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import Link from 'next/link';
 import { abi as DataFactoryAbi } from '@/lib/abis/DataContractFactory';
 import { abi as TokenFactoryAbi } from '@/lib/abis/AssetTokenFactory';
@@ -240,13 +240,65 @@ function MerkleTreeNode({
 }) {
   const isLeaf = node.type === 'leaf';
   const isRoot = node.type === 'root';
+  const childContainerRef = useRef<HTMLDivElement | null>(null);
+  const [connectors, setConnectors] = useState<{ width: number; leftX: number | null; rightX: number | null }>({
+    width: 0,
+    leftX: null,
+    rightX: null,
+  });
+
+  useLayoutEffect(() => {
+    const container = childContainerRef.current;
+    if (!container) return;
+
+    const measure = () => {
+      if (!childContainerRef.current) return;
+      const width = childContainerRef.current.offsetWidth;
+      const childElements = Array.from(childContainerRef.current.children).filter(
+        (el): el is HTMLElement => el instanceof HTMLElement && el.tagName.toLowerCase() !== 'svg'
+      );
+      const [leftEl, rightEl] = childElements;
+      const next = {
+        width,
+        leftX: leftEl ? leftEl.offsetLeft + leftEl.offsetWidth / 2 : null,
+        rightX: rightEl ? rightEl.offsetLeft + rightEl.offsetWidth / 2 : null,
+      };
+
+      setConnectors((prev) => {
+        if (
+          prev.width === next.width &&
+          prev.leftX === next.leftX &&
+          prev.rightX === next.rightX
+        ) {
+          return prev;
+        }
+        return next;
+      });
+    };
+
+    measure();
+
+    if (typeof ResizeObserver === 'undefined') {
+      return;
+    }
+
+    const observer = new ResizeObserver(measure);
+    observer.observe(container);
+    Array.from(container.children).forEach((child) => observer.observe(child));
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [node.left, node.right]);
   
   return (
     <div style={{ 
       display: 'flex', 
       flexDirection: 'column', 
       alignItems: 'center',
-      gap: '1.5rem'
+      gap: '1.5rem',
+      flexShrink: 0,
+      minWidth: 'max-content'
     }}>
       {/* Node Box */}
       <div
@@ -327,48 +379,64 @@ function MerkleTreeNode({
       
       {/* Children */}
       {(node.left || node.right) && (
-        <div style={{ position: 'relative', display: 'flex', gap: '3rem' }}>
+        <div
+          style={{ 
+            position: 'relative', 
+            display: 'flex', 
+            gap: '3rem',
+            flexShrink: 0,
+            minWidth: 'max-content'
+          }}
+          ref={childContainerRef}
+        >
           {/* Connecting Lines */}
           <svg 
             style={{ 
               position: 'absolute', 
               top: '-1.5rem', 
-              left: '50%', 
+              left: '50%',
               transform: 'translateX(-50%)',
-              width: '100%',
+              width: `${Math.max(connectors.width, 1)}px`,
               height: '1.5rem',
               pointerEvents: 'none',
               overflow: 'visible'
             }}
-            viewBox="0 0 300 30"
+            viewBox={`0 0 ${Math.max(connectors.width, 1)} 30`}
             preserveAspectRatio="xMidYMin meet"
           >
-            {node.left && node.right && (
-              <>
-                <line 
-                  x1="150" y1="0" x2="75" y2="30" 
-                  stroke={node.isHighlighted ? 'rgba(255,255,255,0.4)' : 'rgba(255,255,255,0.15)'} 
-                  strokeWidth={node.isHighlighted ? '2' : '1.5'}
-                />
-                <line 
-                  x1="150" y1="0" x2="225" y2="30" 
-                  stroke={node.isHighlighted ? 'rgba(255,255,255,0.4)' : 'rgba(255,255,255,0.15)'} 
-                  strokeWidth={node.isHighlighted ? '2' : '1.5'}
-                />
-              </>
+            {connectors.width > 0 && connectors.leftX !== null && (
+              <path
+                d={`M ${connectors.width / 2} 0 Q ${(connectors.width / 2 + connectors.leftX) / 2} 10 ${connectors.leftX} 30`}
+                fill="none"
+                stroke={node.isHighlighted ? 'rgba(255,255,255,0.4)' : 'rgba(255,255,255,0.15)'}
+                strokeWidth={node.isHighlighted ? '2' : '1.5'}
+              />
             )}
-            {node.left && !node.right && (
-              <line 
-                x1="150" y1="0" x2="150" y2="30" 
-                stroke={node.isHighlighted ? 'rgba(255,255,255,0.4)' : 'rgba(255,255,255,0.15)'} 
+            {connectors.width > 0 && connectors.rightX !== null && (
+              <path
+                d={`M ${connectors.width / 2} 0 Q ${(connectors.width / 2 + connectors.rightX) / 2} 10 ${connectors.rightX} 30`}
+                fill="none"
+                stroke={node.isHighlighted ? 'rgba(255,255,255,0.4)' : 'rgba(255,255,255,0.15)'}
                 strokeWidth={node.isHighlighted ? '2' : '1.5'}
               />
             )}
           </svg>
           
           {/* Child Nodes */}
-          {node.left && <MerkleTreeNode node={node.left} level={level + 1} onLeafClick={onLeafClick} />}
-          {node.right && <MerkleTreeNode node={node.right} level={level + 1} onLeafClick={onLeafClick} />}
+          {node.left && (
+            <MerkleTreeNode 
+              node={node.left} 
+              level={level + 1} 
+              onLeafClick={onLeafClick} 
+            />
+          )}
+          {node.right && (
+            <MerkleTreeNode 
+              node={node.right} 
+              level={level + 1} 
+              onLeafClick={onLeafClick} 
+            />
+          )}
         </div>
       )}
     </div>
@@ -1663,17 +1731,26 @@ export default function Page() {
                           )}
                         </div>
                         <div style={{ 
-                          display: 'flex', 
-                          justifyContent: 'center',
                           minHeight: '300px',
                           paddingBottom: '2rem'
                         }}>
-                          <MerkleTreeNode 
-                            node={highlightedMerkleTree}
-                            onLeafClick={(path) => {
-                              setPathInput(JSON.stringify(path));
+                          <div
+                            style={{
+                              display: 'flex',
+                              justifyContent: 'center',
+                              width: 'max-content',
+                              minWidth: '100%',
+                              margin: '0 auto',
+                              overflow: 'visible'
                             }}
-                          />
+                          >
+                            <MerkleTreeNode 
+                              node={highlightedMerkleTree}
+                              onLeafClick={(path) => {
+                                setPathInput(JSON.stringify(path));
+                              }}
+                            />
+                          </div>
                         </div>
                       </>
                     ) : (
