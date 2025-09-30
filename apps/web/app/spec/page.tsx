@@ -665,8 +665,17 @@ export default function SpecPage() {
               7. Onchain Representation
             </SectionHeading>
 
+            <SubsectionHeading id="integration-with-assets">
+              7.1 Integration with Asset Contracts
+            </SubsectionHeading>
+            <p style={{ color: 'rgba(255,255,255,0.75)', lineHeight: '1.8', marginBottom: '1.25rem' }}>
+              The FixDescriptor <strong>MUST</strong> be embedded directly in the asset contract (ERC20, ERC721, etc.)
+              rather than stored in a separate registry. This eliminates permissioning issues, creates an implicit
+              mapping from asset address to descriptor, and ensures the issuer retains full control.
+            </p>
+
             <SubsectionHeading id="descriptor-struct">
-              7.1 Descriptor Struct
+              7.2 Descriptor Struct
             </SubsectionHeading>
             <div style={{ 
               padding: '1.5rem',
@@ -689,8 +698,33 @@ export default function SpecPage() {
 }`}</pre>
             </div>
 
+            <SubsectionHeading id="standard-interface">
+              7.3 Standard Interface
+            </SubsectionHeading>
+            <div style={{ 
+              padding: '1.5rem',
+              background: 'rgba(255,255,255,0.03)',
+              border: '1px solid rgba(255,255,255,0.1)',
+              borderRadius: '8px',
+              fontFamily: 'ui-monospace, monospace',
+              fontSize: '0.85rem',
+              marginBottom: '2rem',
+              overflowX: 'auto'
+            }}>
+              <pre style={{ margin: 0, color: 'rgba(255,255,255,0.9)', lineHeight: '1.6' }}>{`interface IFixDescriptor {
+  function getFixDescriptor() external view returns (FixDescriptor memory descriptor);
+  function getFixRoot() external view returns (bytes32 root);
+  function verifyField(
+    bytes calldata pathCBOR,
+    bytes calldata value,
+    bytes32[] calldata proof,
+    bool[] calldata directions
+  ) external view returns (bool valid);
+}`}</pre>
+            </div>
+
             <SubsectionHeading id="cbor-storage">
-              7.2 CBOR Storage (SSTORE2 Pattern)
+              7.4 CBOR Storage (SSTORE2 Pattern)
             </SubsectionHeading>
             <ul style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', marginBottom: '2rem', paddingLeft: '1.5rem' }}>
               <li style={{ marginBottom: '0.75rem' }}>The CBOR is deployed as the runtime bytecode of a minimal data contract (prefixed with a STOP byte)</li>
@@ -699,7 +733,7 @@ export default function SpecPage() {
             </ul>
 
             <SubsectionHeading id="events-versioning">
-              7.3 Events and Versioning
+              7.5 Events and Versioning
             </SubsectionHeading>
             <div style={{ 
               padding: '1.5rem',
@@ -711,10 +745,10 @@ export default function SpecPage() {
               marginBottom: '1rem'
             }}>
               <div style={{ color: 'rgba(255,255,255,0.8)', marginBottom: '0.75rem' }}>
-                event AssetFIXCommitted(id, fixRoot, dictHash, fixCBORPtr, fixCBORLen)
+                event FixDescriptorSet(bytes32 fixRoot, bytes32 dictHash, address fixCBORPtr, uint32 fixCBORLen)
               </div>
               <div style={{ color: 'rgba(255,255,255,0.8)' }}>
-                event AssetFIXUpdated(id, oldRoot, newRoot, newPtr)
+                event FixDescriptorUpdated(bytes32 oldRoot, bytes32 newRoot, address newPtr)
               </div>
             </div>
           </section>
@@ -743,7 +777,8 @@ export default function SpecPage() {
       bytes32 root,
       bytes calldata pathCBOR,
       bytes calldata value,
-      bytes32[] calldata proof
+      bytes32[] calldata proof,
+      bool[] calldata directions
   ) internal pure returns (bool);
 }`}</pre>
             </div>
@@ -758,7 +793,8 @@ export default function SpecPage() {
                 </code>
               </li>
               <li style={{ marginBottom: '0.75rem' }}>
-                For each sibling in proof with implied ordering, compute parent = keccak256(left || right)
+                For each sibling in <code style={{ background: 'rgba(255,255,255,0.1)', padding: '0.2rem 0.5rem', borderRadius: '3px', fontSize: '0.9em' }}>proof</code> with corresponding direction in <code style={{ background: 'rgba(255,255,255,0.1)', padding: '0.2rem 0.5rem', borderRadius: '3px', fontSize: '0.9em' }}>directions</code>:
+                if current node is right, parent = keccak256(sibling || current); if left, parent = keccak256(current || sibling)
               </li>
               <li>Compare final parent to root</li>
             </ol>
@@ -782,7 +818,7 @@ export default function SpecPage() {
                 { num: 4, title: 'Enumerate Leaves', desc: 'Compute pathCBOR for each present field; collect (pathCBOR, valueBytes) pairs' },
                 { num: 5, title: 'Compute Merkle Root', desc: 'Sort leaves by pathCBOR; build binary Merkle tree using keccak256' },
                 { num: 6, title: 'Deploy CBOR', desc: 'Deploy as SSTORE2-style data contract; return fixCBORPtr and fixCBORLen' },
-                { num: 7, title: 'Write Descriptor', desc: 'Store onchain in registry with fixMajor, fixMinor, dictHash, fixRoot, fixCBORPtr' },
+                { num: 7, title: 'Set Descriptor', desc: 'Store in the asset contract (not a registry): fixMajor, fixMinor, dictHash, fixRoot, fixCBORPtr, fixCBORLen, fixURI' },
                 { num: 8, title: 'Produce Utilities', desc: 'Proof generator and reader tools for fetching CBOR and generating proofs' }
               ].map((step) => (
                 <div key={step.num} style={{ 
