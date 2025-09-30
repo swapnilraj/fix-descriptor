@@ -7,6 +7,7 @@
 - [Foundry](https://getfoundry.sh/) installed
 - Private key with funds on target network
 - RPC URL for target network
+- Git submodules initialized (OpenZeppelin contracts)
 
 ### Deploy Asset Contracts
 
@@ -116,6 +117,7 @@ The deployment will:
 2. Build the `fixdescriptorkit-typescript` library
 3. Build the Next.js application
 4. Deploy serverless functions for API routes
+5. Ensure submodules were checked out (`git submodule update --init --recursive`)
 
 ## Features
 
@@ -133,6 +135,12 @@ If deployment fails:
 2. Check that all dependencies are correctly installed
 3. Verify environment variables are set in Vercel dashboard
 4. Check build logs for specific error messages
+5. Verify submodules are present:
+
+```bash
+git submodule status
+git submodule update --init --recursive
+```
 
 ---
 

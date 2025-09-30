@@ -62,9 +62,12 @@ fixdescriptorkit-evm/
 ### Installation
 
 ```bash
-# Clone the repository
-git clone https://github.com/your-username/fixdescriptorkit-evm.git
+# Clone the repository (with submodules for OpenZeppelin)
+git clone --recurse-submodules https://github.com/your-username/fixdescriptorkit-evm.git
 cd fixdescriptorkit-evm
+
+# If you already cloned without submodules, run:
+# git submodule update --init --recursive
 
 # Install dependencies
 npm install
@@ -161,6 +164,12 @@ export FIXPARSER_LICENSE_KEY="your-license-key"
 npm test
 ```
 
+If tests reference OpenZeppelin contracts, ensure submodules are initialized:
+
+```bash
+git submodule update --init --recursive
+```
+
 ### Run Contract Tests
 ```bash
 cd contracts
@@ -183,6 +192,16 @@ forge script script/DeployAssetToken.s.sol --rpc-url https://ethereum-hoodi-rpc.
 ### Deploy Web Application
 
 See [DEPLOYMENT.md](./DEPLOYMENT.md) for detailed Vercel deployment instructions.
+
+### CI (GitHub Actions) Submodules
+
+If you use GitHub Actions, enable submodule checkout:
+
+```yaml
+- uses: actions/checkout@v4
+  with:
+    submodules: recursive
+```
 
 ## 🏗️ Architecture
 
