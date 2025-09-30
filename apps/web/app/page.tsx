@@ -1702,28 +1702,6 @@ export default function Page() {
             </div>
                 <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
                   <button 
-                    onClick={deployCBOR}
-                    style={{
-                      background: 'rgba(255,255,255,0.05)',
-                      color: '#ffffff',
-                      border: '1px solid rgba(255,255,255,0.2)',
-                      borderRadius: '6px',
-                      padding: '0.875rem 1.5rem',
-                      fontSize: '0.9rem',
-                      fontWeight: '500',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.background = 'rgba(255,255,255,0.08)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
-                    }}
-                  >
-                    Deploy CBOR
-                  </button>
-                  <button 
                     onClick={() => setShowTokenDeploy(!showTokenDeploy)}
                     style={{
                       background: showTokenDeploy ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.1)',
@@ -2465,8 +2443,8 @@ export default function Page() {
               },
               {
                 step: '05',
-                title: 'Deploy CBOR',
-                description: 'Store the CBOR data onchain using the SSTORE2 pattern, making it publicly accessible.',
+                title: 'Deploy Token',
+                description: 'Deploy an ERC20 or ERC721 token contract with the FIX descriptor and CBOR data embedded onchain using SSTORE2, creating a self-contained asset.',
                 icon: (
                   <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                     <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
@@ -2481,7 +2459,7 @@ export default function Page() {
               {
                 step: '06',
                 title: 'Verify Proofs',
-                description: 'Smart contracts can verify specific fields using Merkle proofs without parsing the entire descriptor.',
+                description: 'The token contract can verify specific fields using Merkle proofs against its embedded descriptor, without parsing the entire FIX message.',
                 icon: (
                   <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                     <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
