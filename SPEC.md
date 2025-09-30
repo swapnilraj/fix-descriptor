@@ -401,7 +401,3 @@ Treasury-style descriptor fields:
 * **Access Control:** Asset contract owners control descriptor updates; no centralized registry permission model.
 * **Decentralization:** Each asset is self-describing; no single point of failure or censorship.
 * **Interface Standardization:** Use ERC165 for feature detection to enable ecosystem interoperability.
-
----
-
-Here’s a clean, engineer-ready **kickoff prompt** you can paste into your AI agent. It assumes you’ll attach the separate spec (the one we agreed on) and focuses on **implementation only**—library + Next.js app on Vercel, with server functions importing the library’s pure functions.

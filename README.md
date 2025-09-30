@@ -264,8 +264,6 @@ Asset contracts implementing `IFixDescriptor` provide:
 ### Supported Networks
 
 - **Hoodi Testnet** (Chain ID: 560048)
-- **Ethereum Mainnet** (Chain ID: 1)
-- **Sepolia Testnet** (Chain ID: 11155111)
 
 ### Example Contracts
 
@@ -301,7 +299,7 @@ This project is licensed under the ISC License - see the [LICENSE](LICENSE) file
 
 - **Documentation**: [SPEC.md](./SPEC.md)
 - **Deployment Guide**: [DEPLOYMENT.md](./DEPLOYMENT.md)
-- **Live Demo**: [https://your-app.vercel.app](https://your-app.vercel.app)
+- **Live Demo**: [https://your-app.vercel.app](https://fixdescriptor.vercel.app)
 - **FIX Protocol**: [https://www.fixtrading.org/](https://www.fixtrading.org/)
 
 ## 🙏 Acknowledgments
@@ -314,9 +312,8 @@ This project is licensed under the ISC License - see the [LICENSE](LICENSE) file
 
 For questions, issues, or contributions:
 
-- 📧 Email: [your-email@example.com](mailto:your-email@example.com)
-- 🐛 Issues: [GitHub Issues](https://github.com/your-username/fixdescriptorkit-evm/issues)
-- 💬 Discussions: [GitHub Discussions](https://github.com/your-username/fixdescriptorkit-evm/discussions)
+- 🐛 Issues: [GitHub Issues](https://github.com/swapnilraj/fixdescriptorkit-evm/issues)
+- 💬 Discussions: [GitHub Discussions](https://github.com/swapnilraj/fixdescriptorkit-evm/discussions)
 
 ---
 
