@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "FixDescriptorKit - FIX Asset Descriptor Verification",
-  description: "Convert FIX-based asset descriptors into canonical CBOR payloads and Merkle commitments for on-chain verification",
+  description: "Convert FIX-based asset descriptors into canonical CBOR payloads and Merkle commitments for onchain verification",
 };
 
 export default function RootLayout({

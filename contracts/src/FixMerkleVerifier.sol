@@ -3,7 +3,7 @@ pragma solidity ^0.8.20;
 
 library FixMerkleVerifier {
     /// @notice Verify a FIX field against a FixDescriptor's Merkle root.
-    /// @param root      The fixRoot stored on-chain.
+    /// @param root      The fixRoot stored onchain.
     /// @param pathCBOR  Canonical CBOR bytes of the path array (e.g., [454,1,456]).
     /// @param value     Raw FIX value bytes (UTF-8), exactly as used in CBOR.
     /// @param proof     Sibling hashes bottom-up.

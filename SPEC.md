@@ -1,6 +1,6 @@
-# Canonicalization, CBOR, and Merkle Specification for On-Chain FIX Asset Descriptors
+# Canonicalization, CBOR, and Merkle Specification for Onchain FIX Asset Descriptors
 
-This document specifies how to convert a FIX-based asset descriptor into a canonical, public **CBOR** payload and a **Merkle commitment** suitable for on-chain verification—without requiring any on-chain FIX parsing.
+This document specifies how to convert a FIX-based asset descriptor into a canonical, public **CBOR** payload and a **Merkle commitment** suitable for onchain verification—without requiring any onchain FIX parsing.
 
 ---
 
@@ -12,12 +12,12 @@ This document specifies how to convert a FIX-based asset descriptor into a canon
   * A **canonical CBOR** byte string representing the descriptor.
   * A **Merkle root** committing to every field in the descriptor.
   * Optional per-field **Merkle proofs**.
-* **Output (on-chain):**
+* **Output (onchain):**
 
   * A minimal **descriptor struct** storing: FIX version, dictionary hash, Merkle root, and a pointer to the CBOR bytes stored via SSTORE2-style “code-as-data”.
   * A **verification function** to check `(path, value, proof)` against the committed root.
 
-**Non-goals:** Parsing FIX on-chain; prescribing which business tags an issuer must include (that’s policy). This spec defines **how** to encode, not **what** to encode.
+**Non-goals:** Parsing FIX onchain; prescribing which business tags an issuer must include (that’s policy). This spec defines **how** to encode, not **what** to encode.
 
 ---
 
@@ -140,13 +140,22 @@ A Merkle proof is the usual vector of sibling hashes from the leaf to the root. 
 * `proof[]: bytes32[]`
 * `fixRoot: bytes32`
 
-No deserialization of CBOR is required on-chain.
+No deserialization of CBOR is required onchain.
 
 ---
 
-## 7. On-Chain Representation
+## 7. Onchain Representation
 
-### 7.1 Descriptor Struct
+### 7.1 Integration with Asset Contracts
+
+The `FixDescriptor` **MUST** be embedded directly in the asset contract (ERC20, ERC721, ERC1155, etc.) rather than stored in a separate registry. This approach:
+
+* Eliminates permissioning issues (no central gatekeeper)
+* Creates implicit mapping (asset address → descriptor)
+* Ensures asset issuer maintains full control
+* Works seamlessly with existing token standards
+
+### 7.2 Descriptor Struct
 
 ```solidity
 struct FixDescriptor {
@@ -160,45 +169,76 @@ struct FixDescriptor {
 }
 ```
 
-Issuer contracts (or a registry) **MUST** store one `FixDescriptor` per asset (per token class or per tokenId, depending on the model).
+Each asset contract **MUST** implement an interface to expose its descriptor.
 
-### 7.2 CBOR Storage (SSTORE2 pattern)
+### 7.3 Standard Interface
+
+Asset contracts **MUST** implement the following interface:
+
+```solidity
+interface IFixDescriptor {
+  /// @notice Get the FIX descriptor for this asset
+  /// @return descriptor The complete FixDescriptor struct
+  function getFixDescriptor() external view returns (FixDescriptor memory descriptor);
+  
+  /// @notice Get the Merkle root commitment
+  /// @return root The fixRoot for verification
+  function getFixRoot() external view returns (bytes32 root);
+  
+  /// @notice Verify a specific field against the committed descriptor
+  /// @param pathCBOR Canonical CBOR bytes of the field path
+  /// @param value Raw FIX value bytes
+  /// @param proof Merkle proof
+  /// @param directions Direction array for proof verification
+  /// @return valid True if the proof is valid
+  function verifyField(
+    bytes calldata pathCBOR,
+    bytes calldata value,
+    bytes32[] calldata proof,
+    bool[] calldata directions
+  ) external view returns (bool valid);
+}
+```
+
+### 7.4 CBOR Storage (SSTORE2 pattern)
 
 * The CBOR is deployed as the **runtime bytecode** of a minimal data contract (prefixed with a `STOP` byte).
 * Anyone can retrieve bytes via `eth_getCode(fixCBORPtr)`.
 * Optionally, expose:
 
 ```solidity
-function fixCBORChunk(uint256 id, uint256 start, uint256 size)
+function getFixCBORChunk(uint256 start, uint256 size)
   external view returns (bytes memory);
 ```
 
 which copies via `EXTCODECOPY(fixCBORPtr, ...)`, skipping the first byte.
 
-### 7.3 Events and Versioning
+### 7.5 Events and Versioning
 
-* On first publication: `event AssetFIXCommitted(id, fixRoot, dictHash, fixCBORPtr, fixCBORLen)`.
+* On first publication: `event FixDescriptorSet(bytes32 fixRoot, bytes32 dictHash, address fixCBORPtr, uint32 fixCBORLen)`.
 * On update (new version): deploy a new data contract, compute new root, update descriptor, and emit:
-  `event AssetFIXUpdated(id, oldRoot, newRoot, newPtr)`.
-* Historical descriptors SHOULD remain queryable.
+  `event FixDescriptorUpdated(bytes32 oldRoot, bytes32 newRoot, address newPtr)`.
+* Historical descriptors SHOULD remain queryable via historical state or dedicated storage.
 
 ---
 
-## 8. On-Chain Verification (Library Interface)
+## 8. Onchain Verification (Library Interface)
 
 ```solidity
 library FixMerkleVerifier {
   /// @notice Verify a FIX field against a FixDescriptor's Merkle root.
-  /// @param root      The fixRoot stored on-chain.
-  /// @param pathCBOR  Canonical CBOR bytes of the path array (e.g., [454,1,456]).
-  /// @param value     Raw FIX value bytes (UTF-8), exactly as used in CBOR.
-  /// @param proof     Sibling hashes bottom-up (left/right order is implied; see doc).
-  /// @return ok       True if proof is valid and binds (path,value) to root.
+  /// @param root        The fixRoot stored onchain.
+  /// @param pathCBOR    Canonical CBOR bytes of the path array (e.g., [454,1,456]).
+  /// @param value       Raw FIX value bytes (UTF-8), exactly as used in CBOR.
+  /// @param proof       Sibling hashes bottom-up from leaf to root.
+  /// @param directions  Boolean array indicating current node position (true=right child, false=left child).
+  /// @return ok         True if proof is valid and binds (path,value) to root.
   function verify(
       bytes32 root,
       bytes calldata pathCBOR,
       bytes calldata value,
-      bytes32[] calldata proof
+      bytes32[] calldata proof,
+      bool[] calldata directions
   ) internal pure returns (bool);
 }
 ```
@@ -206,15 +246,23 @@ library FixMerkleVerifier {
 **Verification algorithm (informative):**
 
 1. `bytes32 leaf = keccak256(abi.encodePacked(pathCBOR, value));`
-2. For each sibling in `proof` with implied ordering (left/right), compute parent = `keccak256(left || right)`.
+2. For each sibling in `proof` with corresponding direction in `directions`:
+   - If `directions[i] = true`: `parent = keccak256(sibling || current_node)`
+   - If `directions[i] = false`: `parent = keccak256(current_node || sibling)`
 3. Compare final parent to `root`.
 
-**Left/right convention:** The implementation **MUST** define and document how to determine concatenation order (e.g., a bitset index or a boolean per proof step returned by the proof generator). Common choices:
+**Left/right convention:** The implementation **MUST** define and document how to determine concatenation order (e.g., a bitset index or a boolean per proof step returned by the proof generator). 
 
-* Require a parallel `bool[] isRightSibling` vector, or
-* Sort concatenation by lexicographic order and document that rule symmetrically in the proof generator and verifier.
+**FixDescriptorKit Convention:** This implementation uses a `bool[] directions` array where each boolean indicates the position of the current node relative to its sibling:
 
-(Choose one in implementation; both are viable. If omitted, default to the conventional “caller supplies direction bits” pattern.)
+* `true` = current node is the **right child** (sibling is on the left)
+* `false` = current node is the **left child** (sibling is on the right)
+
+**Concatenation Order:**
+- When `directions[i] = true`: `parent = keccak256(sibling || current_node)`
+- When `directions[i] = false`: `parent = keccak256(current_node || sibling)`
+
+This convention ensures deterministic proof generation and verification across all implementations.
 
 ---
 
@@ -234,10 +282,10 @@ Given a FIX descriptor message:
    * Collect `(pathCBOR, valueBytes)` pairs.
 5. **Sort leaves** by `pathCBOR` (bytewise), compute the **Merkle root** using `keccak256`.
 6. **Deploy CBOR** as SSTORE2-style data contract; return `fixCBORPtr` and `fixCBORLen`.
-7. **Write descriptor** on-chain (e.g., in a registry), storing `fixMajor`, `fixMinor`, `dictHash`, `fixRoot`, `fixCBORPtr`, `fixCBORLen`, `fixURI`.
+7. **Set descriptor** in the asset contract, storing `fixMajor`, `fixMinor`, `dictHash`, `fixRoot`, `fixCBORPtr`, `fixCBORLen`, `fixURI` in the contract's storage.
 8. **Produce utilities**:
 
-   * Proof generator: for a given path, emit `valueBytes`, `proof[]`, and (if used) direction bits.
+   * Proof generator: for a given path, emit `valueBytes`, `proof[]`, and `directions[]` array.
    * Reader tools: fetch CBOR via RPC, decode, enumerate fields, produce proofs.
 
 **Edge Handling:**
@@ -249,7 +297,78 @@ Given a FIX descriptor message:
 
 ---
 
-## 10. Example (Abridged)
+## 10. Integration Patterns
+
+### 10.1 ERC20 Integration
+
+```solidity
+contract AssetToken is ERC20, IFixDescriptor {
+    FixDescriptor private _descriptor;
+    
+    constructor(string memory name, string memory symbol) ERC20(name, symbol) {
+        // Descriptor will be set after deployment via setFixDescriptor
+    }
+    
+    function getFixDescriptor() external view override returns (FixDescriptor memory) {
+        return _descriptor;
+    }
+    
+    function getFixRoot() external view override returns (bytes32) {
+        return _descriptor.fixRoot;
+    }
+    
+    function verifyField(
+        bytes calldata pathCBOR,
+        bytes calldata value,
+        bytes32[] calldata proof,
+        bool[] calldata directions
+    ) external view override returns (bool) {
+        return FixMerkleVerifier.verify(_descriptor.fixRoot, pathCBOR, value, proof, directions);
+    }
+    
+    function setFixDescriptor(FixDescriptor calldata descriptor) external onlyOwner {
+        bytes32 oldRoot = _descriptor.fixRoot;
+        _descriptor = descriptor;
+        emit FixDescriptorUpdated(oldRoot, descriptor.fixRoot, descriptor.fixCBORPtr);
+    }
+}
+```
+
+### 10.2 ERC721 Integration
+
+For NFTs, the descriptor can be per-collection (single descriptor) or per-token (descriptor per tokenId):
+
+```solidity
+contract AssetNFT is ERC721, IFixDescriptor {
+    FixDescriptor private _collectionDescriptor;
+    
+    // Or for per-token descriptors:
+    // mapping(uint256 => FixDescriptor) private _tokenDescriptors;
+    
+    function getFixDescriptor() external view override returns (FixDescriptor memory) {
+        return _collectionDescriptor;
+    }
+    
+    // For per-token descriptors, add tokenId parameter:
+    // function getFixDescriptorForToken(uint256 tokenId) external view returns (FixDescriptor memory)
+}
+```
+
+### 10.3 Discovery and Introspection
+
+Asset contracts SHOULD implement ERC165 to advertise support:
+
+```solidity
+bytes4 constant IFixDescriptor_ID = 0x12345678; // Calculate actual interface ID
+
+function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {
+    return interfaceId == IFixDescriptor_ID || super.supportsInterface(interfaceId);
+}
+```
+
+---
+
+## 11. Example (Abridged)
 
 Treasury-style descriptor fields:
 
@@ -272,13 +391,16 @@ Treasury-style descriptor fields:
 
 ---
 
-## 11. Security, Interop, and Testing
+## 12. Security, Interop, and Testing
 
 * **Determinism:** Provide test vectors (FIX → CBOR bytes, root) so multiple implementations converge.
 * **Dictionary lock:** Verifiers should check `dictHash` matches expected Orchestra/dictionary to avoid semantic drift.
-* **Gas bounds:** Verification cost is O(log N) hashes; CBOR is never parsed on-chain.
+* **Gas bounds:** Verification cost is O(log N) hashes; CBOR is never parsed onchain.
 * **Upgrades:** New descriptor versions use a new data contract + new root; emit events; leave history intact.
 * **Compliance:** Descriptors should avoid PII; Parties should be institutional roles/IDs.
+* **Access Control:** Asset contract owners control descriptor updates; no centralized registry permission model.
+* **Decentralization:** Each asset is self-describing; no single point of failure or censorship.
+* **Interface Standardization:** Use ERC165 for feature detection to enable ecosystem interoperability.
 
 ---
 

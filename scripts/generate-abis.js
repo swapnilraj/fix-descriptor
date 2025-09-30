@@ -10,7 +10,10 @@ const webAbisDir = path.join(__dirname, '../apps/web/lib/abis');
 // Contracts to generate ABIs for
 const contracts = [
   'DataContractFactory',
-  'DescriptorRegistry',
+  'AssetTokenFactory',
+  'IFixDescriptor',
+  'AssetTokenERC20',
+  'AssetTokenERC721',
   'FixMerkleVerifier'
 ];
 

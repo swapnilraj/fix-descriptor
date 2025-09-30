@@ -6,7 +6,7 @@
     "predev": "npm -w fixdescriptorkit-typescript run build",
     "prebuild": "npm -w fixdescriptorkit-typescript run build",
     "dev": "next dev --turbopack",
-    "build": "next build --turbopack",
+    "build": "next build",
     "start": "next start",
     "lint": "eslint"
   },

@@ -12,7 +12,7 @@ export default function SpecPage() {
     { id: 'canonical-tree', title: '4. Canonical Tree Model' },
     { id: 'cbor-encoding', title: '5. CBOR Encoding' },
     { id: 'merkle-commitment', title: '6. Merkle Commitment' },
-    { id: 'onchain-representation', title: '7. On-Chain Representation' },
+    { id: 'onchain-representation', title: '7. Onchain Representation' },
     { id: 'verification', title: '8. Verification' },
     { id: 'implementation', title: '9. Implementation Flow' },
     { id: 'example', title: '10. Example' },
@@ -211,7 +211,7 @@ export default function SpecPage() {
               color: 'rgba(255,255,255,0.6)',
               lineHeight: '1.6'
             }}>
-              Canonicalization, CBOR, and Merkle Specification for On-Chain FIX Asset Descriptors
+              Canonicalization, CBOR, and Merkle Specification for Onchain FIX Asset Descriptors
             </p>
             <div style={{ 
               marginTop: '2rem',
@@ -237,8 +237,8 @@ export default function SpecPage() {
             </SubsectionHeading>
             <p style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', marginBottom: '1.5rem' }}>
               This specification defines how to convert a FIX-based asset descriptor into a canonical, 
-              public CBOR payload and a Merkle commitment suitable for on-chain verification—without 
-              requiring any on-chain FIX parsing.
+              public CBOR payload and a Merkle commitment suitable for onchain verification—without 
+              requiring any onchain FIX parsing.
             </p>
 
             <div style={{ 
@@ -282,7 +282,7 @@ export default function SpecPage() {
               marginBottom: '2rem'
             }}>
               <div style={{ fontWeight: '500', marginBottom: '1rem', color: 'rgba(255,255,255,0.9)' }}>
-                Output (On-Chain)
+                Output (Onchain)
               </div>
               <ul style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.7', margin: 0, paddingLeft: '1.5rem' }}>
                 <li style={{ marginBottom: '0.5rem' }}>A minimal <strong>descriptor struct</strong> storing: FIX version, dictionary hash, Merkle root, and a pointer to CBOR bytes (SSTORE2-style)</li>
@@ -301,7 +301,7 @@ export default function SpecPage() {
                 Non-Goals
               </div>
               <p style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.7', margin: 0 }}>
-                This specification does <strong>not</strong> prescribe parsing FIX on-chain or which business 
+                This specification does <strong>not</strong> prescribe parsing FIX onchain or which business 
                 tags an issuer must include (that&apos;s policy). This spec defines <strong>how</strong> to encode, 
                 not <strong>what</strong> to encode.
               </p>
@@ -659,10 +659,10 @@ export default function SpecPage() {
             </div>
           </section>
 
-          {/* Section 7: On-Chain Representation */}
+          {/* Section 7: Onchain Representation */}
           <section style={{ marginBottom: '4rem' }}>
             <SectionHeading id="onchain-representation">
-              7. On-Chain Representation
+              7. Onchain Representation
             </SectionHeading>
 
             <SubsectionHeading id="descriptor-struct">
@@ -722,7 +722,7 @@ export default function SpecPage() {
           {/* Section 8: Verification */}
           <section style={{ marginBottom: '4rem' }}>
             <SectionHeading id="verification">
-              8. On-Chain Verification
+              8. Onchain Verification
             </SectionHeading>
 
             <SubsectionHeading id="library-interface">
@@ -782,7 +782,7 @@ export default function SpecPage() {
                 { num: 4, title: 'Enumerate Leaves', desc: 'Compute pathCBOR for each present field; collect (pathCBOR, valueBytes) pairs' },
                 { num: 5, title: 'Compute Merkle Root', desc: 'Sort leaves by pathCBOR; build binary Merkle tree using keccak256' },
                 { num: 6, title: 'Deploy CBOR', desc: 'Deploy as SSTORE2-style data contract; return fixCBORPtr and fixCBORLen' },
-                { num: 7, title: 'Write Descriptor', desc: 'Store on-chain in registry with fixMajor, fixMinor, dictHash, fixRoot, fixCBORPtr' },
+                { num: 7, title: 'Write Descriptor', desc: 'Store onchain in registry with fixMajor, fixMinor, dictHash, fixRoot, fixCBORPtr' },
                 { num: 8, title: 'Produce Utilities', desc: 'Proof generator and reader tools for fetching CBOR and generating proofs' }
               ].map((step) => (
                 <div key={step.num} style={{ 

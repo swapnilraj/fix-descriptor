@@ -1,10 +1,11 @@
 "use client";
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { abi as DataFactoryAbi } from '@/lib/abis/DataContractFactory';
-import { abi as RegistryAbi } from '@/lib/abis/DescriptorRegistry';
+import { abi as TokenFactoryAbi } from '@/lib/abis/AssetTokenFactory';
+import { abi as AssetTokenAbi } from '@/lib/abis/AssetTokenERC20';
 import { chainFromEnv } from '@/lib/viemClient';
-import { createWalletClient, custom, type Address } from 'viem';
+import { createWalletClient, custom, type Address, createPublicClient, http, decodeEventLog } from 'viem';
 
 // Extend Window interface for MetaMask
 declare global {
@@ -12,6 +13,8 @@ declare global {
     ethereum?: {
       request: (args: { method: string; params?: unknown[] }) => Promise<unknown>;
       isMetaMask?: boolean;
+      on?: (event: string, callback: (...args: unknown[]) => void) => void;
+      removeListener?: (event: string, callback: (...args: unknown[]) => void) => void;
     };
   }
 }
@@ -374,7 +377,15 @@ function MerkleTreeNode({
 
 export default function Page() {
   const [fixRaw, setFixRaw] = useState('');
-  const [preview, setPreview] = useState<{ root: string; cborHex: string; leavesCount: number; paths: number[][]; merkleTree: MerkleNodeData } | null>(null);
+  const [preview, setPreview] = useState<{ 
+    root: string; 
+    cborHex: string; 
+    leavesCount: number; 
+    paths: number[][]; 
+    merkleTree: MerkleNodeData;
+    treeData?: TreeNodeData;
+    parsedFields?: Array<{ tag: string; value: string; tagInfo?: typeof FIX_TAGS[string] }>;
+  } | null>(null);
   const [pathInput, setPathInput] = useState('');
   const [proof, setProof] = useState<ProofResult>(null);
   const [txInfo, setTxInfo] = useState<string>('');
@@ -384,6 +395,44 @@ export default function Page() {
   const [treeData, setTreeData] = useState<TreeNodeData | null>(null);
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
   const [viewMode, setViewMode] = useState<'hex' | 'tree' | 'merkle'>('hex');
+  const [walletConnected, setWalletConnected] = useState(false);
+  const [walletAddress, setWalletAddress] = useState<string | null>(null);
+  
+  // Token deployment state
+  const [showTokenDeploy, setShowTokenDeploy] = useState(false);
+  const [tokenName, setTokenName] = useState('');
+  const [tokenSymbol, setTokenSymbol] = useState('');
+  const [tokenSupply, setTokenSupply] = useState('1000000');
+  const [deployedTokenAddress, setDeployedTokenAddress] = useState<string | null>(null);
+  const [onChainVerificationStatus, setOnChainVerificationStatus] = useState<'pending' | 'success' | 'failed' | null>(null);
+
+  // Check wallet connection on mount and listen for account changes
+  useEffect(() => {
+    checkWalletConnection();
+
+    // Listen for account changes
+    if (window.ethereum) {
+      const handleAccountsChanged = (accounts: unknown) => {
+        const accountsArray = accounts as string[];
+        if (accountsArray.length > 0) {
+          setWalletConnected(true);
+          setWalletAddress(accountsArray[0]);
+        } else {
+          setWalletConnected(false);
+          setWalletAddress(null);
+        }
+      };
+
+      window.ethereum.on?.('accountsChanged', handleAccountsChanged);
+
+      // Cleanup listener on unmount
+      return () => {
+        if (window.ethereum?.removeListener) {
+          window.ethereum.removeListener('accountsChanged', handleAccountsChanged);
+        }
+      };
+    }
+  }, []);
 
   const steps = [
     { 
@@ -447,7 +496,7 @@ export default function Page() {
     },
     { 
       name: "Deploy", 
-      description: "On-Chain",
+      description: "Onchain",
       icon: (
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
@@ -508,6 +557,7 @@ export default function Page() {
 
   async function doPreview() {
     setProof(null);
+    setOnChainVerificationStatus(null); // Reset verification status when preview changes
     setLoading(true);
     setCurrentStep(1);
     
@@ -529,11 +579,11 @@ export default function Page() {
     setPreview(json);
       setCurrentStep(4);
       
-      // Build tree data
-      const fields = parseFixFields(fixRaw);
-      const tree = buildTreeData(fields);
-      setTreeData(tree);
-      setExpandedNodes(new Set(['[]'])); // Expand root by default
+      // Use tree data from backend
+      if (json.treeData) {
+        setTreeData(json.treeData);
+        setExpandedNodes(new Set(['[]'])); // Expand root by default
+      }
     } finally {
       setLoading(false);
     }
@@ -542,6 +592,7 @@ export default function Page() {
   async function doProof() {
     if (!preview) return;
     setLoading(true);
+    setOnChainVerificationStatus(null); // Reset verification status when generating new proof
     
     try {
     const parsedPath = JSON.parse(pathInput || '[]');
@@ -572,6 +623,51 @@ export default function Page() {
     return accounts[0] as Address;
   }
 
+  async function checkWalletConnection() {
+    if (!window.ethereum) {
+      setWalletConnected(false);
+      setWalletAddress(null);
+      return;
+    }
+
+    try {
+      const accounts = await window.ethereum.request({ method: 'eth_accounts' }) as string[];
+      if (accounts.length > 0) {
+        setWalletConnected(true);
+        setWalletAddress(accounts[0]);
+      } else {
+        setWalletConnected(false);
+        setWalletAddress(null);
+      }
+    } catch (error) {
+      console.error('Error checking wallet connection:', error);
+      setWalletConnected(false);
+      setWalletAddress(null);
+    }
+  }
+
+  async function connectWallet() {
+    if (!window.ethereum) {
+      alert('MetaMask not detected. Please install MetaMask to continue.');
+      return;
+    }
+
+    try {
+      // First switch to Hoodi network
+      await switchToHoodi();
+      
+      // Then request account access
+      const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' }) as string[];
+      if (accounts.length > 0) {
+        setWalletConnected(true);
+        setWalletAddress(accounts[0]);
+      }
+    } catch (error) {
+      console.error('Error connecting wallet:', error);
+      alert('Failed to connect wallet. Please try again.');
+    }
+  }
+
   async function deployCBOR() {
     if (!preview) return;
     setCurrentStep(5);
@@ -591,120 +687,212 @@ export default function Page() {
     setTxInfo(`Deploy tx: ${hash}`);
   }
 
-  async function registerDescriptor() {
-    if (!preview) return;
-    setCurrentStep(5);
-    
+  async function deployWithFactory() {
+    if (!preview || !walletConnected) {
+      alert('Please connect wallet and generate preview first');
+      return;
+    }
+
+    if (!tokenName || !tokenSymbol || !tokenSupply) {
+      alert('Please fill in all token fields');
+      return;
+    }
+
+    const factoryAddress = process.env.NEXT_PUBLIC_TOKEN_FACTORY_ADDRESS;
+    if (!factoryAddress) {
+      alert('Token factory not configured. Please set NEXT_PUBLIC_TOKEN_FACTORY_ADDRESS in your environment.');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      
     const account = await getAccount();
     const provider = getProvider();
     const wallet = createWalletClient({ account, chain: chainFromEnv, transport: custom(provider as never) });
-    const assetId = `0x${Array.from({ length: 32 }, () => Math.floor(Math.random() * 256).toString(16).padStart(2, '0')).join('')}` as `0x${string}`;
-    
-    const fixCBORPtr = process.env.NEXT_PUBLIC_LAST_DEPLOYED_PTR;
-    const validAddress = fixCBORPtr && fixCBORPtr.length === 42 && fixCBORPtr.startsWith('0x') 
-      ? fixCBORPtr as `0x${string}`
-      : '0x0000000000000000000000000000000000000000' as `0x${string}`;
+      
+      // Dictionary hash for DEMO_FIX_SCHEMA
+      const dictHash = '0xb24215c985384ddaa6767272d452780aa4352201a1df669564cde3905cb6a215' as `0x${string}`;
+      
+      // Prepare descriptor (factory will set fixCBORPtr and fixCBORLen)
+      const descriptor = {
+        fixMajor: 4,
+        fixMinor: 4,
+        dictHash: dictHash,
+        fixRoot: preview.root as `0x${string}`,
+        fixCBORPtr: '0x0000000000000000000000000000000000000000' as `0x${string}`,
+        fixCBORLen: 0,
+        fixURI: ''
+      };
+
+      // Convert supply to wei (18 decimals)
+      const supplyInWei = BigInt(tokenSupply) * BigInt(10 ** 18);
     
     type Abi = readonly unknown[];
-    const registryAbi: Abi = RegistryAbi;
-    const hash = await wallet.writeContract({ 
-      address: process.env.NEXT_PUBLIC_REGISTRY_ADDRESS as `0x${string}`, 
-      abi: registryAbi, 
-      functionName: 'registerDescriptor', 
-      args: [assetId, validAddress, preview.root as `0x${string}`] 
-    });
-    setTxInfo(`Register tx: ${hash}`);
-  }
-
-  function parseFixFields(fixMsg: string): Array<{ tag: string; value: string; tagInfo?: typeof FIX_TAGS[string] }> {
-    const fields = fixMsg.split('|').map(f => {
-      const [tag, value] = f.split('=');
-      return { tag, value, tagInfo: FIX_TAGS[tag] };
-    }).filter(f => f.tag && f.value);
-    return fields;
-  }
-
-  // Build tree data from parsed FIX fields
-  function buildTreeData(fields: Array<{ tag: string; value: string }>): TreeNodeData {
-    const root: TreeNodeData = {
-      type: 'root',
-      name: 'FIX Descriptor',
-      children: [],
-      isExpanded: true
-    };
-
-    const groupTags = ['454', '453', '802']; // Known group tags
-    const children: TreeNodeData[] = [];
-    let i = 0;
-
-    while (i < fields.length) {
-      const field = fields[i];
+      const factoryAbi: Abi = TokenFactoryAbi;
       
-      // Skip session fields
-      if (['8', '9', '10', '35'].includes(field.tag)) {
-        i++;
-        continue;
-      }
+      // Ensure CBOR hex has 0x prefix
+      const cborHexData = preview.cborHex.startsWith('0x') 
+        ? preview.cborHex as `0x${string}`
+        : `0x${preview.cborHex}` as `0x${string}`;
+      
+      // Call deployWithDescriptor
+      const hash = await wallet.writeContract({
+        address: factoryAddress as `0x${string}`,
+        abi: factoryAbi,
+        functionName: 'deployWithDescriptor',
+        args: [
+          tokenName,
+          tokenSymbol,
+          supplyInWei,
+          cborHexData,
+          descriptor
+        ]
+      });
 
-      if (groupTags.includes(field.tag)) {
-        // This is a group
-        const groupCount = parseInt(field.value);
-        const groupNode: TreeNodeData = {
-          type: 'group',
-          tag: field.tag,
-          value: field.value,
-          children: [],
-          path: [parseInt(field.tag)],
-          isExpanded: false
-        };
+      setTxInfo(`Token deployment transaction: ${hash}\nWaiting for confirmation...`);
+      
+      // Wait for transaction receipt to get token address
+      const publicClient = createPublicClient({
+        chain: chainFromEnv,
+        transport: http()
+      });
 
-        // Parse group entries (simplified - assumes flat structure)
-        const entries: TreeNodeData[] = [];
-        for (let j = 0; j < groupCount && i + 1 < fields.length; j++) {
-          const entry: TreeNodeData = {
-            type: 'entry',
-            name: String(j),
-            children: [],
-            isExpanded: true
-          };
+      const receipt = await publicClient.waitForTransactionReceipt({ hash });
+      
+      // Decode the AssetTokenDeployed event from the receipt logs
+      // Event signature: AssetTokenDeployed(address indexed tokenAddress, address indexed deployer, string name, string symbol, uint256 initialSupply)
+      let tokenAddress = 'Check transaction';
+      
+      for (const log of receipt.logs) {
+        try {
+          const decoded = decodeEventLog({
+            abi: factoryAbi,
+            data: log.data,
+            topics: log.topics
+          });
           
-          // Add next few fields to this entry (simplified)
-          let fieldCount = 0;
-          while (fieldCount < 3 && i + 1 + fieldCount < fields.length) {
-            const entryField = fields[i + 1 + fieldCount];
-            if (!groupTags.includes(entryField.tag)) {
-              entry.children?.push({
-                type: 'scalar',
-                tag: entryField.tag,
-                value: entryField.value,
-                path: [parseInt(field.tag), j, parseInt(entryField.tag)]
+          if (decoded.eventName === 'AssetTokenDeployed') {
+            // Extract tokenAddress from decoded event args
+            const args = decoded.args as { tokenAddress?: Address; deployer?: Address; name?: string; symbol?: string; initialSupply?: bigint };
+            if (args.tokenAddress) {
+              tokenAddress = args.tokenAddress;
+              setDeployedTokenAddress(tokenAddress);
+              
+              console.log('✅ Decoded AssetTokenDeployed event:', {
+                tokenAddress: args.tokenAddress,
+                deployer: args.deployer,
+                name: args.name,
+                symbol: args.symbol,
+                initialSupply: args.initialSupply?.toString()
               });
-              fieldCount++;
-            } else {
               break;
             }
           }
-          
-          entries.push(entry);
+        } catch {
+          // Skip logs that don't match our ABI
+          continue;
         }
-        
-        groupNode.children = entries;
-        children.push(groupNode);
-        i += 1; // Move past group count
-      } else {
-        // Regular scalar field
-        children.push({
-          type: 'scalar',
-          tag: field.tag,
-          value: field.value,
-          path: [parseInt(field.tag)]
-        });
-        i++;
       }
+
+      setTxInfo(`✅ Token deployed successfully!\n\nToken Address: ${tokenAddress}\nCBOR Deployed: ✓\nDescriptor Set: ✓\n\nTransaction: ${hash}\n\nYou can now verify proofs onchain using this token!`);
+      setShowTokenDeploy(false);
+      setCurrentStep(5); // Update step indicator to show deployment complete
+      
+      // Reset form
+      setTokenName('');
+      setTokenSymbol('');
+      setTokenSupply('1000000');
+      
+    } catch (error) {
+      console.error('Deployment failed:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      setTxInfo(`❌ Deployment failed: ${errorMessage}`);
+      alert(`Deployment failed: ${errorMessage}`);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function verifyProofOnChain() {
+    if (!proof || !deployedTokenAddress) {
+      alert('Please generate a proof and deploy a token first');
+      return;
     }
 
-    root.children = children;
-    return root;
+    if (!walletConnected) {
+      alert('Please connect your wallet first');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setOnChainVerificationStatus('pending');
+      
+      const publicClient = createPublicClient({
+        chain: chainFromEnv,
+        transport: http()
+      });
+
+      type Abi = readonly unknown[];
+      const tokenAbi: Abi = AssetTokenAbi;
+
+      // First, check if the descriptor is initialized by trying to get the root
+      let descriptorRoot;
+      try {
+        descriptorRoot = await publicClient.readContract({
+          address: deployedTokenAddress as `0x${string}`,
+          abi: tokenAbi,
+          functionName: 'getFixRoot',
+          args: []
+        });
+      } catch (rootError) {
+        const errorMsg = rootError instanceof Error ? rootError.message : 'Unknown error';
+        if (errorMsg.includes('Descriptor not initialized')) {
+          setOnChainVerificationStatus('failed');
+          setTxInfo(`❌ Descriptor Not Initialized\n\nThe token at ${deployedTokenAddress} does not have a descriptor set yet.\n\nThis can happen if:\n- The token was deployed without a descriptor\n- The descriptor setup transaction failed\n- You're using a different token\n\nTry deploying a new token using the "Quick Deploy Token" button.`);
+          return;
+        }
+        throw rootError;
+      }
+
+      // Now verify the proof
+      const isValid = await publicClient.readContract({
+        address: deployedTokenAddress as `0x${string}`,
+        abi: tokenAbi,
+        functionName: 'verifyField',
+        args: [
+          proof.pathCBORHex as `0x${string}`,
+          proof.valueHex as `0x${string}`,
+          proof.proof.map(p => p as `0x${string}`),
+          proof.directions
+        ]
+      });
+
+      if (isValid) {
+        setOnChainVerificationStatus('success');
+        setTxInfo(`✅ Onchain Verification SUCCESSFUL!\n\nToken Address: ${deployedTokenAddress}\nDescriptor Root: ${descriptorRoot}\nPath: ${proof.pathCBORHex}\nValue: ${proof.valueHex}\nProof Length: ${proof.proof.length}\n\nThe proof is cryptographically valid onchain! 🎉`);
+      } else {
+        setOnChainVerificationStatus('failed');
+        setTxInfo(`❌ Onchain Verification FAILED!\n\nThe proof did not match the committed Merkle root.\n\nDescriptor Root: ${descriptorRoot}\nYour Proof Root: ${preview?.root}\n\nThis could mean:\n- The proof is for a different descriptor\n- The value was modified\n- The path is incorrect\n- The proof is invalid`);
+      }
+      
+    } catch (error) {
+      console.error('Onchain verification failed:', error);
+      setOnChainVerificationStatus('failed');
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      
+      // Provide helpful error messages
+      if (errorMessage.includes('returned no data')) {
+        setTxInfo(`❌ Contract Call Failed\n\nThe contract at ${deployedTokenAddress} returned no data.\n\nPossible causes:\n- The address is not a valid AssetToken contract\n- The contract doesn't implement IFixDescriptor\n- The network is incorrect\n\nPlease ensure you deployed the token using the "Quick Deploy Token" button.`);
+      } else if (errorMessage.includes('Descriptor not initialized')) {
+        setTxInfo(`❌ Descriptor Not Initialized\n\nThe token has not been set up with a FIX descriptor yet.`);
+      } else {
+        setTxInfo(`❌ Onchain verification error:\n\n${errorMessage}`);
+      }
+    } finally {
+      setLoading(false);
+    }
   }
 
   // Toggle tree node expansion
@@ -757,7 +945,7 @@ export default function Page() {
     return highlightHasSelected(node.left, selectedPath) || highlightHasSelected(node.right, selectedPath);
   }
 
-  const fixFields = fixRaw ? parseFixFields(fixRaw) : [];
+  const fixFields = preview?.parsedFields || [];
   const displayTreeData = treeData ? updateTreeExpansion(treeData) : null;
   
   // Get Merkle tree from API (with all real keccak256 hashes) and highlight selected path
@@ -780,35 +968,63 @@ export default function Page() {
       }}>
         <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '2rem 2rem 4rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem' }}>
-            <h1 style={{ 
-              fontSize: '3.5rem', 
-              marginBottom: 0, 
-              fontWeight: '600',
-              letterSpacing: '-0.02em',
-              lineHeight: '1.1'
-            }}>
-              FixDescriptorKit
-            </h1>
-            <nav style={{ display: 'flex', gap: '2rem', fontSize: '0.9rem', paddingTop: '0.5rem' }}>
-              <Link href="/" style={{ 
-                color: 'rgba(255,255,255,0.9)', 
-                textDecoration: 'none',
-                borderBottom: '2px solid rgba(255,255,255,0.9)',
-                paddingBottom: '0.25rem'
+      <div>
+              <h1 style={{ 
+                fontSize: '3.5rem', 
+                marginBottom: 0, 
+                fontWeight: '600',
+                letterSpacing: '-0.02em',
+                lineHeight: '1.1'
               }}>
-                Explorer
-              </Link>
-              <a href="/spec" style={{ 
-                color: 'rgba(255,255,255,0.6)', 
-                textDecoration: 'none',
-                transition: 'color 0.2s'
-              }}
-              onMouseEnter={(e) => e.currentTarget.style.color = 'rgba(255,255,255,0.9)'}
-              onMouseLeave={(e) => e.currentTarget.style.color = 'rgba(255,255,255,0.6)'}
-              >
-                Specification
-              </a>
-            </nav>
+                FixDescriptorKit
+              </h1>
+              <nav style={{ display: 'flex', gap: '2rem', fontSize: '0.9rem', paddingTop: '0.5rem' }}>
+                <Link href="/" style={{ 
+                  color: 'rgba(255,255,255,0.9)', 
+                  textDecoration: 'none',
+                  borderBottom: '2px solid rgba(255,255,255,0.9)',
+                  paddingBottom: '0.25rem'
+                }}>
+                  Explorer
+                </Link>
+                <a href="/spec" style={{ 
+                  color: 'rgba(255,255,255,0.6)', 
+                  textDecoration: 'none',
+                  transition: 'color 0.2s'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.color = 'rgba(255,255,255,0.9)'}
+                onMouseLeave={(e) => e.currentTarget.style.color = 'rgba(255,255,255,0.6)'}
+                >
+                  Specification
+                </a>
+              </nav>
+            </div>
+            
+            {/* Wallet Status */}
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '0.75rem',
+              padding: '0.75rem 1rem',
+              background: walletConnected ? 'rgba(34, 197, 94, 0.1)' : 'rgba(255,255,255,0.05)',
+              border: walletConnected ? '1px solid rgba(34, 197, 94, 0.3)' : '1px solid rgba(255,255,255,0.1)',
+              borderRadius: '8px',
+              fontSize: '0.9rem'
+            }}>
+              <div style={{
+                width: '8px',
+                height: '8px',
+                borderRadius: '50%',
+                background: walletConnected ? '#22c55e' : '#ef4444'
+              }} />
+              <span style={{ color: walletConnected ? '#22c55e' : 'rgba(255,255,255,0.6)' }}>
+                {walletConnected ? (
+                  walletAddress ? `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}` : 'Connected'
+                ) : (
+                  'Not Connected'
+                )}
+              </span>
+            </div>
           </div>
           <p style={{ 
             fontSize: '1.25rem', 
@@ -817,7 +1033,7 @@ export default function Page() {
             maxWidth: '600px',
             lineHeight: '1.6'
           }}>
-            Transform FIX asset descriptors into verifiable on-chain commitments
+            Transform FIX asset descriptors into verifiable onchain commitments
           </p>
         </div>
       </header>
@@ -959,9 +1175,9 @@ export default function Page() {
                 <div style={{ fontSize: '0.875rem', color: 'rgba(255,255,255,0.5)', lineHeight: '1.5' }}>
                   {example.description}
                 </div>
-              </button>
+          </button>
             ))}
-          </div>
+        </div>
         </section>
 
         {/* Input Section */}
@@ -994,7 +1210,7 @@ export default function Page() {
                 <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.95rem' }}>
                   Paste or edit your FIX descriptor
                 </p>
-              </div>
+      </div>
               <span style={{ 
                 fontSize: '1.5rem', 
                 color: 'rgba(255,255,255,0.5)',
@@ -1071,7 +1287,7 @@ export default function Page() {
                 borderRadius: '8px',
                 background: 'rgba(255,255,255,0.03)'
               }}>
-                {fixFields.map((field, idx) => (
+                {fixFields.map((field: { tag: string; value: string; tagInfo?: typeof FIX_TAGS[string] }, idx: number) => (
                   <div 
                     key={idx} 
                     style={{ 
@@ -1146,26 +1362,49 @@ export default function Page() {
             </button>
             
             <button 
-              onClick={switchToHoodi}
+              onClick={walletConnected ? undefined : connectWallet}
               style={{
-                background: 'rgba(255,255,255,0.05)',
-                color: '#ffffff',
-                border: '1px solid rgba(255,255,255,0.2)',
+                background: walletConnected ? 'rgba(34, 197, 94, 0.1)' : 'rgba(255,255,255,0.05)',
+                color: walletConnected ? '#22c55e' : '#ffffff',
+                border: walletConnected ? '1px solid rgba(34, 197, 94, 0.3)' : '1px solid rgba(255,255,255,0.2)',
                 borderRadius: '6px',
                 padding: '0.875rem 1.5rem',
                 fontSize: '0.9rem',
                 fontWeight: '500',
-                cursor: 'pointer',
-                transition: 'all 0.2s'
+                cursor: walletConnected ? 'default' : 'pointer',
+                transition: 'all 0.2s',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem'
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.background = 'rgba(255,255,255,0.08)';
+                if (!walletConnected) {
+                  e.currentTarget.style.background = 'rgba(255,255,255,0.08)';
+                }
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                if (!walletConnected) {
+                  e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                }
               }}
             >
-              Connect Wallet
+              {walletConnected ? (
+                <>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M9 12l2 2 4-4" />
+                    <circle cx="12" cy="12" r="10" />
+                  </svg>
+                  {walletAddress ? `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}` : 'Connected'}
+                </>
+              ) : (
+                <>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3 4-3 9-3 9 1.34 9 3z" />
+                    <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5c0-1.66-4-3-9-3S3 3.34 3 5z" />
+                  </svg>
+                  Connect Wallet
+                </>
+              )}
             </button>
           </div>
         </section>
@@ -1263,7 +1502,7 @@ export default function Page() {
                   <div style={{ 
                     fontFamily: 'ui-monospace, monospace',
                     fontSize: '0.75rem',
-                    wordBreak: 'break-all',
+                    wordBreak: 'break-all', 
                     color: 'rgba(255,255,255,0.9)',
                     lineHeight: '1.6'
                   }}>
@@ -1485,11 +1724,11 @@ export default function Page() {
                     Deploy CBOR
                   </button>
                   <button 
-                    onClick={registerDescriptor}
+                    onClick={() => setShowTokenDeploy(!showTokenDeploy)}
                     style={{
-                      background: 'rgba(255,255,255,0.05)',
-                      color: '#ffffff',
-                      border: '1px solid rgba(255,255,255,0.2)',
+                      background: showTokenDeploy ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.1)',
+                      color: '#60a5fa',
+                      border: '1px solid rgba(59, 130, 246, 0.3)',
                       borderRadius: '6px',
                       padding: '0.875rem 1.5rem',
                       fontSize: '0.9rem',
@@ -1498,13 +1737,13 @@ export default function Page() {
                       transition: 'all 0.2s'
                     }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.background = 'rgba(255,255,255,0.08)';
+                      e.currentTarget.style.background = 'rgba(59, 130, 246, 0.25)';
                     }}
                     onMouseLeave={(e) => {
-                      e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                      e.currentTarget.style.background = showTokenDeploy ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.1)';
                     }}
                   >
-                    Register Descriptor
+                    {showTokenDeploy ? '− Hide' : '🚀 Quick Deploy Token'}
                   </button>
           </div>
                 {txInfo && (
@@ -1522,6 +1761,152 @@ export default function Page() {
                     {txInfo}
                   </div>
         )}
+
+                {/* Token Deployment Form */}
+                {showTokenDeploy && (
+                  <div style={{
+                    marginTop: '1.5rem',
+                    padding: '1.5rem',
+                    background: 'rgba(59, 130, 246, 0.05)',
+                    border: '1px solid rgba(59, 130, 246, 0.2)',
+                    borderRadius: '8px'
+                  }}>
+                    <h3 style={{ 
+                      fontSize: '1.1rem', 
+                      fontWeight: '600', 
+                      marginBottom: '1rem',
+                      color: '#60a5fa'
+                    }}>
+                      Deploy ERC20 Token with Descriptor
+                    </h3>
+                    <p style={{
+                      fontSize: '0.875rem',
+                      color: 'rgba(255,255,255,0.6)',
+                      marginBottom: '1.5rem'
+                    }}>
+                      Deploy a new ERC20 token with the FIX descriptor embedded in one transaction using AssetTokenFactory.
+                    </p>
+                    
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                      <div>
+                        <label style={{ 
+                          display: 'block', 
+                          fontSize: '0.875rem', 
+                          marginBottom: '0.5rem',
+                          color: 'rgba(255,255,255,0.8)'
+                        }}>
+                          Token Name
+                        </label>
+                        <input
+                          type="text"
+                          value={tokenName}
+                          onChange={(e) => setTokenName(e.target.value)}
+                          placeholder="US Treasury Bond Token"
+                          style={{
+                            width: '100%',
+                            padding: '0.75rem',
+                            background: 'rgba(0,0,0,0.3)',
+                            border: '1px solid rgba(255,255,255,0.1)',
+                            borderRadius: '6px',
+                            color: '#ffffff',
+                            fontSize: '0.875rem'
+                          }}
+                        />
+                      </div>
+                      
+                      <div style={{ display: 'flex', gap: '1rem' }}>
+                        <div style={{ flex: 1 }}>
+                          <label style={{ 
+                            display: 'block', 
+                            fontSize: '0.875rem', 
+                            marginBottom: '0.5rem',
+                            color: 'rgba(255,255,255,0.8)'
+                          }}>
+                            Symbol
+                          </label>
+                          <input
+                            type="text"
+                            value={tokenSymbol}
+                            onChange={(e) => setTokenSymbol(e.target.value)}
+                            placeholder="USTB"
+                            style={{
+                              width: '100%',
+                              padding: '0.75rem',
+                              background: 'rgba(0,0,0,0.3)',
+                              border: '1px solid rgba(255,255,255,0.1)',
+                              borderRadius: '6px',
+                              color: '#ffffff',
+                              fontSize: '0.875rem'
+                            }}
+                          />
+                        </div>
+                        
+                        <div style={{ flex: 1 }}>
+                          <label style={{ 
+                            display: 'block', 
+                            fontSize: '0.875rem', 
+                            marginBottom: '0.5rem',
+                            color: 'rgba(255,255,255,0.8)'
+                          }}>
+                            Initial Supply
+                          </label>
+                          <input
+                            type="text"
+                            value={tokenSupply}
+                            onChange={(e) => setTokenSupply(e.target.value)}
+                            placeholder="1000000"
+                            style={{
+                              width: '100%',
+                              padding: '0.75rem',
+                              background: 'rgba(0,0,0,0.3)',
+                              border: '1px solid rgba(255,255,255,0.1)',
+                              borderRadius: '6px',
+                              color: '#ffffff',
+                              fontSize: '0.875rem'
+                            }}
+                          />
+                        </div>
+                      </div>
+
+                      <div style={{
+                        padding: '1rem',
+                        background: 'rgba(59, 130, 246, 0.1)',
+                        borderRadius: '6px',
+                        fontSize: '0.75rem',
+                        color: 'rgba(255,255,255,0.6)'
+                      }}>
+                        <strong style={{ color: '#60a5fa' }}>Note:</strong> AssetTokenFactory must be deployed on your network.
+                        Set <code style={{ 
+                          background: 'rgba(0,0,0,0.3)', 
+                          padding: '0.125rem 0.25rem', 
+                          borderRadius: '3px',
+                          color: '#60a5fa'
+                        }}>NEXT_PUBLIC_TOKEN_FACTORY_ADDRESS</code> in your environment variables.
+                      </div>
+                      
+                      <button
+                        onClick={deployWithFactory}
+                        disabled={!walletConnected || !tokenName || !tokenSymbol || !tokenSupply || loading}
+                        style={{
+                          background: walletConnected && tokenName && tokenSymbol && tokenSupply && !loading
+                            ? 'linear-gradient(135deg, rgba(59, 130, 246, 0.3) 0%, rgba(37, 99, 235, 0.3) 100%)'
+                            : 'rgba(255,255,255,0.05)',
+                          color: walletConnected && tokenName && tokenSymbol && tokenSupply && !loading ? '#60a5fa' : 'rgba(255,255,255,0.3)',
+                          border: '1px solid rgba(59, 130, 246, 0.3)',
+                          borderRadius: '6px',
+                          padding: '1rem',
+                          fontSize: '0.9rem',
+                          fontWeight: '600',
+                          cursor: walletConnected && tokenName && tokenSymbol && tokenSupply && !loading ? 'pointer' : 'not-allowed',
+                          transition: 'all 0.2s',
+                          opacity: walletConnected && tokenName && tokenSymbol && tokenSupply && !loading ? 1 : 0.5
+                        }}
+                      >
+                        {loading ? '⏳ Deploying...' : '🚀 Deploy Token with Descriptor'}
+                      </button>
+                    </div>
+                  </div>
+                )}
       </div>
             </section>
 
@@ -1600,7 +1985,7 @@ export default function Page() {
                     }}>[454, 0, 456]</code> - SecurityAltID group, first entry
                   </p>
                   <p>
-                    <strong style={{ color: 'rgba(255,255,255,0.9)' }}>On-Chain Use:</strong><br/>
+                    <strong style={{ color: 'rgba(255,255,255,0.9)' }}>Onchain Use:</strong><br/>
                     Submit the proof to smart contracts to verify specific fields.
                   </p>
                 </div>
@@ -1706,7 +2091,66 @@ export default function Page() {
               </button>
 
         {proof && (
-                <div style={{ display: 'grid', gap: '1.5rem' }}>
+                <div style={{ 
+                  display: 'grid', 
+                  gap: '1.5rem',
+                  padding: '2rem',
+                  borderRadius: '12px',
+                  border: onChainVerificationStatus === 'success' ? '2px solid rgba(34, 197, 94, 0.4)' :
+                          onChainVerificationStatus === 'failed' ? '2px solid rgba(239, 68, 68, 0.4)' :
+                          onChainVerificationStatus === 'pending' ? '2px solid rgba(59, 130, 246, 0.4)' :
+                          '1px solid rgba(255,255,255,0.1)',
+                  background: onChainVerificationStatus === 'success' ? 'rgba(34, 197, 94, 0.05)' :
+                              onChainVerificationStatus === 'failed' ? 'rgba(239, 68, 68, 0.05)' :
+                              onChainVerificationStatus === 'pending' ? 'rgba(59, 130, 246, 0.05)' :
+                              'transparent',
+                  transition: 'all 0.3s ease'
+                }}>
+                  {/* Verification Status Badge */}
+                  {onChainVerificationStatus && (
+                    <div style={{
+                      padding: '1rem 1.5rem',
+                      borderRadius: '8px',
+                      marginBottom: '1rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.75rem',
+                      background: onChainVerificationStatus === 'success' ? 'rgba(34, 197, 94, 0.15)' :
+                                  onChainVerificationStatus === 'failed' ? 'rgba(239, 68, 68, 0.15)' :
+                                  'rgba(59, 130, 246, 0.15)',
+                      border: onChainVerificationStatus === 'success' ? '1px solid rgba(34, 197, 94, 0.3)' :
+                              onChainVerificationStatus === 'failed' ? '1px solid rgba(239, 68, 68, 0.3)' :
+                              '1px solid rgba(59, 130, 246, 0.3)',
+                    }}>
+                      <div style={{ fontSize: '1.5rem' }}>
+                        {onChainVerificationStatus === 'success' ? '✅' :
+                         onChainVerificationStatus === 'failed' ? '❌' :
+                         '⏳'}
+                      </div>
+                      <div>
+                        <div style={{
+                          fontSize: '0.9rem',
+                          fontWeight: '600',
+                          color: onChainVerificationStatus === 'success' ? 'rgba(34, 197, 94, 0.95)' :
+                                 onChainVerificationStatus === 'failed' ? 'rgba(239, 68, 68, 0.95)' :
+                                 'rgba(59, 130, 246, 0.95)',
+                          marginBottom: '0.25rem'
+                        }}>
+                          {onChainVerificationStatus === 'success' ? 'Onchain Verification Successful' :
+                           onChainVerificationStatus === 'failed' ? 'Onchain Verification Failed' :
+                           'Verifying Onchain...'}
+                        </div>
+                        <div style={{
+                          fontSize: '0.75rem',
+                          color: 'rgba(255,255,255,0.6)'
+                        }}>
+                          {onChainVerificationStatus === 'success' ? 'This proof is cryptographically valid on the blockchain' :
+                           onChainVerificationStatus === 'failed' ? 'The proof could not be verified against the onchain descriptor' :
+                           'Checking proof against deployed contract...'}
+                        </div>
+                      </div>
+          </div>
+        )}
                   <div>
                     <div style={{ 
                       fontSize: '0.8rem',
@@ -1717,7 +2161,7 @@ export default function Page() {
                       letterSpacing: '0.05em'
                     }}>
                       Path CBOR (hex)
-                    </div>
+      </div>
                     <textarea 
                       readOnly 
                       value={proof.pathCBORHex} 
@@ -1735,7 +2179,7 @@ export default function Page() {
                         lineHeight: '1.6'
                       }} 
                     />
-                  </div>
+    </div>
 
                   <div>
                     <div style={{ 
@@ -1828,6 +2272,115 @@ export default function Page() {
                       </div>
                     </div>
                   </div>
+
+                  {/* Onchain Verification Button - Only show if token is deployed */}
+                  {deployedTokenAddress && (
+                    <div style={{ 
+                      marginTop: '1.5rem',
+                      padding: '1.5rem',
+                      background: onChainVerificationStatus === null ? 'rgba(255, 255, 255, 0.03)' :
+                                  onChainVerificationStatus === 'success' ? 'rgba(34, 197, 94, 0.05)' :
+                                  onChainVerificationStatus === 'failed' ? 'rgba(239, 68, 68, 0.05)' :
+                                  'rgba(59, 130, 246, 0.05)',
+                      border: onChainVerificationStatus === null ? '1px solid rgba(255, 255, 255, 0.1)' :
+                              onChainVerificationStatus === 'success' ? '1px solid rgba(34, 197, 94, 0.2)' :
+                              onChainVerificationStatus === 'failed' ? '1px solid rgba(239, 68, 68, 0.2)' :
+                              '1px solid rgba(59, 130, 246, 0.2)',
+                      borderRadius: '8px',
+                      transition: 'all 0.3s ease'
+                    }}>
+                      <div style={{
+                        fontSize: '0.875rem',
+                        color: 'rgba(255,255,255,0.8)',
+                        marginBottom: '1rem'
+                      }}>
+                        <strong style={{ 
+                          color: onChainVerificationStatus === null ? 'rgba(255,255,255,0.7)' :
+                                 onChainVerificationStatus === 'success' ? 'rgba(34, 197, 94, 0.9)' :
+                                 onChainVerificationStatus === 'failed' ? 'rgba(239, 68, 68, 0.9)' :
+                                 'rgba(59, 130, 246, 0.9)'
+                        }}>
+                          {onChainVerificationStatus === null ? '🔗 Ready for Onchain Verification' :
+                           onChainVerificationStatus === 'success' ? '✅ Verified Onchain' :
+                           onChainVerificationStatus === 'failed' ? '❌ Verification Failed' :
+                           '⏳ Verifying...'}
+                        </strong>
+                        <div style={{ 
+                          fontSize: '0.75rem', 
+                          color: 'rgba(255,255,255,0.6)',
+                          marginTop: '0.25rem',
+                          fontFamily: 'ui-monospace, monospace'
+                        }}>
+                          {deployedTokenAddress}
+                        </div>
+                      </div>
+                      
+                      <button
+                        onClick={verifyProofOnChain}
+                        disabled={loading || onChainVerificationStatus === 'pending'}
+                        style={{
+                          background: loading || onChainVerificationStatus === 'pending' ? 
+                            'rgba(59, 130, 246, 0.2)' : 
+                            onChainVerificationStatus === 'success' ? 
+                            'rgba(34, 197, 94, 0.15)' :
+                            onChainVerificationStatus === 'failed' ?
+                            'rgba(239, 68, 68, 0.15)' :
+                            'rgba(255, 255, 255, 0.1)',
+                          color: loading || onChainVerificationStatus === 'pending' ? 
+                            'rgba(59, 130, 246, 0.7)' :
+                            onChainVerificationStatus === 'success' ? 
+                            'rgba(34, 197, 94, 0.9)' :
+                            onChainVerificationStatus === 'failed' ?
+                            'rgba(239, 68, 68, 0.9)' :
+                            'rgba(255, 255, 255, 0.9)',
+                          border: `1px solid ${
+                            loading || onChainVerificationStatus === 'pending' ?
+                            'rgba(59, 130, 246, 0.3)' :
+                            onChainVerificationStatus === 'success' ?
+                            'rgba(34, 197, 94, 0.3)' :
+                            onChainVerificationStatus === 'failed' ?
+                            'rgba(239, 68, 68, 0.3)' :
+                            'rgba(255, 255, 255, 0.2)'
+                          }`,
+                          borderRadius: '6px',
+                          padding: '0.875rem 1.5rem',
+                          fontSize: '0.9rem',
+                          fontWeight: '600',
+                          cursor: loading || onChainVerificationStatus === 'pending' ? 'not-allowed' : 'pointer',
+                          width: '100%',
+                          transition: 'all 0.2s'
+                        }}
+                        onMouseEnter={(e) => {
+                          if (!loading) {
+                            e.currentTarget.style.background = 'rgba(34, 197, 94, 0.25)';
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          if (!loading) {
+                            e.currentTarget.style.background = 'rgba(34, 197, 94, 0.15)';
+                          }
+                        }}
+                      >
+                        {loading || onChainVerificationStatus === 'pending' ? '⏳ Verifying Onchain...' :
+                         onChainVerificationStatus === 'success' ? '✅ Re-verify Proof' :
+                         onChainVerificationStatus === 'failed' ? '🔄 Try Again' :
+                         '🔗 Verify Proof Onchain'}
+                      </button>
+                      
+                      <div style={{
+                        fontSize: '0.75rem',
+                        color: 'rgba(255,255,255,0.5)',
+                        marginTop: '0.75rem',
+                        lineHeight: '1.5'
+                      }}>
+                        This will call the <code style={{ 
+                          background: 'rgba(0,0,0,0.3)', 
+                          padding: '0.125rem 0.25rem', 
+                          borderRadius: '3px' 
+                        }}>verifyField()</code> function on your deployed token contract to verify the proof cryptographically onchain.
+                      </div>
+                    </div>
+                  )}
           </div>
         )}
             </section>
@@ -1913,7 +2466,7 @@ export default function Page() {
               {
                 step: '05',
                 title: 'Deploy CBOR',
-                description: 'Store the CBOR data on-chain using the SSTORE2 pattern, making it publicly accessible.',
+                description: 'Store the CBOR data onchain using the SSTORE2 pattern, making it publicly accessible.',
                 icon: (
                   <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                     <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
@@ -1986,7 +2539,7 @@ export default function Page() {
             fontSize: '0.875rem',
             marginBottom: '1rem'
           }}>
-            Transform FIX descriptors into verifiable on-chain commitments
+            Transform FIX descriptors into verifiable onchain commitments
           </p>
           <div style={{ display: 'flex', justifyContent: 'center', gap: '2rem', fontSize: '0.875rem' }}>
               <a 

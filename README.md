@@ -1,6 +1,6 @@
 # FixDescriptorKit
 
-> **Transform FIX asset descriptors into verifiable on-chain commitments**
+> **Transform FIX asset descriptors into verifiable onchain commitments**
 
 A comprehensive toolkit for converting FIX (Financial Information eXchange) protocol asset descriptors into canonical CBOR payloads and Merkle commitments for blockchain verification.
 
@@ -14,7 +14,7 @@ A comprehensive toolkit for converting FIX (Financial Information eXchange) prot
 - **📋 FIX Message Parsing** - Robust parsing of FIX protocol asset descriptors
 - **🔗 Canonical CBOR Encoding** - Deterministic CBOR serialization for consistent hashing
 - **🌳 Merkle Tree Generation** - Efficient tree construction with cryptographic proofs
-- **⛓️ On-Chain Verification** - Smart contracts for decentralized proof verification
+- **⛓️ Onchain Verification** - Smart contracts for decentralized proof verification
 - **🌐 Web Interface** - Interactive UI for testing and deployment
 - **🔐 Wallet Integration** - MetaMask support for blockchain interactions
 
@@ -112,23 +112,43 @@ console.log('Proof:', proof);
 
 ### Smart Contract Integration
 
+**New Embedded Architecture**: FIX descriptors are now embedded directly in asset contracts (ERC20, ERC721, etc.) rather than stored in a central registry.
+
 ```solidity
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "./IFixDescriptor.sol";
 import "./FixMerkleVerifier.sol";
 
-contract MyContract {
-    using FixMerkleVerifier for bytes32;
+contract MyAssetToken is ERC20, IFixDescriptor {
+    FixDescriptor private _descriptor;
     
-    function verifyAssetField(
-        bytes32 merkleRoot,
+    function setFixDescriptor(FixDescriptor calldata descriptor) external onlyOwner {
+        _descriptor = descriptor;
+        emit FixDescriptorSet(descriptor.fixRoot, descriptor.dictHash, 
+                              descriptor.fixCBORPtr, descriptor.fixCBORLen);
+    }
+    
+    function getFixDescriptor() external view returns (FixDescriptor memory) {
+        return _descriptor;
+    }
+    
+    function verifyField(
         bytes calldata pathCBOR,
-        bytes calldata valueCBOR,
+        bytes calldata value,
         bytes32[] calldata proof,
         bool[] calldata directions
-    ) external pure returns (bool) {
-        return merkleRoot.verifyField(pathCBOR, valueCBOR, proof, directions);
+    ) external view returns (bool) {
+        return FixMerkleVerifier.verify(_descriptor.fixRoot, pathCBOR, value, proof, directions);
     }
 }
 ```
+
+**Benefits of Embedded Architecture:**
+- ✅ No central registry - fully decentralized
+- ✅ Implicit address → descriptor mapping
+- ✅ Asset issuer maintains full control
+- ✅ No permissioning issues
+- ✅ Works with existing token standards
 
 ## 🧪 Testing
 
@@ -154,8 +174,10 @@ forge test
 ```bash
 cd contracts
 
-# Deploy to Hoodi testnet
-forge script script/DeployFixDescriptorKit.s.sol --rpc-url https://ethereum-hoodi-rpc.publicnode.com --broadcast --verify
+# Deploy asset token contracts
+forge script script/DeployAssetToken.s.sol --rpc-url https://ethereum-hoodi-rpc.publicnode.com --broadcast --verify
+
+# Or deploy your own custom asset contract implementing IFixDescriptor
 ```
 
 ### Deploy Web Application
@@ -172,7 +194,7 @@ graph TD
     B --> C[Canonical Tree]
     C --> D[CBOR Encoding]
     D --> E[Merkle Tree]
-    E --> F[On-Chain Storage]
+    E --> F[Onchain Storage]
     F --> G[Verification]
 ```
 
@@ -182,7 +204,8 @@ graph TD
 2. **Canonicalizer** - Normalizes data for deterministic encoding
 3. **CBOR Encoder** - Creates compact binary representations
 4. **Merkle Engine** - Generates cryptographic commitments and proofs
-5. **Smart Contracts** - Enables on-chain verification
+5. **Asset Contracts** - ERC20/ERC721 tokens with embedded descriptors
+6. **Verification Library** - Onchain Merkle proof verification
 
 ## 📋 API Reference
 
@@ -203,10 +226,19 @@ Computes the Merkle root hash from enumerated leaves.
 #### `generateProof(leaves: MerkleLeaf[], path: number[]): MerkleProof`
 Generates a cryptographic proof for a specific field path.
 
-### Smart Contract Functions
+### Smart Contract Interfaces
 
-#### `verifyField(bytes32 root, bytes pathCBOR, bytes valueCBOR, bytes32[] proof, bool[] directions): bool`
-Verifies that a specific field value exists in the Merkle tree.
+#### `IFixDescriptor` Interface
+
+Asset contracts implementing `IFixDescriptor` provide:
+
+- `getFixDescriptor()` - Returns the complete descriptor struct
+- `getFixRoot()` - Returns the Merkle root commitment
+- `verifyField(pathCBOR, value, proof, directions)` - Verifies a field against the commitment
+
+#### `FixMerkleVerifier` Library
+
+- `verify(root, pathCBOR, value, proof, directions)` - Core verification function
 
 ## 🌐 Networks
 
@@ -216,12 +248,16 @@ Verifies that a specific field value exists in the Merkle tree.
 - **Ethereum Mainnet** (Chain ID: 1)
 - **Sepolia Testnet** (Chain ID: 11155111)
 
-### Contract Addresses
+### Example Contracts
 
-| Contract | Hoodi Testnet |
-|----------|---------------|
-| DataContractFactory | `0x...` |
-| DescriptorRegistry | `0x...` |
+The repository includes example implementations:
+
+- `AssetTokenERC20` - ERC20 token with embedded FIX descriptor
+- `AssetTokenERC721` - ERC721 NFT with embedded FIX descriptor
+- `DataContractFactory` - SSTORE2 pattern for CBOR storage
+- `FixMerkleVerifier` - Library for proof verification
+
+Deploy your own asset contracts implementing `IFixDescriptor` to use this system.
 
 ## 🤝 Contributing
 
