@@ -7,15 +7,18 @@ export default function SpecPage() {
 
   const sections = [
     { id: 'overview', title: '1. Overview' },
-    { id: 'terminology', title: '2. Terminology' },
-    { id: 'descriptor-content', title: '3. Descriptor Content' },
-    { id: 'canonical-tree', title: '4. Canonical Tree Model' },
-    { id: 'cbor-encoding', title: '5. CBOR Encoding' },
-    { id: 'merkle-commitment', title: '6. Merkle Commitment' },
-    { id: 'onchain-representation', title: '7. Onchain Representation' },
-    { id: 'verification', title: '8. Verification' },
-    { id: 'implementation', title: '9. Implementation Flow' },
-    { id: 'example', title: '10. Example' },
+    { id: 'running-example', title: '2. Running Example' },
+    { id: 'terminology', title: '3. Terminology' },
+    { id: 'architecture', title: '4. Architecture Overview' },
+    { id: 'descriptor-content', title: '5. Descriptor Content' },
+    { id: 'canonical-tree', title: '6. Canonical Tree Model' },
+    { id: 'cbor-encoding', title: '7. CBOR Encoding' },
+    { id: 'merkle-commitment', title: '8. Merkle Commitment' },
+    { id: 'onchain-representation', title: '9. Onchain Representation' },
+    { id: 'verification', title: '10. Verification' },
+    { id: 'security', title: '11. Security Considerations' },
+    { id: 'gas-costs', title: '12. Gas Cost Analysis' },
+    { id: 'implementation', title: '13. Implementation Guide' },
   ];
 
   // Set active section from URL hash on mount
@@ -224,6 +227,37 @@ export default function SpecPage() {
             }}>
               <strong style={{ color: 'rgba(255,255,255,0.9)' }}>Version 1.0</strong> · Last Updated: September 2025
             </div>
+
+            {/* Prominent CTA for Explorer */}
+            <div style={{ 
+              marginTop: '2rem',
+              padding: '1.5rem 2rem',
+              background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(147, 51, 234, 0.1) 100%)',
+              border: '1px solid rgba(59, 130, 246, 0.3)',
+              borderRadius: '8px',
+            }}>
+              <div style={{ fontSize: '1rem', fontWeight: '500', marginBottom: '0.75rem', color: 'rgba(255,255,255,0.9)' }}>
+                🎮 First time reading this spec?
+              </div>
+              <p style={{ fontSize: '0.95rem', color: 'rgba(255,255,255,0.7)', lineHeight: '1.6', marginBottom: '1rem' }}>
+                Try the interactive explorer to see each step of the transformation process in action. 
+                Visualize how FIX messages become canonical trees, CBOR bytes, and Merkle commitments.
+              </p>
+              <Link href="/" style={{
+                display: 'inline-block',
+                padding: '0.75rem 1.5rem',
+                background: 'rgba(59, 130, 246, 0.2)',
+                border: '1px solid rgba(59, 130, 246, 0.4)',
+                borderRadius: '6px',
+                color: 'rgba(59, 130, 246, 1)',
+                textDecoration: 'none',
+                fontWeight: '500',
+                fontSize: '0.95rem',
+                transition: 'all 0.2s'
+              }}>
+                Launch Interactive Explorer →
+              </Link>
+            </div>
           </div>
 
           {/* Section 1: Overview */}
@@ -232,28 +266,71 @@ export default function SpecPage() {
               1. Overview
             </SectionHeading>
 
-            <SubsectionHeading id="scope-goals">
-              Scope and Goals
+            <SubsectionHeading id="problem-statement">
+              1.1 Problem Statement
             </SubsectionHeading>
-            <p style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', marginBottom: '1.5rem' }}>
-              This specification defines how to convert a FIX-based asset descriptor into a canonical, 
-              public CBOR payload and a Merkle commitment suitable for onchain verification—without 
-              requiring any onchain FIX parsing.
+            <p style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', marginBottom: '2rem' }}>
+              When tokenizing securities, traditional financial systems need standardized instrument data. 
+              The <strong>Financial Information eXchange (FIX) Protocol</strong> is the de facto standard 
+              for describing financial instruments in traditional markets. However, today every blockchain 
+              integration requires custom adapters and manual data mapping between token contracts and 
+              existing financial infrastructure.
             </p>
 
+            <SubsectionHeading id="solution">
+              1.2 Solution
+            </SubsectionHeading>
+            <p style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', marginBottom: '2rem' }}>
+              This specification defines how to <strong>embed FIX descriptors directly in token contracts</strong> using 
+              canonical CBOR encoding and Merkle commitments. This enables automatic integration with existing 
+              financial infrastructure while maintaining onchain verifiability—without requiring any onchain FIX parsing.
+            </p>
+
+            <SubsectionHeading id="what-this-covers">
+              1.3 What This Spec Covers
+            </SubsectionHeading>
+            <ul style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', marginBottom: '2rem', paddingLeft: '1.5rem' }}>
+              <li style={{ marginBottom: '0.5rem' }}>Converting FIX messages to canonical trees</li>
+              <li style={{ marginBottom: '0.5rem' }}>CBOR encoding rules for deterministic representation</li>
+              <li style={{ marginBottom: '0.5rem' }}>Merkle commitment generation for efficient field verification</li>
+              <li style={{ marginBottom: '0.5rem' }}>Onchain storage patterns (SSTORE2-based)</li>
+              <li>Verification mechanisms for proving specific fields</li>
+            </ul>
+
+            <SubsectionHeading id="what-this-does-not-cover">
+              1.4 What This Spec Does NOT Cover
+            </SubsectionHeading>
+            <div style={{ 
+              padding: '1.5rem',
+              background: 'rgba(239, 68, 68, 0.1)',
+              border: '1px solid rgba(239, 68, 68, 0.2)',
+              borderRadius: '8px',
+              marginBottom: '2rem'
+            }}>
+              <ul style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', margin: 0, paddingLeft: '1.5rem' }}>
+                <li style={{ marginBottom: '0.5rem' }}>Which FIX fields to include (business policy decision)</li>
+                <li style={{ marginBottom: '0.5rem' }}>Token standards (ERC20, ERC721, etc.)</li>
+                <li style={{ marginBottom: '0.5rem' }}>Trading or settlement logic</li>
+                <li>Onchain FIX parsing (all parsing happens off-chain)</li>
+              </ul>
+            </div>
+
+            <SubsectionHeading id="how-it-works">
+              1.5 How It Works (High Level)
+            </SubsectionHeading>
             <div style={{ 
               padding: '1.5rem',
               background: 'rgba(255,255,255,0.03)',
               border: '1px solid rgba(255,255,255,0.1)',
               borderRadius: '8px',
-              marginBottom: '2rem'
+              marginBottom: '1rem'
             }}>
               <div style={{ fontWeight: '500', marginBottom: '1rem', color: 'rgba(255,255,255,0.9)' }}>
                 Input
               </div>
               <p style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.7', marginBottom: 0 }}>
-                A FIX message (or subset) that describes a financial instrument (the &quot;asset descriptor&quot;), 
-                using standard FIX tags and groups.
+                A FIX message (or subset) describing a financial instrument—the &quot;asset descriptor&quot;—using 
+                standard FIX tags and groups. Example: Symbol, SecurityID, MaturityDate, CouponRate, Parties, etc.
               </p>
             </div>
 
@@ -262,15 +339,15 @@ export default function SpecPage() {
               background: 'rgba(255,255,255,0.03)',
               border: '1px solid rgba(255,255,255,0.1)',
               borderRadius: '8px',
-              marginBottom: '2rem'
+              marginBottom: '1rem'
             }}>
               <div style={{ fontWeight: '500', marginBottom: '1rem', color: 'rgba(255,255,255,0.9)' }}>
-                Output (Off-Chain)
+                Processing (Off-Chain)
               </div>
               <ul style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.7', margin: 0, paddingLeft: '1.5rem' }}>
-                <li style={{ marginBottom: '0.5rem' }}>A <strong>canonical CBOR</strong> byte string representing the descriptor</li>
-                <li style={{ marginBottom: '0.5rem' }}>A <strong>Merkle root</strong> committing to every field in the descriptor</li>
-                <li>Optional per-field <strong>Merkle proofs</strong></li>
+                <li style={{ marginBottom: '0.5rem' }}>Build a <strong>canonical tree</strong> (deterministic structure with sorted keys)</li>
+                <li style={{ marginBottom: '0.5rem' }}>Encode to <strong>canonical CBOR</strong> (single, unique byte representation)</li>
+                <li>Generate <strong>Merkle root</strong> committing to every field</li>
               </ul>
             </div>
 
@@ -278,63 +355,237 @@ export default function SpecPage() {
               padding: '1.5rem',
               background: 'rgba(255,255,255,0.03)',
               border: '1px solid rgba(255,255,255,0.1)',
-              borderRadius: '8px',
-              marginBottom: '2rem'
+              borderRadius: '8px'
             }}>
               <div style={{ fontWeight: '500', marginBottom: '1rem', color: 'rgba(255,255,255,0.9)' }}>
                 Output (Onchain)
               </div>
               <ul style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.7', margin: 0, paddingLeft: '1.5rem' }}>
-                <li style={{ marginBottom: '0.5rem' }}>A minimal <strong>descriptor struct</strong> storing: FIX version, dictionary hash, Merkle root, and a pointer to CBOR bytes (SSTORE2-style)</li>
-                <li>A <strong>verification function</strong> to check (path, value, proof) against the committed root</li>
+                <li style={{ marginBottom: '0.5rem' }}>Minimal <strong>descriptor struct</strong> in the token contract</li>
+                <li style={{ marginBottom: '0.5rem' }}>CBOR bytes stored via <strong>SSTORE2</strong> (gas-efficient)</li>
+                <li>Verification function: anyone can prove any field with a <strong>Merkle proof</strong></li>
               </ul>
+            </div>
+          </section>
+
+          {/* Section 2: Running Example */}
+          <section style={{ marginBottom: '4rem' }}>
+            <SectionHeading id="running-example">
+              2. Running Example: US Treasury Bond
+            </SectionHeading>
+
+            <p style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', marginBottom: '2rem' }}>
+              Throughout this specification, we&apos;ll reference this concrete example: 
+              a <strong>US Treasury Bond</strong> maturing on November 15, 2030, with a 4.25% coupon rate.
+            </p>
+
+            <SubsectionHeading id="example-fix-input">
+              FIX Message Input
+            </SubsectionHeading>
+            <div style={{ 
+              padding: '1.5rem',
+              background: 'rgba(255,255,255,0.03)',
+              border: '1px solid rgba(255,255,255,0.1)',
+              borderRadius: '8px',
+              fontFamily: 'ui-monospace, monospace',
+              fontSize: '0.85rem',
+              marginBottom: '2rem',
+              overflowX: 'auto'
+            }}>
+              <pre style={{ margin: 0, color: 'rgba(255,255,255,0.9)', lineHeight: '1.7' }}>{`55=USTB-2030-11-15        (Symbol)
+48=US91282CEZ76           (SecurityID)
+22=4                      (SecurityIDSource: ISIN)
+167=TBOND                 (SecurityType)
+461=DBFTFR                (CFICode)
+541=20301115              (MaturityDate)
+223=4.250                 (CouponRate)
+15=USD                    (Currency)
+
+454=[                     (SecurityAltID group - 2 entries)
+  {455=91282CEZ7, 456=1},
+  {455=US91282CEZ76, 456=4}
+]
+
+453=[                     (Parties group - 2 entries)
+  {448=US_TREASURY, 447=D, 452=1},
+  {448=CUSTODIAN_BANK_ABC, 447=D, 452=24}
+]`}</pre>
+              </div>
+
+            <SubsectionHeading id="example-tree-output">
+              Canonical Tree (JSON Representation)
+            </SubsectionHeading>
+            <p style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', marginBottom: '1rem' }}>
+              After parsing and canonicalization (sorting keys, removing session fields):
+            </p>
+            <div style={{ 
+              padding: '1.5rem',
+              background: 'rgba(255,255,255,0.03)',
+              border: '1px solid rgba(255,255,255,0.1)',
+              borderRadius: '8px',
+              fontFamily: 'ui-monospace, monospace',
+              fontSize: '0.85rem',
+              marginBottom: '2rem',
+              overflowX: 'auto'
+            }}>
+              <pre style={{ margin: 0, color: 'rgba(255,255,255,0.9)', lineHeight: '1.7' }}>{`{
+  15: "USD",
+  22: "4",
+  48: "US91282CEZ76",
+  55: "USTB-2030-11-15",
+  167: "TBOND",
+  223: "4.250",
+  453: [
+    { 447: "D", 448: "US_TREASURY", 452: "1" },
+    { 447: "D", 448: "CUSTODIAN_BANK_ABC", 452: "24" }
+  ],
+  454: [
+    { 455: "91282CEZ7", 456: "1" },
+    { 455: "US91282CEZ76", 456: "4" }
+  ],
+  461: "DBFTFR",
+  541: "20301115"
+}`}</pre>
+            </div>
+
+            <SubsectionHeading id="example-cbor">
+              CBOR Encoding
+            </SubsectionHeading>
+            <p style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', marginBottom: '1rem' }}>
+              This tree is encoded to canonical CBOR (deterministic binary format):
+            </p>
+            <div style={{ 
+              padding: '1.5rem',
+              background: 'rgba(255,255,255,0.03)',
+              border: '1px solid rgba(255,255,255,0.1)',
+              borderRadius: '8px',
+              marginBottom: '2rem'
+            }}>
+              <div style={{ color: 'rgba(255,255,255,0.8)', marginBottom: '0.75rem', fontSize: '0.9rem' }}>
+                <strong>Size:</strong> ~243 bytes
+              </div>
+              <div style={{ color: 'rgba(255,255,255,0.8)', fontSize: '0.9rem' }}>
+                <strong>Format:</strong> CBOR map with integer keys (sorted), text string values
+              </div>
+            </div>
+
+            <SubsectionHeading id="example-merkle">
+              Merkle Tree
+            </SubsectionHeading>
+            <p style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', marginBottom: '1rem' }}>
+              Each field becomes a Merkle leaf. Example paths:
+            </p>
+            <div style={{ 
+              padding: '1.5rem',
+              background: 'rgba(255,255,255,0.03)',
+              border: '1px solid rgba(255,255,255,0.1)',
+              borderRadius: '8px',
+              fontFamily: 'ui-monospace, monospace',
+              fontSize: '0.85rem',
+              marginBottom: '1rem'
+            }}>
+              <div style={{ color: 'rgba(255,255,255,0.8)', marginBottom: '0.75rem' }}>
+                [15] → &quot;USD&quot; = keccak256(CBOR.encode([15]) || &quot;USD&quot;)
+              </div>
+              <div style={{ color: 'rgba(255,255,255,0.8)', marginBottom: '0.75rem' }}>
+                [223] → &quot;4.250&quot; = keccak256(CBOR.encode([223]) || &quot;4.250&quot;)
+              </div>
+              <div style={{ color: 'rgba(255,255,255,0.8)', marginBottom: '0.75rem' }}>
+                [453, 0, 448] → &quot;US_TREASURY&quot; = keccak256(CBOR.encode([453, 0, 448]) || &quot;US_TREASURY&quot;)
+              </div>
+              <div style={{ color: 'rgba(255,255,255,0.8)' }}>
+                [454, 1, 456] → &quot;4&quot; = keccak256(CBOR.encode([454, 1, 456]) || &quot;4&quot;)
+              </div>
+            </div>
+            <p style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', marginBottom: '2rem' }}>
+              All leaves are sorted and combined into a binary Merkle tree, producing a <strong>fixRoot</strong>.
+            </p>
+
+            <SubsectionHeading id="example-onchain">
+              Onchain Storage
+            </SubsectionHeading>
+            <div style={{ 
+              padding: '1.5rem',
+              background: 'rgba(255,255,255,0.03)',
+              border: '1px solid rgba(255,255,255,0.1)',
+              borderRadius: '8px',
+              fontFamily: 'ui-monospace, monospace',
+              fontSize: '0.85rem',
+              marginBottom: '2rem'
+            }}>
+              <pre style={{ margin: 0, color: 'rgba(255,255,255,0.9)', lineHeight: '1.7' }}>{`FixDescriptor {
+  fixMajor: 4,
+  fixMinor: 4,
+  dictHash: 0x...,
+  fixRoot: 0x7a3f... (Merkle root),
+  fixCBORPtr: 0x123... (SSTORE2 address),
+  fixCBORLen: 243
+}`}</pre>
             </div>
 
             <div style={{ 
               padding: '1.5rem',
-              background: 'rgba(34, 197, 94, 0.1)',
-              border: '1px solid rgba(34, 197, 94, 0.2)',
-              borderRadius: '8px',
-              fontSize: '0.9rem'
+              background: 'rgba(59, 130, 246, 0.1)',
+              border: '1px solid rgba(59, 130, 246, 0.2)',
+              borderRadius: '8px'
             }}>
-              <div style={{ fontWeight: '500', marginBottom: '0.5rem', color: 'rgba(34, 197, 94, 0.9)' }}>
-                Non-Goals
+              <div style={{ fontSize: '0.95rem', fontWeight: '500', marginBottom: '0.5rem', color: 'rgba(59, 130, 246, 0.9)' }}>
+                💡 See this in the explorer
               </div>
-              <p style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.7', margin: 0 }}>
-                This specification does <strong>not</strong> prescribe parsing FIX onchain or which business 
-                tags an issuer must include (that&apos;s policy). This spec defines <strong>how</strong> to encode, 
-                not <strong>what</strong> to encode.
+              <p style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.7', margin: 0, fontSize: '0.9rem' }}>
+                Visit the <Link href="/" style={{ color: 'rgba(59, 130, 246, 1)', textDecoration: 'none' }}>Interactive Explorer</Link> to 
+                see this exact transformation step-by-step with visualizations of the tree, CBOR bytes, and Merkle structure.
               </p>
             </div>
           </section>
 
-          {/* Section 2: Terminology */}
+          {/* Section 3: Terminology */}
           <section style={{ marginBottom: '4rem' }}>
             <SectionHeading id="terminology">
-              2. Terminology and Notation
+              3. Terminology and Notation
             </SectionHeading>
 
             <div style={{ display: 'grid', gap: '1.5rem' }}>
               {[
                 {
+                  term: 'Descriptor',
+                  definition: 'The FIX message subset describing instrument characteristics (not transport/session data). Contains only business-relevant fields like Symbol, SecurityID, MaturityDate, CouponRate, Parties, etc.'
+                },
+                {
+                  term: 'Canonical Form',
+                  definition: 'A single, deterministic representation ensuring all implementations produce identical output. Achieved through: sorted map keys, consistent encoding, and removal of optional formatting.'
+                },
+                {
                   term: 'FIX Tag',
-                  definition: 'An integer field identifier (e.g., 55, 15, 541)'
+                  definition: 'An integer field identifier defined by the FIX Protocol (e.g., 55=Symbol, 15=Currency, 541=MaturityDate)'
                 },
                 {
                   term: 'Group',
-                  definition: 'A repeating structure introduced by a &quot;NoXXX&quot; count tag (e.g., 454, 453), followed by N entries. Each group defines a delimiter field (first field of each entry; e.g., 455 for group 454, 448 for group 453)'
+                  definition: 'A repeating structure in FIX introduced by a "NoXXX" count tag (e.g., 454=NoSecurityAltID, 453=NoPartyIDs). Each group contains N entries where each entry is a map of fields.'
                 },
                 {
                   term: 'Path',
-                  definition: 'A sequence of integers identifying a specific field occurrence in the descriptor tree; includes group indices for repeated entries (e.g., [454, 1, 456] = SecurityAltID, entry index 1, tag 456)'
+                  definition: 'The location of a field in the tree, encoded as an array of integers. Scalar fields use [tag]; group fields include the group tag, zero-based entry index, and field tag (e.g., [453, 0, 448] = first Party\'s PartyID)'
+                },
+                {
+                  term: 'Leaf',
+                  definition: 'A (path, value) pair in the Merkle tree representing a single field. Computed as: leaf = keccak256(pathCBOR || valueBytes)'
                 },
                 {
                   term: 'CBOR',
-                  definition: 'Concise Binary Object Representation (RFC 8949), using canonical form (definite lengths, sorted map keys)'
+                  definition: 'Concise Binary Object Representation (RFC 8949) - a binary data format. This spec uses canonical CBOR: definite lengths, sorted map keys, no semantic tags.'
                 },
                 {
-                  term: 'Keccak',
-                  definition: 'keccak256 hash (as per Ethereum)'
+                  term: 'SSTORE2',
+                  definition: 'A gas-efficient pattern for storing data in contract bytecode rather than storage slots. Data is deployed as the runtime bytecode of a minimal contract and retrieved via EXTCODECOPY.'
+                },
+                {
+                  term: 'Merkle Proof',
+                  definition: 'A list of sibling hashes proving a specific field exists in the committed descriptor. Allows efficient verification of any field without revealing the entire descriptor.'
+                },
+                {
+                  term: 'fixRoot',
+                  definition: 'The Merkle root hash committing to all fields in the descriptor. Stored onchain and used to verify field proofs.'
                 }
               ].map((item, idx) => (
                 <div key={idx} style={{ 
@@ -373,14 +624,160 @@ export default function SpecPage() {
             </div>
           </section>
 
-          {/* Section 3: Descriptor Content */}
+          {/* Section 4: Architecture Overview */}
+          <section style={{ marginBottom: '4rem' }}>
+            <SectionHeading id="architecture">
+              4. Architecture Overview
+            </SectionHeading>
+
+            <p style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', marginBottom: '2rem' }}>
+              Before diving into the detailed specifications, here&apos;s the big picture of how 
+              FIX descriptors flow from input to onchain storage:
+            </p>
+
+            <div style={{ 
+              padding: '2rem',
+              background: 'rgba(255,255,255,0.03)',
+              border: '1px solid rgba(255,255,255,0.1)',
+              borderRadius: '8px',
+              fontFamily: 'ui-monospace, monospace',
+              fontSize: '0.8rem',
+              marginBottom: '3rem',
+              overflowX: 'auto'
+            }}>
+              <pre style={{ margin: 0, color: 'rgba(255,255,255,0.8)', lineHeight: '2' }}>{`                ┌─────────────────────┐
+                │   FIX Message       │
+                │                     │
+                │ Input: Standard     │
+                │ securities data     │
+                │ (business fields)   │
+                └──────────┬──────────┘
+                           │
+                           ▼
+                ┌─────────────────────┐
+                │  Canonical Tree     │
+                │                     │
+                │ • Remove session    │
+                │   fields            │
+                │ • Sort map keys     │
+                │ • Preserve groups   │
+                └──────────┬──────────┘
+                           │
+          ┌────────────────┼────────────────┐
+          │                │                │
+          ▼                ▼                ▼
+    ┌──────────┐   ┌──────────┐   ┌──────────┐
+    │   CBOR   │   │  Merkle  │   │  Path    │
+    │ Encoding │   │   Tree   │   │ Indexing │
+    └────┬─────┘   └────┬─────┘   └────┬─────┘
+         │              │              │
+         │ Compact,     │ Commitment   │ Field
+         │ determinis-  │ for verifi-  │ location
+         │ tic binary   │ cation       │ tracking
+         │              │              │
+         └──────────────┴──────────────┘
+                        │
+                        ▼
+            ┌──────────────────────┐
+            │   Onchain Storage    │
+            │                      │
+            │ • FixDescriptor      │
+            │   struct (minimal)   │
+            │ • CBOR via SSTORE2   │
+            │ • Merkle root        │
+            │ • Verification func  │
+            └──────────────────────┘`}</pre>
+            </div>
+
+            <SubsectionHeading id="architecture-components">
+              Key Components
+            </SubsectionHeading>
+
+            <div style={{ display: 'grid', gap: '1rem', marginBottom: '2rem' }}>
+              {[
+                {
+                  title: '1. FIX Message → Canonical Tree',
+                  description: 'Parse FIX, extract business fields, build a hierarchical structure with integer keys and sorted maps.'
+                },
+                {
+                  title: '2. Canonical Tree → CBOR',
+                  description: 'Serialize to canonical CBOR - a compact binary format that ensures any two implementations produce identical bytes for the same input.'
+                },
+                {
+                  title: '3. Canonical Tree → Merkle Root',
+                  description: 'Enumerate all fields as (path, value) pairs, hash each to create leaves, sort, and build a binary Merkle tree.'
+                },
+                {
+                  title: '4. Storage → Onchain',
+                  description: 'Deploy CBOR via SSTORE2, store Merkle root and metadata in a FixDescriptor struct embedded in the token contract.'
+                },
+                {
+                  title: '5. Verification',
+                  description: 'Anyone can verify any field by providing: path, value, and Merkle proof. Contract hashes the leaf and walks the proof tree to confirm it reaches the stored root.'
+                }
+              ].map((item, idx) => (
+                <div key={idx} style={{ 
+                  padding: '1.25rem',
+                  background: 'rgba(255,255,255,0.03)',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  borderRadius: '8px'
+                }}>
+                  <div style={{ fontWeight: '500', marginBottom: '0.5rem', color: 'rgba(255,255,255,0.9)', fontSize: '0.95rem' }}>
+                    {item.title}
+                  </div>
+                  <div style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.6', fontSize: '0.9rem' }}>
+                    {item.description}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <SubsectionHeading id="why-this-design">
+              Why This Design?
+            </SubsectionHeading>
+
+            <ul style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', paddingLeft: '1.5rem', marginBottom: '2rem' }}>
+              <li style={{ marginBottom: '0.75rem' }}>
+                <strong>Canonical:</strong> Multiple implementations produce identical output
+              </li>
+              <li style={{ marginBottom: '0.75rem' }}>
+                <strong>Compact:</strong> CBOR is significantly smaller than JSON or FIX tag=value
+              </li>
+              <li style={{ marginBottom: '0.75rem' }}>
+                <strong>Verifiable:</strong> Merkle proofs allow checking any field without downloading full descriptor
+              </li>
+              <li style={{ marginBottom: '0.75rem' }}>
+                <strong>Gas-efficient:</strong> SSTORE2 reduces storage costs vs traditional storage slots
+              </li>
+              <li>
+                <strong>No onchain parsing:</strong> All complexity happens off-chain; onchain code only verifies hashes
+              </li>
+            </ul>
+
+            <div style={{ 
+              padding: '1.5rem',
+              background: 'rgba(59, 130, 246, 0.1)',
+              border: '1px solid rgba(59, 130, 246, 0.2)',
+              borderRadius: '8px'
+            }}>
+              <div style={{ fontSize: '0.95rem', fontWeight: '500', marginBottom: '0.5rem', color: 'rgba(59, 130, 246, 0.9)' }}>
+                💡 Visualize this pipeline
+              </div>
+              <p style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.7', margin: 0, fontSize: '0.9rem' }}>
+                The <Link href="/" style={{ color: 'rgba(59, 130, 246, 1)', textDecoration: 'none' }}>Interactive Explorer</Link> lets 
+                you step through this exact pipeline with a real Treasury bond example.
+              </p>
+            </div>
+          </section>
+
+          {/* Section 5: Descriptor Content */}
           <section style={{ marginBottom: '4rem' }}>
             <SectionHeading id="descriptor-content">
-              3. Descriptor Content
+              5. Descriptor Content
             </SectionHeading>
 
             <SubsectionHeading id="included-fields">
-              3.1 Included Fields
+              5.1 Included Fields
             </SubsectionHeading>
             <p style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', marginBottom: '1rem' }}>
               Business and instrument fields such as:
@@ -393,7 +790,7 @@ export default function SpecPage() {
             </ul>
 
             <SubsectionHeading id="excluded-fields">
-              3.2 Excluded Fields
+              5.2 Excluded Fields
             </SubsectionHeading>
             <div style={{ 
               padding: '1.5rem',
@@ -410,10 +807,11 @@ export default function SpecPage() {
             </div>
 
             <SubsectionHeading id="dictionary-binding">
-              3.3 Dictionary Binding
+              5.3 Dictionary Binding
             </SubsectionHeading>
             <p style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', marginBottom: '1rem' }}>
-              Implementations <strong>MUST</strong> record:
+              Implementations <strong>MUST</strong> record the FIX version and dictionary used to ensure semantic 
+              consistency across implementations:
             </p>
             <div style={{ 
               padding: '1.5rem',
@@ -422,19 +820,82 @@ export default function SpecPage() {
               borderRadius: '8px',
               fontFamily: 'ui-monospace, monospace',
               fontSize: '0.9rem',
-              color: 'rgba(255,255,255,0.8)'
+              color: 'rgba(255,255,255,0.8)',
+              marginBottom: '1rem'
             }}>
               <div style={{ marginBottom: '0.5rem' }}>fixMajor, fixMinor (e.g., 4, 4)</div>
               <div>dictHash = keccak256 of the exact FIX dictionary / FIX Orchestra bytes</div>
             </div>
+            <p style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', marginBottom: '0', fontSize: '0.9rem' }}>
+              <strong>Example:</strong> FIX 4.4 using FIX Trading Community dictionary would have fixMajor=4, fixMinor=4, 
+              and dictHash computed from the canonical FIX dictionary file.
+            </p>
           </section>
 
-          {/* Section 4: Canonical Tree Model */}
+          {/* Section 6: Canonical Tree Model */}
           <section style={{ marginBottom: '4rem' }}>
             <SectionHeading id="canonical-tree">
-              4. Canonical Tree Model
+              6. Canonical Tree Model
             </SectionHeading>
 
+            <p style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', marginBottom: '1.5rem' }}>
+              The descriptor is represented as a hierarchical tree. First, let&apos;s see an example transformation, 
+              then we&apos;ll define the rules.
+            </p>
+
+            <SubsectionHeading id="tree-example">
+              Example Transformation
+            </SubsectionHeading>
+            <p style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', marginBottom: '1rem' }}>
+              Input FIX (simplified):
+            </p>
+            <div style={{ 
+              padding: '1.5rem',
+              background: 'rgba(255,255,255,0.03)',
+              border: '1px solid rgba(255,255,255,0.1)',
+              borderRadius: '8px',
+              fontFamily: 'ui-monospace, monospace',
+              fontSize: '0.85rem',
+              marginBottom: '1rem'
+            }}>
+              <pre style={{ margin: 0, color: 'rgba(255,255,255,0.9)', lineHeight: '1.7' }}>{`55=USTB-2030-11-15
+167=TBOND
+223=4.250
+453=[{448=US_TREASURY,452=1}]`}</pre>
+            </div>
+
+            <p style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', marginBottom: '1rem' }}>
+              Canonical Tree (JSON representation):
+            </p>
+            <div style={{ 
+              padding: '1.5rem',
+              background: 'rgba(255,255,255,0.03)',
+              border: '1px solid rgba(255,255,255,0.1)',
+              borderRadius: '8px',
+              fontFamily: 'ui-monospace, monospace',
+              fontSize: '0.85rem',
+              marginBottom: '2rem'
+            }}>
+              <pre style={{ margin: 0, color: 'rgba(255,255,255,0.9)', lineHeight: '1.7' }}>{`{
+  55: "USTB-2030-11-15",
+  167: "TBOND",
+  223: "4.250",
+  453: [
+    {
+      448: "US_TREASURY",
+      452: "1"
+    }
+  ]
+}`}</pre>
+            </div>
+
+            <p style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', marginBottom: '2rem', fontSize: '0.9rem' }}>
+              <strong>Note:</strong> Keys are integers, values are strings, arrays preserve order, and map keys are sorted.
+            </p>
+
+            <SubsectionHeading id="tree-structure">
+              Structure Rules
+            </SubsectionHeading>
             <p style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', marginBottom: '1.5rem' }}>
               The descriptor is represented as a hierarchical tree:
             </p>
@@ -506,10 +967,10 @@ export default function SpecPage() {
             </ol>
           </section>
 
-          {/* Section 5: CBOR Encoding */}
+          {/* Section 7: CBOR Encoding */}
           <section style={{ marginBottom: '4rem' }}>
             <SectionHeading id="cbor-encoding">
-              5. Canonical CBOR Encoding
+              7. Canonical CBOR Encoding
             </SectionHeading>
 
             <p style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', marginBottom: '1.5rem' }}>
@@ -564,18 +1025,18 @@ export default function SpecPage() {
             </div>
           </section>
 
-          {/* Section 6: Merkle Commitment */}
+          {/* Section 8: Merkle Commitment */}
           <section style={{ marginBottom: '4rem' }}>
             <SectionHeading id="merkle-commitment">
-              6. Merkle Commitment
+              8. Merkle Commitment
             </SectionHeading>
 
             <SubsectionHeading id="path-encoding">
-              6.1 Path Encoding
+              8.1 Path Encoding
             </SubsectionHeading>
+            
             <p style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', marginBottom: '1rem' }}>
-              Each leaf commits to a (path, valueBytes) pair. The path <strong>MUST</strong> be encoded as 
-              canonical CBOR array of unsigned integers:
+              Each leaf commits to a (path, valueBytes) pair. Let&apos;s start with examples:
             </p>
             <div style={{ 
               padding: '1.5rem',
@@ -584,15 +1045,22 @@ export default function SpecPage() {
               borderRadius: '8px',
               fontFamily: 'ui-monospace, monospace',
               fontSize: '0.9rem',
-              marginBottom: '2rem'
+              marginBottom: '1rem'
             }}>
-              <div style={{ color: 'rgba(255,255,255,0.8)', marginBottom: '0.75rem' }}>[15] → Scalar at top level</div>
-              <div style={{ color: 'rgba(255,255,255,0.8)', marginBottom: '0.75rem' }}>[454, 1, 456] → Group 454, entry index 1, tag 456</div>
+              <div style={{ color: 'rgba(255,255,255,0.8)', marginBottom: '0.75rem' }}>[15] → Simple field 15 (Currency)</div>
+              <div style={{ color: 'rgba(255,255,255,0.8)', marginBottom: '0.75rem' }}>[223] → Simple field 223 (CouponRate)</div>
+              <div style={{ color: 'rgba(255,255,255,0.8)', marginBottom: '0.75rem' }}>[453, 0, 448] → Group 453, first entry, field 448</div>
+              <div style={{ color: 'rgba(255,255,255,0.8)', marginBottom: '0.75rem' }}>[454, 1, 456] → Group 454, second entry, field 456</div>
               <div style={{ color: 'rgba(255,255,255,0.8)' }}>[453, 0, 802, 2, 523] → Nested group example</div>
             </div>
 
+            <p style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', marginBottom: '2rem' }}>
+              <strong>Path encoding rules:</strong> Each path is an array of unsigned integers, encoded as canonical CBOR. 
+              Paths are used for both Merkle leaves and verification.
+            </p>
+
             <SubsectionHeading id="leaf-hash">
-              6.2 Leaf Hash
+              8.2 Leaf Hash
             </SubsectionHeading>
             <div style={{ 
               padding: '1.5rem',
@@ -613,7 +1081,7 @@ export default function SpecPage() {
             </ul>
 
             <SubsectionHeading id="leaf-set">
-              6.3 Leaf Set
+              8.3 Leaf Set
             </SubsectionHeading>
             <p style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', marginBottom: '1.5rem' }}>
               Produce one leaf per <strong>present field</strong>:
@@ -624,7 +1092,7 @@ export default function SpecPage() {
             </ul>
 
             <SubsectionHeading id="root-construction">
-              6.4 Root Construction
+              8.4 Root Construction
             </SubsectionHeading>
             <ol style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', paddingLeft: '1.5rem', marginBottom: '2rem' }}>
               <li style={{ marginBottom: '0.75rem' }}>Sort all leaves by <strong>pathCBOR</strong> lexicographically (byte order)</li>
@@ -638,7 +1106,7 @@ export default function SpecPage() {
             </ol>
 
             <SubsectionHeading id="proofs">
-              6.5 Proofs
+              8.5 Proofs
             </SubsectionHeading>
             <p style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', marginBottom: '1rem' }}>
               A Merkle proof is the usual vector of sibling hashes from the leaf to the root. The verifier needs:
@@ -654,19 +1122,20 @@ export default function SpecPage() {
             }}>
               <div style={{ marginBottom: '0.5rem' }}>pathCBOR (bytes)</div>
               <div style={{ marginBottom: '0.5rem' }}>valueBytes (bytes)</div>
-              <div style={{ marginBottom: '0.5rem' }}>proof[]: bytes32[]</div>
+              <div style={{ marginBottom: '0.5rem' }}>siblingHashes[]: bytes32[]</div>
+              <div style={{ marginBottom: '0.5rem' }}>directions[]: bool[]</div>
               <div>fixRoot: bytes32</div>
             </div>
           </section>
 
-          {/* Section 7: Onchain Representation */}
+          {/* Section 9: Onchain Representation */}
           <section style={{ marginBottom: '4rem' }}>
             <SectionHeading id="onchain-representation">
-              7. Onchain Representation
+              9. Onchain Representation
             </SectionHeading>
 
             <SubsectionHeading id="integration-with-assets">
-              7.1 Integration with Asset Contracts
+              9.1 Integration with Asset Contracts
             </SubsectionHeading>
             <p style={{ color: 'rgba(255,255,255,0.75)', lineHeight: '1.8', marginBottom: '1.25rem' }}>
               The FixDescriptor <strong>MUST</strong> be embedded directly in the asset contract (ERC20, ERC721, etc.)
@@ -675,7 +1144,7 @@ export default function SpecPage() {
             </p>
 
             <SubsectionHeading id="descriptor-struct">
-              7.2 Descriptor Struct
+              9.2 Descriptor Struct
             </SubsectionHeading>
             <div style={{ 
               padding: '1.5rem',
@@ -699,7 +1168,7 @@ export default function SpecPage() {
             </div>
 
             <SubsectionHeading id="standard-interface">
-              7.3 Standard Interface
+              9.3 Standard Interface
             </SubsectionHeading>
             <div style={{ 
               padding: '1.5rem',
@@ -724,7 +1193,7 @@ export default function SpecPage() {
             </div>
 
             <SubsectionHeading id="cbor-storage">
-              7.4 CBOR Storage (SSTORE2 Pattern)
+              9.4 CBOR Storage (SSTORE2 Pattern)
             </SubsectionHeading>
             <ul style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', marginBottom: '2rem', paddingLeft: '1.5rem' }}>
               <li style={{ marginBottom: '0.75rem' }}>The CBOR is deployed as the runtime bytecode of a minimal data contract (prefixed with a STOP byte)</li>
@@ -733,7 +1202,7 @@ export default function SpecPage() {
             </ul>
 
             <SubsectionHeading id="events-versioning">
-              7.5 Events and Versioning
+              9.5 Events and Versioning
             </SubsectionHeading>
             <div style={{ 
               padding: '1.5rem',
@@ -753,10 +1222,10 @@ export default function SpecPage() {
             </div>
           </section>
 
-          {/* Section 8: Verification */}
+          {/* Section 10: Verification */}
           <section style={{ marginBottom: '4rem' }}>
             <SectionHeading id="verification">
-              8. Onchain Verification
+              10. Onchain Verification
             </SectionHeading>
 
             <SubsectionHeading id="library-interface">
@@ -800,26 +1269,137 @@ export default function SpecPage() {
             </ol>
           </section>
 
-          {/* Section 9: Implementation Flow */}
+          {/* Section 11: Security Considerations */}
+          <section style={{ marginBottom: '4rem' }}>
+            <SectionHeading id="security">
+              11. Security Considerations
+            </SectionHeading>
+
+            <SubsectionHeading id="trust-assumptions">
+              Trust Assumptions
+            </SubsectionHeading>
+            <ul style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', marginBottom: '2rem', paddingLeft: '1.5rem' }}>
+              <li style={{ marginBottom: '0.75rem' }}>
+                <strong>Issuer Control:</strong> The descriptor is set by the token contract issuer. There is no external 
+                authority validating the FIX data accuracy—users must trust the issuer.
+              </li>
+              <li style={{ marginBottom: '0.75rem' }}>
+                <strong>Immutability vs Updates:</strong> Contracts can be designed with fixed descriptors (immutable) or 
+                updatable descriptors (governed by issuer). Both patterns are valid; the choice is a business decision.
+              </li>
+              <li>
+                <strong>Dictionary Hash:</strong> The dictHash ensures all parties use the same FIX dictionary. Mismatched 
+                dictionaries can lead to semantic disagreements about field meanings.
+              </li>
+            </ul>
+
+            <SubsectionHeading id="verification-guarantees">
+              What Merkle Proofs Guarantee
+            </SubsectionHeading>
+            <div style={{ 
+              padding: '1.5rem',
+              background: 'rgba(34, 197, 94, 0.1)',
+              border: '1px solid rgba(34, 197, 94, 0.2)',
+              borderRadius: '8px',
+              marginBottom: '1rem'
+            }}>
+              <p style={{ color: 'rgba(255,255,255,0.8)', lineHeight: '1.7', marginBottom: '0.5rem', fontWeight: '500' }}>
+                ✓ Merkle proofs prove:
+              </p>
+              <ul style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', margin: 0, paddingLeft: '1.5rem' }}>
+                <li style={{ marginBottom: '0.5rem' }}>A specific field at a specific path has a specific value</li>
+                <li style={{ marginBottom: '0.5rem' }}>The field is part of the canonical tree committed to</li>
+                <li>No one can present a false value without breaking the proof</li>
+              </ul>
+            </div>
+
+            <div style={{ 
+              padding: '1.5rem',
+              background: 'rgba(239, 68, 68, 0.1)',
+              border: '1px solid rgba(239, 68, 68, 0.2)',
+              borderRadius: '8px',
+              marginBottom: '2rem'
+            }}>
+              <p style={{ color: 'rgba(255,255,255,0.8)', lineHeight: '1.7)', marginBottom: '0.5rem', fontWeight: '500' }}>
+                ✗ Merkle proofs do NOT prove:
+              </p>
+              <ul style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', margin: 0, paddingLeft: '1.5rem' }}>
+                <li style={{ marginBottom: '0.5rem' }}>The accuracy of the descriptor data</li>
+                <li style={{ marginBottom: '0.5rem' }}>The completeness of the descriptor</li>
+                <li>Real-world correspondence (e.g., ISIN validity)</li>
+              </ul>
+            </div>
+          </section>
+
+          {/* Section 12: Gas Cost Analysis */}
+          <section style={{ marginBottom: '4rem' }}>
+            <SectionHeading id="gas-costs">
+              12. Gas Cost Analysis
+            </SectionHeading>
+
+            <p style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', marginBottom: '2rem' }}>
+              Understanding gas costs helps implementers make informed decisions about descriptor size and verification strategies.
+            </p>
+
+            <SubsectionHeading id="deployment-costs">
+              Deployment Costs
+            </SubsectionHeading>
+            <div style={{ 
+              padding: '1.5rem',
+              background: 'rgba(255,255,255,0.03)',
+              border: '1px solid rgba(255,255,255,0.1)',
+              borderRadius: '8px',
+              marginBottom: '1rem'
+            }}>
+              <div style={{ fontFamily: 'ui-monospace, monospace', fontSize: '0.9rem', marginBottom: '0.75rem', color: 'rgba(255,255,255,0.9)' }}>
+                CBOR Storage (SSTORE2)
+              </div>
+              <ul style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', margin: 0, paddingLeft: '1.5rem', fontSize: '0.9rem' }}>
+                <li style={{ marginBottom: '0.5rem' }}>~200 gas per byte + ~32k deployment overhead</li>
+                <li style={{ marginBottom: '0.5rem' }}><strong>Example:</strong> 243-byte descriptor ≈ 80k gas</li>
+                <li>3-4x cheaper than traditional storage slots</li>
+              </ul>
+            </div>
+
+            <div style={{ 
+              padding: '1.5rem',
+              background: 'rgba(255,255,255,0.03)',
+              border: '1px solid rgba(255,255,255,0.1)',
+              borderRadius: '8px',
+              marginBottom: '2rem'
+            }}>
+              <div style={{ fontFamily: 'ui-monospace, monospace', fontSize: '0.9rem', marginBottom: '0.75rem', color: 'rgba(255,255,255,0.9)' }}>
+                Descriptor Struct Storage + Verification
+              </div>
+              <ul style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', margin: 0, paddingLeft: '1.5rem', fontSize: '0.9rem' }}>
+                <li style={{ marginBottom: '0.5rem' }}>FixDescriptor struct: ~60-80k gas (3-4 slots)</li>
+                <li style={{ marginBottom: '0.5rem' }}><strong>Total deployment:</strong> ~140-160k gas (typical)</li>
+                <li><strong>verifyField() call:</strong> ~30-40k gas (depth 4-6)</li>
+              </ul>
+            </div>
+          </section>
+
+          {/* Section 13: Implementation Guide */}
           <section style={{ marginBottom: '4rem' }}>
             <SectionHeading id="implementation">
-              9. Reference Implementation Flow
+              13. Implementation Guide
             </SectionHeading>
 
             <p style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', marginBottom: '1.5rem' }}>
-              Given a FIX descriptor message:
+              Given a FIX descriptor message, follow this implementation flow:
             </p>
 
-            <div style={{ display: 'grid', gap: '1rem' }}>
+            <div style={{ display: 'grid', gap: '1rem', marginBottom: '2rem' }}>
               {[
-                { num: 1, title: 'Parse FIX', desc: 'Extract only business fields (exclude session tags)' },
-                { num: 2, title: 'Build Canonical Tree', desc: 'Map scalars directly; create array of entry maps for groups' },
-                { num: 3, title: 'Serialize to CBOR', desc: 'Use canonical form (integer keys, sorted; definite lengths)' },
-                { num: 4, title: 'Enumerate Leaves', desc: 'Compute pathCBOR for each present field; collect (pathCBOR, valueBytes) pairs' },
-                { num: 5, title: 'Compute Merkle Root', desc: 'Sort leaves by pathCBOR; build binary Merkle tree using keccak256' },
-                { num: 6, title: 'Deploy CBOR', desc: 'Deploy as SSTORE2-style data contract; return fixCBORPtr and fixCBORLen' },
-                { num: 7, title: 'Set Descriptor', desc: 'Store in the asset contract (not a registry): fixMajor, fixMinor, dictHash, fixRoot, fixCBORPtr, fixCBORLen, fixURI' },
-                { num: 8, title: 'Produce Utilities', desc: 'Proof generator and reader tools for fetching CBOR and generating proofs' }
+                { num: 1, title: 'Parse FIX', desc: 'Extract only business fields (exclude session tags - see Section 5)' },
+                { num: 2, title: 'Build Canonical Tree', desc: 'Map scalars directly; create array of entry maps for groups (see Section 6)' },
+                { num: 3, title: 'Serialize to CBOR', desc: 'Use canonical form - integer keys sorted, definite lengths (see Section 7)' },
+                { num: 4, title: 'Enumerate Leaves', desc: 'Compute pathCBOR for each present field; collect (pathCBOR, valueBytes) pairs (see Section 8.1-8.3)' },
+                { num: 5, title: 'Compute Merkle Root', desc: 'Sort leaves by pathCBOR; build binary Merkle tree using keccak256 (see Section 8.4)' },
+                { num: 6, title: 'Deploy CBOR', desc: 'Deploy as SSTORE2-style data contract; return fixCBORPtr and fixCBORLen (see Section 9.4)' },
+                { num: 7, title: 'Set Descriptor', desc: 'Store in the asset contract (not a registry): fixMajor, fixMinor, dictHash, fixRoot, fixCBORPtr, fixCBORLen, fixURI (see Section 9.2)' },
+                { num: 8, title: 'Emit Event', desc: 'Emit FixDescriptorSet event for indexing (see Section 9.5)' },
+                { num: 9, title: 'Produce Utilities', desc: 'Build proof generator and reader tools for fetching CBOR and generating proofs off-chain' }
               ].map((step) => (
                 <div key={step.num} style={{ 
                   padding: '1.5rem',
@@ -848,56 +1428,41 @@ export default function SpecPage() {
                 </div>
               ))}
             </div>
-          </section>
 
-          {/* Section 10: Example */}
-          <section style={{ marginBottom: '4rem' }}>
-            <SectionHeading id="example">
-              10. Example
-            </SectionHeading>
-
-            <SubsectionHeading id="example-descriptor">
-              Treasury-Style Descriptor Fields
-            </SubsectionHeading>
             <div style={{ 
               padding: '1.5rem',
-              background: 'rgba(255,255,255,0.03)',
-              border: '1px solid rgba(255,255,255,0.1)',
-              borderRadius: '8px',
-              fontFamily: 'ui-monospace, monospace',
-              fontSize: '0.85rem',
-              marginBottom: '2rem',
-              overflowX: 'auto'
+              background: 'rgba(59, 130, 246, 0.1)',
+              border: '1px solid rgba(59, 130, 246, 0.2)',
+              borderRadius: '8px'
             }}>
-              <pre style={{ margin: 0, color: 'rgba(255,255,255,0.9)', lineHeight: '1.7' }}>{`55=USTB-2030-11-15
-48=US91282CEZ76  22=4
-167=TBOND  461=DBFTFR
-541=20301115  223=4.250  15=USD
-454=[ {455=91282CEZ7, 456=1}, {455=US91282CEZ76, 456=4} ]
-453=[ {448=US_TREASURY,447=D,452=1}, 
-      {448=CUSTODIAN_BANK_ABC,447=D,452=24} ]`}</pre>
+              <div style={{ fontSize: '0.95rem', fontWeight: '500', marginBottom: '0.75rem', color: 'rgba(59, 130, 246, 0.9)' }}>
+                💡 Reference Implementation
             </div>
-
-            <SubsectionHeading id="processing-results">
-              Processing Results
-            </SubsectionHeading>
-            <ul style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', paddingLeft: '1.5rem', marginBottom: '2rem' }}>
-              <li style={{ marginBottom: '0.75rem' }}>
-                <strong>CBOR:</strong> Canonical map with integer keys; arrays for 454 and 453 
-                (Representative size: ~243 bytes)
-              </li>
-              <li style={{ marginBottom: '0.75rem' }}>
-                <strong>Leaves (examples):</strong>
-                <ul style={{ marginTop: '0.5rem', paddingLeft: '1.5rem' }}>
-                  <li style={{ marginBottom: '0.5rem' }}>path [15], value &quot;USD&quot; → keccak(pathCBOR || &quot;USD&quot;)</li>
-                  <li style={{ marginBottom: '0.5rem' }}>path [454,1,456], value &quot;4&quot; → keccak(...)</li>
-                  <li>path [453,0,448], value &quot;US_TREASURY&quot; → keccak(...)</li>
+              <p style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.7', marginBottom: '1rem', fontSize: '0.9rem' }}>
+                This specification has a complete reference implementation available in two forms:
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                <div>
+                  <strong style={{ color: 'rgba(255,255,255,0.9)', fontSize: '0.9rem' }}>Interactive Explorer:</strong>
+                  <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.9rem', marginTop: '0.25rem' }}>
+                    Try the <Link href="/" style={{ color: 'rgba(59, 130, 246, 1)', textDecoration: 'none' }}>web interface</Link> to 
+                    see the transformation pipeline in action with live visualizations.
+                  </div>
+                </div>
+                <div>
+                  <strong style={{ color: 'rgba(255,255,255,0.9)', fontSize: '0.9rem' }}>Open Source Code:</strong>
+                  <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.9rem', marginTop: '0.25rem' }}>
+                    View the complete source code on <a href="https://github.com/swapnilraj/fix-descriptor" target="_blank" rel="noopener noreferrer" style={{ color: 'rgba(59, 130, 246, 1)', textDecoration: 'none' }}>GitHub</a>, including:
+                    <ul style={{ marginTop: '0.5rem', marginBottom: 0, paddingLeft: '1.5rem' }}>
+                      <li>TypeScript library (packages/fixdescriptorkit-typescript)</li>
+                      <li>Solidity smart contracts (contracts/src)</li>
+                      <li>Web application (apps/web)</li>
+                      <li>Test suites and examples</li>
                 </ul>
-              </li>
-              <li>
-                <strong>Root:</strong> fixRoot computed from sorted leaves
-              </li>
-            </ul>
+                  </div>
+                </div>
+              </div>
+            </div>
           </section>
 
           {/* Footer */}
