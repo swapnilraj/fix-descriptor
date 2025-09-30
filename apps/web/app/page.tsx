@@ -573,6 +573,52 @@ export default function Page() {
     }
   ];
 
+  const stepsContainerRef = useRef<HTMLDivElement | null>(null);
+  const stepIconRefs = useRef<Array<HTMLDivElement | null>>([]);
+  const [stepGeometry, setStepGeometry] = useState<{ width: number; edges: Array<{ left: number; right: number }> }>({ width: 0, edges: [] });
+
+  useLayoutEffect(() => {
+    const container = stepsContainerRef.current;
+    if (!container) return;
+
+    const measure = () => {
+      if (!stepsContainerRef.current) return;
+      const containerRect = stepsContainerRef.current.getBoundingClientRect();
+      const edges = stepIconRefs.current.map((el) => {
+        if (!el) return null;
+        const rect = el.getBoundingClientRect();
+        return {
+          left: rect.left - containerRect.left,
+          right: rect.right - containerRect.left
+        };
+      }).filter((value): value is { left: number; right: number } => value !== null);
+
+      setStepGeometry((prev) => {
+        const width = containerRect.width;
+        if (
+          prev.width === width &&
+          prev.edges.length === edges.length &&
+          prev.edges.every((edge, idx) => edge.left === edges[idx].left && edge.right === edges[idx].right)
+        ) {
+          return prev;
+        }
+        return { width, edges };
+      });
+    };
+
+    measure();
+
+    if (typeof ResizeObserver !== 'undefined') {
+      const observer = new ResizeObserver(measure);
+      observer.observe(container);
+      stepIconRefs.current.forEach((el) => el && observer.observe(el));
+      return () => observer.disconnect();
+    }
+
+    window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
+  }, [steps.length]);
+
   function loadExample(key: keyof typeof EXAMPLES) {
     setFixRaw(EXAMPLES[key].fix);
     setPreview(null);
@@ -1113,13 +1159,47 @@ export default function Page() {
         padding: '3rem 0'
       }}>
         <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '0 2rem' }}>
-          <div style={{ 
+          <div
+            ref={stepsContainerRef}
+            style={{ 
             display: 'flex', 
             justifyContent: 'space-between',
             alignItems: 'flex-start',
             gap: '1rem',
             position: 'relative'
-          }}>
+          }}
+          >
+            {stepGeometry.edges.length > 1 && stepGeometry.width > 0 && (
+              <svg
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: stepGeometry.width,
+                  height: 40,
+                  pointerEvents: 'none',
+                  zIndex: 0
+                }}
+                viewBox={`0 0 ${stepGeometry.width} 40`}
+                preserveAspectRatio="none"
+              >
+                {stepGeometry.edges.slice(0, -1).map((edge, idx) => {
+                  const nextEdge = stepGeometry.edges[idx + 1];
+                  const active = idx < currentStep;
+                  return (
+                    <line
+                      key={`connector-${idx}`}
+                      x1={edge.right}
+                      y1={20}
+                      x2={nextEdge.left}
+                      y2={20}
+                      stroke={active ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.1)'}
+                      strokeWidth={active ? 2 : 1}
+                    />
+                  );
+                })}
+              </svg>
+            )}
             {steps.map((step, idx) => (
               <div key={idx} style={{ 
                 flex: 1,
@@ -1149,21 +1229,10 @@ export default function Page() {
                     transition: 'all 0.3s',
                     marginBottom: '1rem',
                     position: 'relative'
-                  }}>
+                  }}
+                  ref={(el) => { stepIconRefs.current[idx] = el; }}
+                  >
                     {step.icon}
-                    {idx < steps.length - 1 && (
-                      <div style={{
-                        position: 'absolute',
-                        left: '100%',
-                        top: '50%',
-                        transform: 'translateY(-50%)',
-                        width: 'calc(100vw / 6 - 40px)',
-                        maxWidth: '200px',
-                        height: '1px',
-                        background: idx < currentStep ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.1)',
-                        transition: 'background 0.3s'
-                      }} />
-                    )}
                   </div>
                   <div style={{ 
                     fontSize: '0.875rem',
