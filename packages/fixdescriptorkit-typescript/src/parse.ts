@@ -158,7 +158,7 @@ export function parseFixDescriptor(raw: string, opts?: { allowSOH?: boolean; sch
     // Correct FIXParser instantiation and usage
     const parser = new FIXParser();
     const msg = parser.parse(soh);
-    
+
     // Handle different FIXParser response formats
     let fields: any[] = [];
     if (Array.isArray(msg)) {
@@ -172,7 +172,7 @@ export function parseFixDescriptor(raw: string, opts?: { allowSOH?: boolean; sch
       const msgObj = msg as any;
       fields = msgObj.fields || msgObj.FieldList || msgObj.message?.fields || msgObj.message?.FieldList || [];
     }
-    
+
     const fx: Array<{ tag: Tag; value: FixValue }> = [];
     for (const field of fields) {
       const tag = Number(field?.tag ?? field?.Tag ?? field?.[0]);
@@ -188,6 +188,42 @@ export function parseFixDescriptor(raw: string, opts?: { allowSOH?: boolean; sch
   }
 
   return assembleWithSchema(flat, schema);
+}
+
+/**
+ * Convert a DescriptorTree back to FIX message format (tag=value|tag=value)
+ */
+export function treeToFixMessage(tree: DescriptorTree): string {
+  const pairs: string[] = [];
+
+  function processNode(obj: Record<Tag, FixValue | GroupNode>): void {
+    // Sort tags numerically for consistent output
+    const sortedTags = Object.keys(obj)
+      .map(Number)
+      .sort((a, b) => a - b);
+
+    for (const tag of sortedTags) {
+      const value = obj[tag];
+
+      if (typeof value === 'string') {
+        // Scalar value
+        pairs.push(`${tag}=${value}`);
+      } else if (value && typeof value === 'object' && 'tag' in value && 'entries' in value) {
+        // Group node
+        const group = value as GroupNode;
+        // Add group count
+        pairs.push(`${tag}=${group.entries.length}`);
+        // Process each entry
+        for (const entry of group.entries) {
+          processNode(entry);
+        }
+      }
+    }
+  }
+
+  processNode(tree);
+
+  return pairs.join('|');
 }
 
 

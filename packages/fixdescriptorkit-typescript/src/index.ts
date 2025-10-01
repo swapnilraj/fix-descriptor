@@ -14,7 +14,7 @@ export type {
 
 export { DEMO_FIX_SCHEMA } from './types';
 
-export { parseFixDescriptor } from './parse';
+export { parseFixDescriptor, treeToFixMessage } from './parse';
 export { buildCanonicalTree } from './canonical';
 export { encodeCanonicalCBOR, decodeCanonicalCBOR } from './cbor';
 export {

@@ -103,35 +103,49 @@ contract AssetTokenERC721 is ERC721, Ownable, IFixDescriptor {
 
     /**
      * @notice Get CBOR data chunk
-     * @param start Start offset
+     * @param start Start offset (in the data, not including STOP byte)
      * @param size Number of bytes to read
      * @return chunk The requested CBOR data
      */
-    function getFixCBORChunk(uint256 start, uint256 size) 
-        external 
-        view 
-        returns (bytes memory chunk) 
+    function getFixCBORChunk(uint256 start, uint256 size)
+        external
+        view
+        returns (bytes memory chunk)
     {
         require(_descriptorInitialized, "Descriptor not initialized");
         require(_collectionDescriptor.fixCBORPtr != address(0), "CBOR not deployed");
-        
-        // Read from SSTORE2 data contract
-        bytes memory code = _collectionDescriptor.fixCBORPtr.code;
-        require(code.length > 0, "No CBOR data");
-        
-        // Skip STOP byte (first byte)
-        uint256 dataStart = 1;
-        uint256 dataLength = code.length - 1;
-        
-        require(start < dataLength, "Start out of bounds");
+
+        address ptr = _collectionDescriptor.fixCBORPtr;
+
+        // Get code size using extcodesize
+        uint256 codeSize;
+        assembly {
+            codeSize := extcodesize(ptr)
+        }
+
+        require(codeSize > 0, "No CBOR data");
+
+        // Data starts at byte 1 (after STOP byte at position 0)
+        // Data length is codeSize - 1
+        uint256 dataLength = codeSize - 1;
+
+        // Validate and adjust range
+        if (start >= dataLength) {
+            return new bytes(0);
+        }
+
         uint256 end = start + size;
         if (end > dataLength) {
             end = dataLength;
         }
-        
-        chunk = new bytes(end - start);
-        for (uint256 i = 0; i < end - start; i++) {
-            chunk[i] = code[dataStart + start + i];
+
+        uint256 actualSize = end - start;
+
+        // Use extcodecopy to read directly from contract bytecode
+        // Add 1 to start to skip the STOP byte (data begins at position 1)
+        chunk = new bytes(actualSize);
+        assembly {
+            extcodecopy(ptr, add(chunk, 0x20), add(start, 1), actualSize)
         }
     }
 

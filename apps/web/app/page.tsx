@@ -474,6 +474,12 @@ export default function Page() {
   const [deployedTokenAddress, setDeployedTokenAddress] = useState<string | null>(null);
   const [onChainVerificationStatus, setOnChainVerificationStatus] = useState<'pending' | 'success' | 'failed' | null>(null);
 
+  // CBOR fetching state
+  const [fetchedCBOR, setFetchedCBOR] = useState<string | null>(null);
+  const [decodedFIX, setDecodedFIX] = useState<string | null>(null);
+  const [fetchCBORStatus, setFetchCBORStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [fetchCBORError, setFetchCBORError] = useState<string | null>(null);
+
   // Check wallet connection on mount and listen for account changes
   useEffect(() => {
     checkWalletConnection();
@@ -925,6 +931,98 @@ export default function Page() {
       alert(`Deployment failed: ${errorMessage}`);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function fetchCBORFromContract() {
+    if (!deployedTokenAddress) {
+      setFetchCBORError('Please deploy a token first');
+      return;
+    }
+
+    try {
+      setFetchCBORStatus('loading');
+      setFetchCBORError(null);
+      setFetchedCBOR(null);
+      setDecodedFIX(null);
+
+      const publicClient = createPublicClient({
+        chain: chainFromEnv,
+        transport: http()
+      });
+
+      type Abi = readonly unknown[];
+      const tokenAbi: Abi = AssetTokenAbi;
+
+      // First get the descriptor to know the CBOR length and validate it exists
+      let descriptor;
+      try {
+        descriptor = await publicClient.readContract({
+          address: deployedTokenAddress as `0x${string}`,
+          abi: tokenAbi,
+          functionName: 'getFixDescriptor',
+          args: []
+        }) as { fixCBORLen: number; fixCBORPtr: string };
+      } catch (descriptorError) {
+        const errorMsg = descriptorError instanceof Error ? descriptorError.message : 'Unknown error';
+        if (errorMsg.includes('Descriptor not initialized')) {
+          throw new Error('The token descriptor has not been initialized. Please deploy a new token with the "Quick Deploy Token" button.');
+        }
+        throw descriptorError;
+      }
+
+      const cborLength = Number(descriptor.fixCBORLen);
+      const cborPtr = descriptor.fixCBORPtr;
+
+      // Validate CBOR data exists
+      if (!cborPtr || cborPtr === '0x0000000000000000000000000000000000000000') {
+        throw new Error('CBOR data pointer is not set. The descriptor was not properly deployed.');
+      }
+
+      if (cborLength === 0) {
+        throw new Error('CBOR length is 0. The descriptor is empty.');
+      }
+
+      // Fetch the CBOR data in one call
+      let cborBytes;
+      try {
+        cborBytes = await publicClient.readContract({
+          address: deployedTokenAddress as `0x${string}`,
+          abi: tokenAbi,
+          functionName: 'getFixCBORChunk',
+          args: [BigInt(0), BigInt(cborLength)]
+        }) as `0x${string}`;
+      } catch (chunkError) {
+        const errorMsg = chunkError instanceof Error ? chunkError.message : 'Unknown error';
+        if (errorMsg.includes('No CBOR data')) {
+          throw new Error('The CBOR data contract is empty. This can happen if the deployment failed or the data was not properly stored.');
+        }
+        throw chunkError;
+      }
+
+      setFetchedCBOR(cborBytes);
+
+      // Decode CBOR via API endpoint
+      const decodeResponse = await fetch('/api/decode-cbor', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cborHex: cborBytes })
+      });
+
+      if (!decodeResponse.ok) {
+        const errorData = await decodeResponse.json();
+        throw new Error(errorData.error || 'Failed to decode CBOR');
+      }
+
+      const decodeResult = await decodeResponse.json();
+      setDecodedFIX(decodeResult.fixMessage);
+      setFetchCBORStatus('success');
+
+    } catch (error) {
+      console.error('Failed to fetch CBOR:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      setFetchCBORError(errorMessage);
+      setFetchCBORStatus('error');
     }
   }
 
@@ -2508,6 +2606,170 @@ export default function Page() {
           </div>
         )}
             </section>
+
+            {/* Fetch FIX Message from Contract */}
+            {deployedTokenAddress && (
+              <section style={{ marginBottom: '4rem' }}>
+                <div style={{ marginBottom: '2rem' }}>
+                  <h2 style={{
+                    fontSize: '1.5rem',
+                    fontWeight: '500',
+                    marginBottom: '0.5rem',
+                    letterSpacing: '-0.01em'
+                  }}>
+                    Fetch FIX Message from Contract
+                  </h2>
+                  <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.95rem' }}>
+                    Retrieve the CBOR-encoded FIX descriptor stored onchain and decode it
+                  </p>
+                </div>
+
+                <div style={{
+                  padding: '2rem',
+                  background: 'rgba(255,255,255,0.02)',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  borderRadius: '12px'
+                }}>
+                  <button
+                    onClick={fetchCBORFromContract}
+                    disabled={fetchCBORStatus === 'loading'}
+                    style={{
+                      background: fetchCBORStatus === 'loading' ?
+                        'rgba(59, 130, 246, 0.2)' :
+                        fetchCBORStatus === 'success' ?
+                        'rgba(34, 197, 94, 0.15)' :
+                        fetchCBORStatus === 'error' ?
+                        'rgba(239, 68, 68, 0.15)' :
+                        'rgba(255, 255, 255, 0.1)',
+                      color: fetchCBORStatus === 'loading' ?
+                        'rgba(59, 130, 246, 0.9)' :
+                        fetchCBORStatus === 'success' ?
+                        'rgba(34, 197, 94, 0.9)' :
+                        fetchCBORStatus === 'error' ?
+                        'rgba(239, 68, 68, 0.9)' :
+                        'rgba(255, 255, 255, 0.9)',
+                      border: `1px solid ${
+                        fetchCBORStatus === 'loading' ?
+                        'rgba(59, 130, 246, 0.3)' :
+                        fetchCBORStatus === 'success' ?
+                        'rgba(34, 197, 94, 0.3)' :
+                        fetchCBORStatus === 'error' ?
+                        'rgba(239, 68, 68, 0.3)' :
+                        'rgba(255, 255, 255, 0.2)'
+                      }`,
+                      borderRadius: '6px',
+                      padding: '0.875rem 1.5rem',
+                      fontSize: '0.9rem',
+                      fontWeight: '600',
+                      cursor: fetchCBORStatus === 'loading' ? 'not-allowed' : 'pointer',
+                      width: '100%',
+                      transition: 'all 0.2s',
+                      marginBottom: '1.5rem'
+                    }}
+                  >
+                    {fetchCBORStatus === 'loading' ? '⏳ Fetching from Contract...' :
+                     fetchCBORStatus === 'success' ? '✅ Fetch Again' :
+                     fetchCBORStatus === 'error' ? '🔄 Retry' :
+                     '📡 Fetch FIX Message from Contract'}
+                  </button>
+
+                  {fetchCBORError && (
+                    <div style={{
+                      padding: '1rem',
+                      background: 'rgba(239, 68, 68, 0.1)',
+                      border: '1px solid rgba(239, 68, 68, 0.3)',
+                      borderRadius: '8px',
+                      color: 'rgba(239, 68, 68, 0.9)',
+                      fontSize: '0.875rem',
+                      marginBottom: '1.5rem'
+                    }}>
+                      ❌ Error: {fetchCBORError}
+                    </div>
+                  )}
+
+                  {fetchedCBOR && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                      <div>
+                        <div style={{
+                          fontSize: '0.8rem',
+                          color: 'rgba(255,255,255,0.5)',
+                          marginBottom: '0.75rem',
+                          fontWeight: '500',
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.05em'
+                        }}>
+                          Raw CBOR (Hex)
+                        </div>
+                        <textarea
+                          readOnly
+                          value={fetchedCBOR}
+                          rows={4}
+                          style={{
+                            width: '100%',
+                            padding: '1rem',
+                            borderRadius: '8px',
+                            border: '1px solid rgba(255,255,255,0.1)',
+                            background: 'rgba(255,255,255,0.03)',
+                            color: 'rgba(255,255,255,0.7)',
+                            fontFamily: 'ui-monospace, monospace',
+                            fontSize: '0.75rem',
+                            resize: 'vertical',
+                            lineHeight: '1.6'
+                          }}
+                        />
+                        <div style={{
+                          fontSize: '0.75rem',
+                          color: 'rgba(255,255,255,0.4)',
+                          marginTop: '0.5rem'
+                        }}>
+                          This is the canonical CBOR encoding retrieved from the contract's SSTORE2 data pointer
+                        </div>
+                      </div>
+
+                      {decodedFIX && (
+                        <div>
+                          <div style={{
+                            fontSize: '0.8rem',
+                            color: 'rgba(255,255,255,0.5)',
+                            marginBottom: '0.75rem',
+                            fontWeight: '500',
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.05em'
+                          }}>
+                            Decoded FIX Message
+                          </div>
+                          <textarea
+                            readOnly
+                            value={decodedFIX}
+                            rows={6}
+                            style={{
+                              width: '100%',
+                              padding: '1rem',
+                              borderRadius: '8px',
+                              border: '1px solid rgba(34, 197, 94, 0.2)',
+                              background: 'rgba(34, 197, 94, 0.05)',
+                              color: 'rgba(34, 197, 94, 0.9)',
+                              fontFamily: 'ui-monospace, monospace',
+                              fontSize: '0.875rem',
+                              resize: 'vertical',
+                              lineHeight: '1.6',
+                              fontWeight: '500'
+                            }}
+                          />
+                          <div style={{
+                            fontSize: '0.75rem',
+                            color: 'rgba(255,255,255,0.4)',
+                            marginTop: '0.5rem'
+                          }}>
+                            The CBOR data was successfully decoded back into FIX format.
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </section>
+            )}
           </>
         )}
 
