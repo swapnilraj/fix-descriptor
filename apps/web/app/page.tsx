@@ -2854,7 +2854,7 @@ export default function Page() {
               },
               {
                 step: '07',
-                title: 'Retrieve Onchain',
+                title: 'Retrieve Offchain',
                 description: 'Read the CBOR data directly from the contract using SSTORE2 and decode it back to the original FIX message for full transparency and auditability.',
                 icon: (
                   <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
