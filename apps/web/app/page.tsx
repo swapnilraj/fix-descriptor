@@ -2070,22 +2070,6 @@ export default function Page() {
                         </div>
                       </div>
 
-                      <div style={{
-                        padding: '1rem',
-                        background: 'rgba(59, 130, 246, 0.1)',
-                        borderRadius: '6px',
-                        fontSize: '0.75rem',
-                        color: 'rgba(255,255,255,0.6)'
-                      }}>
-                        <strong style={{ color: '#60a5fa' }}>Note:</strong> AssetTokenFactory must be deployed on your network.
-                        Set <code style={{ 
-                          background: 'rgba(0,0,0,0.3)', 
-                          padding: '0.125rem 0.25rem', 
-                          borderRadius: '3px',
-                          color: '#60a5fa'
-                        }}>NEXT_PUBLIC_TOKEN_FACTORY_ADDRESS</code> in your environment variables.
-                      </div>
-                      
                       <button
                         onClick={deployWithFactory}
                         disabled={!walletConnected || !tokenName || !tokenSymbol || !tokenSupply || loading}
@@ -2602,6 +2586,19 @@ export default function Page() {
                   <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.95rem' }}>
                     Retrieve the CBOR-encoded FIX descriptor stored onchain and decode it
                   </p>
+                  <div style={{
+                    marginTop: '0.75rem',
+                    padding: '0.75rem 1rem',
+                    background: 'rgba(255,255,255,0.03)',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    borderRadius: '6px',
+                    fontFamily: 'ui-monospace, monospace',
+                    fontSize: '0.85rem',
+                    color: 'rgba(255,255,255,0.7)'
+                  }}>
+                    <span style={{ color: 'rgba(255,255,255,0.5)' }}>Token: </span>
+                    {deployedTokenAddress}
+                  </div>
                 </div>
 
                 <div style={{
@@ -2852,6 +2849,18 @@ export default function Page() {
                   <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                     <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
                     <polyline points="22 4 12 14.01 9 11.01" />
+                  </svg>
+                )
+              },
+              {
+                step: '07',
+                title: 'Retrieve Onchain',
+                description: 'Read the CBOR data directly from the contract using SSTORE2 and decode it back to the original FIX message for full transparency and auditability.',
+                icon: (
+                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="7 10 12 15 17 10" />
+                    <line x1="12" y1="15" x2="12" y2="3" />
                   </svg>
                 )
               }
