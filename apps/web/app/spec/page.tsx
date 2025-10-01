@@ -15,10 +15,11 @@ export default function SpecPage() {
     { id: 'cbor-encoding', title: '7. CBOR Encoding' },
     { id: 'merkle-commitment', title: '8. Merkle Commitment' },
     { id: 'onchain-representation', title: '9. Onchain Representation' },
-    { id: 'verification', title: '10. Verification' },
-    { id: 'security', title: '11. Security Considerations' },
-    { id: 'gas-costs', title: '12. Gas Cost Analysis' },
-    { id: 'implementation', title: '13. Implementation Guide' },
+    { id: 'verification', title: '10. Onchain Verification' },
+    { id: 'retrieval', title: '11. Offchain Retrieval' },
+    { id: 'security', title: '12. Security Considerations' },
+    { id: 'gas-costs', title: '13. Gas Cost Analysis' },
+    { id: 'implementation', title: '14. Implementation Guide' },
   ];
 
   // Set active section from URL hash on mount
@@ -1269,10 +1270,146 @@ export default function SpecPage() {
             </ol>
           </section>
 
-          {/* Section 11: Security Considerations */}
+          {/* Section 11: Onchain Retrieval */}
+          <section style={{ marginBottom: '4rem' }}>
+            <SectionHeading id="retrieval">
+              11. Offchain Retrieval
+            </SectionHeading>
+
+            <p style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', marginBottom: '2rem' }}>
+              Once a FIX descriptor is committed onchain, participants MUST be able to retrieve
+              the canonical CBOR representation and reconstruct the original descriptor tree. This
+              section specifies the retrieval interface and decoding requirements.
+            </p>
+
+            <SubsectionHeading id="retrieval-interface">
+              11.1 Retrieval Interface
+            </SubsectionHeading>
+            <p style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', marginBottom: '1rem' }}>
+              Token contracts that store FIX descriptors SHOULD expose a function to retrieve
+              the CBOR-encoded canonical tree. The retrieval function MUST support chunked
+              access to accommodate large descriptors.
+            </p>
+            <div style={{
+              padding: '1.5rem',
+              background: 'rgba(255,255,255,0.03)',
+              border: '1px solid rgba(255,255,255,0.1)',
+              borderRadius: '8px',
+              fontFamily: 'ui-monospace, monospace',
+              fontSize: '0.85rem',
+              marginBottom: '2rem',
+              overflowX: 'auto'
+            }}>
+              <pre style={{ margin: 0, color: 'rgba(255,255,255,0.9)', lineHeight: '1.6' }}>{`function getFixCBORChunk(uint256 start, uint256 size)
+    external view returns (bytes memory);`}</pre>
+            </div>
+
+            <ul style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', marginBottom: '2rem', paddingLeft: '1.5rem' }}>
+              <li style={{ marginBottom: '0.75rem' }}>
+                <strong>Chunked Access:</strong> The function accepts <code style={{ background: 'rgba(255,255,255,0.1)', padding: '0.2rem 0.5rem', borderRadius: '3px', fontSize: '0.9em' }}>start</code> offset and <code style={{ background: 'rgba(255,255,255,0.1)', padding: '0.2rem 0.5rem', borderRadius: '3px', fontSize: '0.9em' }}>size</code> parameters,
+                allowing callers to retrieve large CBOR in multiple transactions to manage gas costs.
+              </li>
+              <li style={{ marginBottom: '0.75rem' }}>
+                <strong>Bounds Handling:</strong> Implementations MUST clamp the requested range to available data
+                and return an empty bytes array if the start offset exceeds the CBOR length.
+              </li>
+              <li>
+                <strong>SSTORE2 Access:</strong> Since CBOR is stored via SSTORE2 (as contract bytecode),
+                retrieval functions SHOULD use efficient bytecode access patterns to minimize gas consumption.
+              </li>
+            </ul>
+
+            <SubsectionHeading id="cbor-decoding">
+              11.2 CBOR Decoding Requirements
+            </SubsectionHeading>
+            <p style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', marginBottom: '1rem' }}>
+              Retrieved CBOR bytes MUST be decoded according to the canonical structure defined
+              in Section 6. Decoders MUST reconstruct the descriptor tree with the following guarantees:
+            </p>
+            <ul style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', marginBottom: '2rem', paddingLeft: '1.5rem' }}>
+              <li style={{ marginBottom: '0.75rem' }}>
+                CBOR maps SHALL be converted to descriptor tree objects with numeric tag keys
+              </li>
+              <li style={{ marginBottom: '0.75rem' }}>
+                Scalar string values SHALL remain as UTF-8 text
+              </li>
+              <li style={{ marginBottom: '0.75rem' }}>
+                CBOR arrays SHALL be decoded as group entries, each containing a map of fields
+              </li>
+              <li>
+                Decoders MUST preserve the canonical key ordering present in the CBOR encoding
+              </li>
+            </ul>
+
+            <SubsectionHeading id="fix-reconstruction">
+              11.3 FIX Message Reconstruction
+            </SubsectionHeading>
+            <p style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', marginBottom: '1rem' }}>
+              After decoding CBOR to the descriptor tree, applications MAY reconstruct a FIX message
+              representation. The reconstruction process SHALL:
+            </p>
+            <ol style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', marginBottom: '2rem', paddingLeft: '1.5rem' }}>
+              <li style={{ marginBottom: '0.75rem' }}>
+                Traverse the descriptor tree in numeric tag order (canonically sorted)
+              </li>
+              <li style={{ marginBottom: '0.75rem' }}>
+                Emit scalar fields as <code style={{ background: 'rgba(255,255,255,0.1)', padding: '0.2rem 0.5rem', borderRadius: '3px', fontSize: '0.9em' }}>tag=value</code> pairs
+              </li>
+              <li style={{ marginBottom: '0.75rem' }}>
+                For group nodes, emit the group count tag followed by entry fields in sequence
+              </li>
+              <li>
+                Optionally add FIX session headers (BeginString, BodyLength, MsgType) and trailer (CheckSum) for display purposes
+              </li>
+            </ol>
+
+            <div style={{
+              padding: '1.5rem',
+              background: 'rgba(59, 130, 246, 0.1)',
+              border: '1px solid rgba(59, 130, 246, 0.2)',
+              borderRadius: '8px',
+              marginBottom: '2rem'
+            }}>
+              <p style={{ color: 'rgba(255,255,255,0.8)', lineHeight: '1.7', marginBottom: '0.5rem', fontWeight: '500' }}>
+                Note on Session Fields
+              </p>
+              <p style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.7', margin: 0 }}>
+                Session fields (tags 8, 9, 10, 34, 35, 49, 52, 56) are excluded from the canonical
+                tree and CBOR encoding. Reconstructed messages MAY include synthetic session headers
+                for compatibility with FIX parsers, but these MUST NOT affect the Merkle root or verification.
+              </p>
+            </div>
+
+            <SubsectionHeading id="retrieval-use-cases">
+              11.4 Use Cases
+            </SubsectionHeading>
+            <p style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', marginBottom: '1rem' }}>
+              Onchain retrieval enables several important workflows:
+            </p>
+            <ul style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', marginBottom: '2rem', paddingLeft: '1.5rem' }}>
+              <li style={{ marginBottom: '0.75rem' }}>
+                <strong>Transparency:</strong> Any party can audit the complete descriptor data
+                associated with a tokenized asset without relying on off-chain sources
+              </li>
+              <li style={{ marginBottom: '0.75rem' }}>
+                <strong>Interoperability:</strong> Third-party contracts can read descriptor fields
+                to make decisions (e.g., risk assessment based on maturity date)
+              </li>
+              <li style={{ marginBottom: '0.75rem' }}>
+                <strong>Verification:</strong> Off-chain systems can retrieve CBOR, enumerate leaves,
+                and generate Merkle proofs for specific fields to be verified onchain
+              </li>
+              <li>
+                <strong>Compliance:</strong> Regulators or auditors can independently verify that
+                onchain descriptors match disclosed security information
+              </li>
+            </ul>
+          </section>
+
+          {/* Section 12: Security Considerations */}
           <section style={{ marginBottom: '4rem' }}>
             <SectionHeading id="security">
-              11. Security Considerations
+              12. Security Considerations
             </SectionHeading>
 
             <SubsectionHeading id="trust-assumptions">
@@ -1331,10 +1468,10 @@ export default function SpecPage() {
             </div>
           </section>
 
-          {/* Section 12: Gas Cost Analysis */}
+          {/* Section 13: Gas Cost Analysis */}
           <section style={{ marginBottom: '4rem' }}>
             <SectionHeading id="gas-costs">
-              12. Gas Cost Analysis
+              13. Gas Cost Analysis
             </SectionHeading>
 
             <p style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', marginBottom: '2rem' }}>
@@ -1379,10 +1516,10 @@ export default function SpecPage() {
             </div>
           </section>
 
-          {/* Section 13: Implementation Guide */}
+          {/* Section 14: Implementation Guide */}
           <section style={{ marginBottom: '4rem' }}>
             <SectionHeading id="implementation">
-              13. Implementation Guide
+              14. Implementation Guide
             </SectionHeading>
 
             <p style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', marginBottom: '1.5rem' }}>
