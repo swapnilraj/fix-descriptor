@@ -1,7 +1,6 @@
 "use client";
 import { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import Link from 'next/link';
-import { abi as DataFactoryAbi } from '@/lib/abis/DataContractFactory';
 import { abi as TokenFactoryAbi } from '@/lib/abis/AssetTokenFactory';
 import { abi as AssetTokenAbi } from '@/lib/abis/AssetTokenERC20';
 import { chainFromEnv } from '@/lib/viemClient';
@@ -786,25 +785,6 @@ export default function Page() {
       console.error('Error connecting wallet:', error);
       alert('Failed to connect wallet. Please try again.');
     }
-  }
-
-  async function deployCBOR() {
-    if (!preview) return;
-    setCurrentStep(5);
-    
-    const account = await getAccount();
-    const provider = getProvider();
-    const wallet = createWalletClient({ account, chain: chainFromEnv, transport: custom(provider as never) });
-    const dataHex = preview.cborHex as `0x${string}`;
-    type Abi = readonly unknown[];
-    const factoryAbi: Abi = DataFactoryAbi;
-    const hash = await wallet.writeContract({ 
-      address: process.env.NEXT_PUBLIC_FACTORY_ADDRESS as `0x${string}`, 
-      abi: factoryAbi, 
-      functionName: 'deploy', 
-      args: [dataHex] 
-    });
-    setTxInfo(`Deploy tx: ${hash}`);
   }
 
   async function deployWithFactory() {
@@ -2722,7 +2702,7 @@ export default function Page() {
                           color: 'rgba(255,255,255,0.4)',
                           marginTop: '0.5rem'
                         }}>
-                          This is the canonical CBOR encoding retrieved from the contract's SSTORE2 data pointer
+                          This is the canonical CBOR encoding retrieved from the contract&apos;s SSTORE2 data pointer
                         </div>
                       </div>
 

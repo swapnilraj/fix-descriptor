@@ -1,15 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { 
-  DEMO_FIX_SCHEMA, 
-  parseFixDescriptor, 
-  buildCanonicalTree, 
-  encodeCanonicalCBOR, 
-  enumerateLeaves, 
+import {
+  DEMO_FIX_SCHEMA,
+  parseFixDescriptor,
+  buildCanonicalTree,
+  encodeCanonicalCBOR,
+  enumerateLeaves,
   computeRoot,
   buildMerkleTreeStructure,
   type DescriptorTree,
-  type GroupNode,
-  type FixValue
+  type GroupNode
 } from 'fixdescriptorkit-typescript';
 export const runtime = 'nodejs';
 import { LicenseManager } from 'fixparser';
