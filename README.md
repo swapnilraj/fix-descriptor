@@ -295,12 +295,32 @@ Deploy your own asset contracts implementing `IFixDescriptor` to use this system
 
 This project is licensed under the ISC License - see the [LICENSE](LICENSE) file for details.
 
+## 📚 Documentation
+
+### Contract Documentation
+
+Comprehensive documentation for smart contracts is available in [contracts/docs/](./contracts/docs/):
+
+- 📖 **[Getting Started](./contracts/docs/BUILD_AND_TEST.md)** - Setup, build, and test instructions
+- 📊 **[Gas Comparison Analysis](./contracts/docs/GAS_COMPARISON_ANALYSIS.md)** - CBOR vs Merkle proof costs (key decision)
+- 📚 **[CBOR Parser Guide](./contracts/docs/CBOR_PARSER.md)** - Direct CBOR field access (12k-80k gas)
+- ⭐ **[Merkle Verifier Guide](./contracts/docs/MERKLE_VERIFIER.md)** - Proof-based verification (6k-8.5k gas, **recommended**)
+- 📋 **[Documentation Index](./contracts/docs/README.md)** - Complete documentation overview
+
+**Key Finding:** Merkle proof verification is **2-10x more gas efficient** than CBOR parsing. Use Merkle for production deployments.
+
+### Specifications
+
+- **[SPEC.md](./SPEC.md)** - Technical specification
+- **[ERC-FIX-DESCRIPTOR.md](./ERC-FIX-DESCRIPTOR.md)** - Token standard proposal
+- **[DEPLOYMENT.md](./DEPLOYMENT.md)** - Deployment guide
+
 ## 🔗 Links
 
-- **Documentation**: [SPEC.md](./SPEC.md)
-- **Deployment Guide**: [DEPLOYMENT.md](./DEPLOYMENT.md)
-- **Live Demo**: [https://your-app.vercel.app](https://fixdescriptor.vercel.app)
+- **Live Demo**: [https://fixdescriptor.vercel.app](https://fixdescriptor.vercel.app)
 - **FIX Protocol**: [https://www.fixtrading.org/](https://www.fixtrading.org/)
+- **Foundry**: [https://getfoundry.sh/](https://getfoundry.sh/)
+- **OpenZeppelin**: [https://openzeppelin.com/](https://openzeppelin.com/)
 
 ## 🙏 Acknowledgments
 

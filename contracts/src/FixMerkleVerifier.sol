@@ -11,10 +11,10 @@ library FixMerkleVerifier {
     /// @return ok       True if proof is valid and binds (path,value) to root.
     function verify(
         bytes32 root,
-        bytes calldata pathCBOR,
-        bytes calldata value,
-        bytes32[] calldata proof,
-        bool[] calldata directions
+        bytes memory pathCBOR,
+        bytes memory value,
+        bytes32[] memory proof,
+        bool[] memory directions
     ) internal pure returns (bool ok) {
         bytes32 node = keccak256(abi.encodePacked(pathCBOR, value));
         uint256 len = proof.length;
