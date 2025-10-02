@@ -107,34 +107,42 @@ Merkle proofs treat all paths uniformly → massive savings.
 
 ## Storage Cost Comparison
 
-### Option A: Store Full CBOR Onchain
+### Option A: Store Full CBOR Onchain (with SSTORE2)
 
 **Pros:**
-- Single storage slot for descriptor
-- No additional proof data in transactions
+- ✅ **Efficient storage:** Uses SSTORE2 (bytecode) instead of SSTORE
+- ✅ **No proof data needed:** Direct field access without proofs
+- ✅ **Simple client logic:** No need to generate/manage Merkle proofs
 
 **Cons:**
-- High gas cost for field access (12k - 80k gas)
-- CBOR size can be 100s-1000s of bytes → expensive storage
-- Every read operation pays full parsing cost
+- ⚠️ **Variable read costs:** 12k - 80k gas per field access (depends on descriptor size)
+- ⚠️ **Doesn't scale well:** Large descriptors have expensive field lookups
+- ⚠️ **No selective disclosure:** Full descriptor is stored onchain
 
-**Example:** 500-byte CBOR descriptor
-- Storage cost: 20,000 gas/byte × 500 = **10,000,000 gas** (one-time)
+**Example:** 500-byte CBOR descriptor with SSTORE2
+- Storage cost: ~200 gas/byte × 500 = **~100,000 gas** (one-time deployment)
+  - SSTORE2 stores data as contract bytecode: ~100 gas base + ~200 gas/byte
+  - Much cheaper than SSTORE (20,000 gas/byte)
 - Read cost: 12k - 80k gas per field access
+- Pointer storage: 1 storage slot (address) = **20,000 gas**
+
+**Total deployment:** ~120,000 gas
 
 ---
 
-### Option B: Store Merkle Root Onchain (RECOMMENDED)
+### Option B: Store Merkle Root Onchain
 
 **Pros:**
-- ✅ **Low storage cost:** 32 bytes (1 slot) = **20,000 gas** (one-time)
-- ✅ **Low read cost:** 6k - 8.5k gas per field verification
-- ✅ **Constant gas cost** regardless of descriptor size
-- ✅ **Flexible:** Can prove any field without storing full descriptor
+- ✅ **Minimal storage:** 32 bytes (1 slot) = **20,000 gas** (one-time)
+- ✅ **Constant read cost:** 6k - 8.5k gas per field verification
+- ✅ **Scales perfectly:** Gas cost independent of descriptor size
+- ✅ **Selective disclosure:** Only prove fields you need
+- ✅ **Privacy-preserving:** Can verify without revealing full descriptor
 
 **Cons:**
 - Requires Merkle proof in transaction (adds calldata cost)
 - More complex client-side logic to generate proofs
+- Cannot read arbitrary fields without precomputed proofs
 
 **Example:** Same 500-byte descriptor
 - Storage cost: 32 bytes = **20,000 gas** (one-time)
@@ -147,13 +155,29 @@ Merkle proofs treat all paths uniformly → massive savings.
 
 ## Recommendation
 
-### ✅ **Use Merkle Root Storage**
+### ⚖️ **Use Hybrid Approach (BOTH)**
+
+**Best Practice:** Store both CBOR (via SSTORE2) AND Merkle root
 
 **Reasons:**
-1. **498x cheaper storage:** 20k gas vs 10M gas
-2. **2-10x cheaper reads:** 6k-8.5k gas vs 12k-80k gas
-3. **Scales to large descriptors:** Gas cost remains constant
-4. **Supports selective disclosure:** Only prove fields you need
+1. **SSTORE2 makes CBOR affordable:** 100k gas deployment (not 10M)
+2. **Merkle proofs still 2-10x cheaper for reads:** 6k-8.5k vs 12k-80k gas
+3. **Flexibility:** Choose verification method based on use case
+4. **Trust minimization:** CBOR provides fallback if proof generation fails
+
+### When to Use Each Method
+
+**Use Merkle Proofs for:**
+- ✅ Frequent field verification (2-10x gas savings on reads)
+- ✅ Large descriptors (16+ fields) where CBOR parsing is expensive
+- ✅ Selective disclosure scenarios
+- ✅ Gas-sensitive operations
+
+**Use CBOR Direct Access for:**
+- ✅ Debugging/exploration (no proof needed)
+- ✅ Offchain reading (via `eth_call`)
+- ✅ Fallback when proofs unavailable
+- ✅ Initial deployment verification
 
 ### Calldata Cost Analysis
 
@@ -173,30 +197,46 @@ Still **1.5x - 8x cheaper** than CBOR access!
 
 ## Gas Savings Summary Table
 
-| Descriptor Size | CBOR Range | Merkle Cost | Min Savings | Max Savings |
-|-----------------|------------|-------------|-------------|-------------|
-| 2 fields | 12k - 17k | 6k | 6k (2x) | 11k (2.8x) |
-| 5 fields | 14k - 32k | 6k - 8k | 6k (1.8x) | 26k (5.2x) |
-| 16 fields | 46k - 80k | 8.5k | 38k (5.4x) | 72k (9.4x) |
-| Nested groups | 72k | 7.7k | 64k (9.3x) | - |
+| Descriptor Size | CBOR Read | Merkle Read | Read Savings | Storage Cost (CBOR/SSTORE2) | Storage Cost (Merkle) |
+|-----------------|-----------|-------------|--------------|----------------------------|----------------------|
+| 2 fields | 12k - 17k | 6k | 6k - 11k (2-2.8x) | ~25k gas | ~20k gas |
+| 5 fields | 14k - 32k | 6k - 8k | 6k - 26k (1.8-5.2x) | ~50k gas | ~20k gas |
+| 16 fields | 46k - 80k | 8.5k | 38k - 72k (5.4-9.4x) | ~120k gas | ~20k gas |
+| Nested groups | 72k | 7.7k | 64k (9.3x) | ~60k gas | ~20k gas |
 
 ---
 
 ## Conclusion
 
-**The data strongly supports storing Merkle roots onchain:**
+**The data supports a hybrid approach with both CBOR (SSTORE2) and Merkle roots:**
 
-1. **500x cheaper storage** (20k vs 10M gas)
-2. **2-10x cheaper field access** (6k-8.5k vs 12k-80k gas)
-3. **Predictable gas costs** independent of descriptor size
-4. **Better for large descriptors** where CBOR parsing becomes prohibitive
+### Storage Cost Reality (with SSTORE2)
+1. **CBOR via SSTORE2:** ~100-200k gas for typical descriptors (NOT 10M!)
+2. **Merkle root:** ~20k gas (single storage slot)
+3. **Difference:** Only ~100k gas more for CBOR with SSTORE2
 
-The only scenario where CBOR might be competitive is:
-- Very small descriptors (2-3 fields)
-- High frequency of access to ALL fields at once
-- No storage concerns
+### Read Cost Reality
+1. **CBOR reads:** 12k - 80k gas (varies with descriptor size)
+2. **Merkle reads:** 6k - 8.5k gas (constant regardless of size)
+3. **Savings:** 2-10x cheaper with Merkle proofs
 
-For production use with real-world FIX descriptors (10-50+ fields), **Merkle roots are the clear winner.**
+### Recommended Architecture
+
+**✅ Hybrid Model (BOTH CBOR + Merkle):**
+- Store CBOR via SSTORE2 (~100k gas extra)
+- Store Merkle root (~20k gas)
+- Use Merkle proofs for gas-sensitive operations (2-10x cheaper)
+- Use CBOR for debugging, offchain reads, and fallback
+
+**When storage is critical:**
+- Merkle-only approach saves ~100k gas deployment
+- But loses CBOR fallback and onchain explorability
+
+**When read efficiency matters:**
+- Always use Merkle proofs (2-10x gas savings)
+- Especially critical for large descriptors (16+ fields)
+
+For production use with real-world FIX descriptors, the **hybrid approach provides the best tradeoff** between deployment cost, read efficiency, and operational flexibility.
 
 ---
 
