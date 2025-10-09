@@ -63,6 +63,7 @@ contract BondDescriptorReader is ERC20, Ownable, ERC165, IFixDescriptor {
             fixMajor: 4,
             fixMinor: 4,
             dictHash: dictHash,
+            dictionaryContract: address(0), // Not using dictionary in this example
             fixRoot: merkleRoot,
             fixCBORPtr: cborPtr,
             fixCBORLen: uint32(cborDescriptor.length),
@@ -232,6 +233,14 @@ contract BondDescriptorReader is ERC20, Ownable, ERC165, IFixDescriptor {
     {
         require(_descriptorInitialized, "Descriptor not initialized");
         return SSTORE2.read(_descriptor.fixCBORPtr, start, size);
+    }
+
+    /**
+     * @inheritdoc IFixDescriptor
+     */
+    function getHumanReadableDescriptor() external pure override returns (string memory) {
+        // Not implemented in this example contract
+        revert("Not implemented");
     }
 
     /**

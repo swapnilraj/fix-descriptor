@@ -74,9 +74,10 @@ contract AssetTokenFactory {
      * @param symbol Token symbol
      * @param initialSupply Initial token supply
      * @param cborData CBOR-encoded descriptor data
-     * @param descriptor The complete FixDescriptor struct
+     * @param descriptor The complete FixDescriptor struct (including dictionaryContract for human-readable output)
      * @return tokenAddress Address of the deployed token
      * @return cborPtr Address of the deployed CBOR data contract
+     * @dev The descriptor should include dictionaryContract address to enable getHumanReadableDescriptor() function
      */
     function deployWithDescriptor(
         string memory name,

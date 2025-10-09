@@ -9,13 +9,14 @@ pragma solidity ^0.8.20;
 interface IFixDescriptor {
     /// @notice FIX descriptor structure
     struct FixDescriptor {
-        uint16 fixMajor;      // FIX version major (e.g., 4)
-        uint16 fixMinor;      // FIX version minor (e.g., 4)
-        bytes32 dictHash;     // FIX dictionary/Orchestra hash
-        bytes32 fixRoot;      // Merkle root commitment
-        address fixCBORPtr;   // SSTORE2 data contract address
-        uint32 fixCBORLen;    // CBOR data length
-        string fixURI;        // Optional mirror URI (ipfs:// or https://)
+        uint16 fixMajor;           // FIX version major (e.g., 4)
+        uint16 fixMinor;           // FIX version minor (e.g., 4)
+        bytes32 dictHash;          // FIX dictionary/Orchestra hash
+        address dictionaryContract; // FixDictionary contract address for tag name lookups
+        bytes32 fixRoot;           // Merkle root commitment
+        address fixCBORPtr;        // SSTORE2 data contract address
+        uint32 fixCBORLen;         // CBOR data length
+        string fixURI;             // Optional mirror URI (ipfs:// or https://)
     }
 
     /// @notice Emitted when descriptor is first set
@@ -59,4 +60,11 @@ interface IFixDescriptor {
         bytes32[] calldata proof,
         bool[] calldata directions
     ) external view returns (bool valid);
+
+    /**
+     * @notice Get human-readable FIX descriptor output
+     * @dev Uses dictionaryContract to map tag numbers to names
+     * @return Human-readable FIX string (pipe-delimited format)
+     */
+    function getHumanReadableDescriptor() external view returns (string memory);
 }

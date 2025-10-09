@@ -26,6 +26,14 @@ export {
   type MerkleTreeNode,
 } from './merkle';
 
+export {
+  FIX_44_DICTIONARY,
+  encodeDictionary,
+  decodeDictionary,
+  getDictionaryHex,
+  type DictionaryEntry,
+} from './dictionary';
+
 import { parseFixDescriptor } from './parse';
 import { buildCanonicalTree } from './canonical';
 import { encodeCanonicalCBOR } from './cbor';

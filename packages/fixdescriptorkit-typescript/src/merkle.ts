@@ -16,44 +16,48 @@ function utf8Bytes(s: string): Uint8Array {
 export function enumerateLeaves(tree: DescriptorTree): Array<{ path: Path; pathCBOR: Uint8Array; valueBytes: Uint8Array }> {
   const leaves: Array<{ path: Path; pathCBOR: Uint8Array; valueBytes: Uint8Array }> = [];
 
-  function walk(node: any, path: number[]) {
-    for (const k of Object.keys(node)) {
-      const tag = Number(k) as Tag;
-      const v = (node as any)[k];
-      if (typeof v === 'string') {
-        const p = [...path, tag];
-        const pathCBOR = encodePathCBOR(p);
-        leaves.push({ path: p, pathCBOR, valueBytes: utf8Bytes(v) });
-      } else {
-        const group = v as GroupNode;
-        group.entries.forEach((entry, idx) => {
-          for (const ek of Object.keys(entry)) {
-            const etag = Number(ek) as Tag;
-            const ev = (entry as any)[ek];
-            if (typeof ev === 'string') {
-              const p = [...path, tag, idx, etag];
-              const pathCBOR = encodePathCBOR(p);
-              leaves.push({ path: p, pathCBOR, valueBytes: utf8Bytes(ev) });
-            } else {
-              const nested = ev as GroupNode;
-              nested.entries.forEach((nentry, nidx) => {
-                for (const nk of Object.keys(nentry)) {
-                  const netag = Number(nk) as Tag;
-                  const nev = (nentry as any)[nk];
-                  if (typeof nev === 'string') {
-                    const p = [...path, tag, idx, nested.tag, nidx, netag];
-                    const pathCBOR = encodePathCBOR(p);
-                    leaves.push({ path: p, pathCBOR, valueBytes: utf8Bytes(nev) });
-                  }
-                }
-              });
-            }
-          }
-        });
+  function isGroupNodeLike(value: unknown): value is GroupNode {
+    return !!value && typeof value === 'object' && 'entries' in (value as Record<string, unknown>) && Array.isArray((value as GroupNode).entries);
+  }
+
+  function addLeaf(path: Path, value: string) {
+    const pathCBOR = encodePathCBOR(path);
+    leaves.push({ path, pathCBOR, valueBytes: utf8Bytes(value) });
+  }
+
+  function processMap(map: Record<Tag, any>, path: Path) {
+    for (const [key, raw] of Object.entries(map)) {
+      const tag = Number(key) as Tag;
+      if (typeof raw === 'string') {
+        addLeaf([...path, tag], raw);
+        continue;
+      }
+
+      if (isGroupNodeLike(raw)) {
+        processGroup(raw, [...path, tag]);
       }
     }
   }
-  walk(tree as any, []);
+
+  function processGroup(group: GroupNode, pathToGroup: Path) {
+    group.entries.forEach((entry, idx) => {
+      const entryPath = [...pathToGroup, idx];
+      for (const [key, raw] of Object.entries(entry)) {
+        const fieldTag = Number(key) as Tag;
+        if (typeof raw === 'string') {
+          addLeaf([...entryPath, fieldTag], raw);
+          continue;
+        }
+
+        if (isGroupNodeLike(raw)) {
+          const nestedTag = raw.tag ?? fieldTag;
+          processGroup(raw, [...entryPath, nestedTag]);
+        }
+      }
+    });
+  }
+
+  processMap(tree, []);
 
   // Sort by pathCBOR lexicographically (byte order)
   leaves.sort((a, b) => {
@@ -271,5 +275,4 @@ export function buildMerkleTreeStructure(
   const tree = buildLevel(leafNodes, leafNodes.length === 1);
   return tree[0];
 }
-
 

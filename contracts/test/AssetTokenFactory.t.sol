@@ -88,6 +88,7 @@ contract AssetTokenFactoryTest is Test {
             fixMajor: 4,
             fixMinor: 4,
             dictHash: keccak256("test-dict"),
+            dictionaryContract: address(0),
             fixRoot: bytes32(uint256(12345)),
             fixCBORPtr: address(0), // Will be set by factory
             fixCBORLen: 0,          // Will be set by factory
@@ -174,6 +175,7 @@ contract AssetTokenFactoryTest is Test {
             fixMajor: 4,
             fixMinor: 4,
             dictHash: bytes32(0),
+            dictionaryContract: address(0),
             fixRoot: bytes32(0),
             fixCBORPtr: address(0),
             fixCBORLen: 0,

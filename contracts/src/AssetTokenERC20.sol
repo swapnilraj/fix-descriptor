@@ -6,6 +6,8 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 import "./IFixDescriptor.sol";
 import "./FixMerkleVerifier.sol";
+import "./FixHumanReadable.sol";
+import "./FixDictionary.sol";
 
 /**
  * @title AssetTokenERC20
@@ -137,6 +139,36 @@ contract AssetTokenERC20 is ERC20, Ownable, ERC165, IFixDescriptor {
         assembly {
             extcodecopy(ptr, add(chunk, 0x20), add(start, 1), actualSize)
         }
+    }
+
+    /**
+     * @inheritdoc IFixDescriptor
+     */
+    function getHumanReadableDescriptor() external view override returns (string memory) {
+        require(_descriptorInitialized, "Descriptor not initialized");
+        require(_descriptor.dictionaryContract != address(0), "Dictionary not set");
+        require(_descriptor.fixCBORPtr != address(0), "CBOR not deployed");
+
+        // Read full CBOR data from SSTORE2 contract
+        address ptr = _descriptor.fixCBORPtr;
+        uint256 codeSize;
+        assembly {
+            codeSize := extcodesize(ptr)
+        }
+        
+        require(codeSize > 1, "No CBOR data");
+        
+        // Data starts at byte 1 (after STOP byte)
+        uint256 dataLength = codeSize - 1;
+        bytes memory cborData = new bytes(dataLength);
+        
+        assembly {
+            extcodecopy(ptr, add(cborData, 0x20), 1, dataLength)
+        }
+
+        // Use library to format human-readable output
+        FixDictionary dictionary = FixDictionary(_descriptor.dictionaryContract);
+        return FixHumanReadable.toHumanReadable(cborData, dictionary);
     }
 
     /**
