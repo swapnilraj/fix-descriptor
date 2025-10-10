@@ -1221,11 +1221,11 @@ export default function Page() {
         borderBottom: '1px solid rgba(255,255,255,0.1)',
         background: '#0a0a0a'
       }}>
-        <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '2rem 2rem 4rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem' }}>
+        <div style={{ maxWidth: '1400px', margin: '0 auto', padding: 'clamp(1rem, 3vw, 2rem) clamp(1rem, 3vw, 2rem) clamp(2rem, 5vw, 4rem)' }}>
+          <div style={{ display: 'flex', flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1.5rem', marginBottom: '2rem' }}>
       <div>
               <h1 style={{ 
-                fontSize: '3.5rem', 
+                fontSize: 'clamp(2rem, 5vw, 3.5rem)', 
                 marginBottom: 0, 
                 fontWeight: '600',
                 letterSpacing: '-0.02em',
@@ -1233,7 +1233,7 @@ export default function Page() {
               }}>
                 FixDescriptorKit
               </h1>
-              <nav style={{ display: 'flex', gap: '2rem', fontSize: '0.9rem', paddingTop: '0.5rem' }}>
+              <nav style={{ display: 'flex', gap: 'clamp(1rem, 3vw, 2rem)', fontSize: 'clamp(0.8rem, 2vw, 0.9rem)', paddingTop: '0.5rem' }}>
                 <Link href="/" style={{ 
                   color: 'rgba(255,255,255,0.9)', 
                   textDecoration: 'none',
@@ -1264,7 +1264,8 @@ export default function Page() {
               background: walletConnected ? 'rgba(34, 197, 94, 0.1)' : 'rgba(255,255,255,0.05)',
               border: walletConnected ? '1px solid rgba(34, 197, 94, 0.3)' : '1px solid rgba(255,255,255,0.1)',
               borderRadius: '8px',
-              fontSize: '0.9rem'
+              fontSize: 'clamp(0.8rem, 2vw, 0.9rem)',
+              minHeight: '44px'
             }}>
               <div style={{
                 width: '8px',
@@ -1282,7 +1283,7 @@ export default function Page() {
             </div>
           </div>
           <p style={{ 
-            fontSize: '1.25rem', 
+            fontSize: 'clamp(1rem, 2.5vw, 1.25rem)', 
             color: 'rgba(255,255,255,0.6)',
             fontWeight: '400',
             maxWidth: '600px',
@@ -1299,17 +1300,28 @@ export default function Page() {
         background: '#0a0a0a',
         padding: '3rem 0'
       }}>
-        <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '0 2rem' }}>
-          <div
-            ref={stepsContainerRef}
-            style={{ 
-            display: 'flex', 
-            justifyContent: 'space-between',
-            alignItems: 'flex-start',
-            gap: '1rem',
-            position: 'relative'
-          }}
-          >
+        <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '0 clamp(1rem, 3vw, 2rem)', position: 'relative' }}>
+          <div style={{
+            overflowX: 'auto',
+            overflowY: 'hidden',
+            WebkitOverflowScrolling: 'touch',
+            scrollbarWidth: 'thin',
+            scrollbarColor: 'rgba(255,255,255,0.2) transparent',
+            paddingBottom: '1rem',
+            maskImage: 'linear-gradient(to right, transparent, black 2rem, black calc(100% - 2rem), transparent)',
+            WebkitMaskImage: 'linear-gradient(to right, transparent, black 2rem, black calc(100% - 2rem), transparent)'
+          }}>
+            <div
+              ref={stepsContainerRef}
+              style={{ 
+              display: 'flex', 
+              justifyContent: 'flex-start',
+              alignItems: 'flex-start',
+              gap: 'clamp(0.75rem, 2vw, 1rem)',
+              position: 'relative',
+              minWidth: 'min-content'
+            }}
+            >
             {stepGeometry.edges.length > 1 && stepGeometry.width > 0 && (
               <svg
                 style={{
@@ -1343,7 +1355,8 @@ export default function Page() {
             )}
             {steps.map((step, idx) => (
               <div key={idx} style={{ 
-                flex: 1,
+                flex: '0 0 auto',
+                minWidth: 'clamp(100px, 15vw, 140px)',
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
@@ -1358,8 +1371,8 @@ export default function Page() {
                   alignItems: 'center'
                 }}>
                   <div style={{ 
-                    width: '40px', 
-                    height: '40px', 
+                    width: 'clamp(32px, 8vw, 40px)', 
+                    height: 'clamp(32px, 8vw, 40px)', 
                     borderRadius: '8px',
                     border: `1px solid ${idx <= currentStep ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.1)'}`,
                     background: idx <= currentStep ? 'rgba(255,255,255,0.05)' : 'transparent',
@@ -1376,53 +1389,56 @@ export default function Page() {
                     {step.icon}
                   </div>
                   <div style={{ 
-                    fontSize: '0.875rem',
+                    fontSize: 'clamp(0.75rem, 2vw, 0.875rem)',
                     fontWeight: '500',
                     color: idx <= currentStep ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.4)',
                     marginBottom: '0.25rem',
                     transition: 'color 0.3s',
-                    textAlign: 'center'
+                    textAlign: 'center',
+                    whiteSpace: 'nowrap'
                   }}>
                     {step.name}
                   </div>
                   <div style={{ 
-                    fontSize: '0.75rem', 
+                    fontSize: 'clamp(0.65rem, 1.5vw, 0.75rem)', 
                     color: 'rgba(255,255,255,0.4)',
                     fontWeight: '400',
-                    textAlign: 'center'
+                    textAlign: 'center',
+                    whiteSpace: 'nowrap'
                   }}>
                     {step.description}
                   </div>
                 </div>
               </div>
             ))}
+            </div>
           </div>
         </div>
       </div>
 
       {/* Main Content */}
-      <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '3rem 2rem' }}>
+      <div style={{ maxWidth: '1400px', margin: '0 auto', padding: 'clamp(2rem, 4vw, 3rem) clamp(1rem, 3vw, 2rem)' }}>
         
         {/* Examples Section */}
         <section style={{ marginBottom: '4rem' }}>
           <div style={{ marginBottom: '2rem' }}>
             <h2 style={{ 
-              fontSize: '1.5rem', 
+              fontSize: 'clamp(1.25rem, 3vw, 1.5rem)', 
               fontWeight: '500',
               marginBottom: '0.5rem',
               letterSpacing: '-0.01em'
             }}>
               Examples
             </h2>
-            <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.95rem' }}>
+            <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 'clamp(0.875rem, 2vw, 0.95rem)' }}>
               Start with a pre-configured FIX message
             </p>
           </div>
           
           <div style={{ 
             display: 'grid', 
-            gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', 
-            gap: '1rem' 
+            gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))', 
+            gap: 'clamp(0.75rem, 2vw, 1rem)' 
           }}>
             {Object.entries(EXAMPLES).map(([key, example]) => (
               <button
@@ -1447,10 +1463,10 @@ export default function Page() {
                   e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)';
                 }}
               >
-                <div style={{ fontWeight: '500', marginBottom: '0.5rem', fontSize: '1rem' }}>
+                <div style={{ fontWeight: '500', marginBottom: '0.5rem', fontSize: 'clamp(0.95rem, 2.5vw, 1rem)' }}>
                   {example.name}
                 </div>
-                <div style={{ fontSize: '0.875rem', color: 'rgba(255,255,255,0.5)', lineHeight: '1.5' }}>
+                <div style={{ fontSize: 'clamp(0.8rem, 2vw, 0.875rem)', color: 'rgba(255,255,255,0.5)', lineHeight: '1.5' }}>
                   {example.description}
                 </div>
           </button>
@@ -1478,14 +1494,14 @@ export default function Page() {
             >
       <div>
                 <h2 style={{ 
-                  fontSize: '1.5rem', 
+                  fontSize: 'clamp(1.25rem, 3vw, 1.5rem)', 
                   fontWeight: '500',
                   marginBottom: '0.5rem',
                   letterSpacing: '-0.01em'
                 }}>
                   Input FIX Message
                 </h2>
-                <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.95rem' }}>
+                <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 'clamp(0.875rem, 2vw, 0.95rem)' }}>
                   Paste or edit your FIX descriptor
                 </p>
       </div>
@@ -1541,10 +1557,11 @@ export default function Page() {
               background: 'rgba(255,255,255,0.03)',
               color: '#ffffff',
               fontFamily: 'ui-monospace, monospace',
-              fontSize: '0.875rem',
+              fontSize: 'clamp(0.8rem, 2vw, 0.875rem)',
               marginBottom: '1.5rem',
               resize: 'vertical',
-              lineHeight: '1.6'
+              lineHeight: '1.6',
+              boxSizing: 'border-box'
             }} 
           />
 
@@ -1630,10 +1647,11 @@ export default function Page() {
                 border: 'none',
                 borderRadius: '6px',
                 padding: '0.875rem 2rem',
-                fontSize: '0.9rem',
+                fontSize: 'clamp(0.85rem, 2vw, 0.9rem)',
                 fontWeight: '500',
                 cursor: fixRaw && !loading ? 'pointer' : 'not-allowed',
-                transition: 'all 0.2s'
+                transition: 'all 0.2s',
+                minHeight: '44px'
               }}
             >
               {loading ? 'Processing...' : 'Process'}
@@ -1647,13 +1665,14 @@ export default function Page() {
                 border: walletConnected ? '1px solid rgba(34, 197, 94, 0.3)' : '1px solid rgba(255,255,255,0.2)',
                 borderRadius: '6px',
                 padding: '0.875rem 1.5rem',
-                fontSize: '0.9rem',
+                fontSize: 'clamp(0.85rem, 2vw, 0.9rem)',
                 fontWeight: '500',
                 cursor: walletConnected ? 'default' : 'pointer',
                 transition: 'all 0.2s',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '0.5rem'
+                gap: '0.5rem',
+                minHeight: '44px'
               }}
               onMouseEnter={(e) => {
                 if (!walletConnected) {
@@ -1709,14 +1728,14 @@ export default function Page() {
                 >
       <div>
                     <h2 style={{ 
-                      fontSize: '1.5rem', 
+                      fontSize: 'clamp(1.25rem, 3vw, 1.5rem)', 
                       fontWeight: '500',
                       marginBottom: '0.5rem',
                       letterSpacing: '-0.01em'
                     }}>
                       Results
                     </h2>
-                    <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.95rem' }}>
+                    <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 'clamp(0.875rem, 2vw, 0.95rem)' }}>
                       CBOR encoding and Merkle commitment
                     </p>
             </div>
@@ -1757,8 +1776,8 @@ export default function Page() {
 
               <div style={{ 
                 display: 'grid', 
-                gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', 
-                gap: '1.5rem',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 300px), 1fr))', 
+                gap: 'clamp(1rem, 2vw, 1.5rem)',
                 marginBottom: '2rem'
               }}>
                 <div style={{
@@ -1779,7 +1798,7 @@ export default function Page() {
                   </div>
                   <div style={{ 
                     fontFamily: 'ui-monospace, monospace',
-                    fontSize: '0.75rem',
+                    fontSize: 'clamp(0.7rem, 1.5vw, 0.75rem)',
                     wordBreak: 'break-all', 
                     color: 'rgba(255,255,255,0.9)',
                     lineHeight: '1.6'
@@ -1874,9 +1893,10 @@ export default function Page() {
                         background: 'rgba(255,255,255,0.03)',
                         color: 'rgba(255,255,255,0.7)',
                         fontFamily: 'ui-monospace, monospace',
-                        fontSize: '0.75rem',
+                        fontSize: 'clamp(0.7rem, 1.5vw, 0.75rem)',
                         resize: 'vertical',
-                        lineHeight: '1.6'
+                        lineHeight: '1.6',
+                        boxSizing: 'border-box'
                       }} 
                     />
                   </>
@@ -2012,16 +2032,18 @@ export default function Page() {
                   </button>
           </div>
                 {txInfo && (
-                  <div style={{ 
+                  <div style={{
                     marginTop: '1rem',
                     padding: '1rem',
                     background: 'rgba(34, 197, 94, 0.1)',
                     border: '1px solid rgba(34, 197, 94, 0.2)',
                     borderRadius: '6px',
-                    fontSize: '0.875rem',
+                    fontSize: 'clamp(0.8rem, 2vw, 0.875rem)',
                     color: 'rgba(34, 197, 94, 0.9)',
                     wordBreak: 'break-all',
-                    fontFamily: 'ui-monospace, monospace'
+                    fontFamily: 'ui-monospace, monospace',
+                    lineHeight: '1.6',
+                    whiteSpace: 'pre-wrap'
                   }}>
                     {txInfo}
                   </div>
@@ -2074,7 +2096,9 @@ export default function Page() {
                             border: '1px solid rgba(255,255,255,0.1)',
                             borderRadius: '6px',
                             color: '#ffffff',
-                            fontSize: '0.875rem'
+                            fontSize: 'clamp(0.8rem, 2vw, 0.875rem)',
+                            boxSizing: 'border-box',
+                            minHeight: '44px'
                           }}
                         />
                       </div>
@@ -2144,11 +2168,12 @@ export default function Page() {
                           border: '1px solid rgba(59, 130, 246, 0.3)',
                           borderRadius: '6px',
                           padding: '1rem',
-                          fontSize: '0.9rem',
+                          fontSize: 'clamp(0.85rem, 2vw, 0.9rem)',
                           fontWeight: '600',
                           cursor: walletConnected && tokenName && tokenSymbol && tokenSupply && !loading ? 'pointer' : 'not-allowed',
                           transition: 'all 0.2s',
-                          opacity: walletConnected && tokenName && tokenSymbol && tokenSupply && !loading ? 1 : 0.5
+                          opacity: walletConnected && tokenName && tokenSymbol && tokenSupply && !loading ? 1 : 0.5,
+                          minHeight: '44px'
                         }}
                       >
                         {loading ? '⏳ Deploying...' : '🚀 Deploy Token with Descriptor'}
@@ -2179,14 +2204,14 @@ export default function Page() {
                 >
       <div>
                     <h2 style={{ 
-                      fontSize: '1.5rem', 
+                      fontSize: 'clamp(1.25rem, 3vw, 1.5rem)', 
                       fontWeight: '500',
                       marginBottom: '0.5rem',
                       letterSpacing: '-0.01em'
                     }}>
                       Generate Proof
                     </h2>
-                    <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.95rem' }}>
+                    <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 'clamp(0.875rem, 2vw, 0.95rem)' }}>
                       Create a Merkle proof for a specific field
                     </p>
                   </div>
@@ -2316,7 +2341,9 @@ export default function Page() {
                     background: 'rgba(255,255,255,0.03)',
                     color: '#ffffff',
                     fontFamily: 'ui-monospace, monospace',
-                    fontSize: '0.875rem'
+                    fontSize: 'clamp(0.8rem, 2vw, 0.875rem)',
+                    boxSizing: 'border-box',
+                    minHeight: '44px'
                   }} 
                 />
               </div>
@@ -2330,10 +2357,11 @@ export default function Page() {
                   border: 'none',
                   borderRadius: '6px',
                   padding: '0.875rem 2rem',
-                  fontSize: '0.9rem',
+                  fontSize: 'clamp(0.85rem, 2vw, 0.9rem)',
                   fontWeight: '500',
                   cursor: loading ? 'not-allowed' : 'pointer',
-                  marginBottom: '2rem'
+                  marginBottom: '2rem',
+                  minHeight: '44px'
                 }}
               >
                 {loading ? 'Generating...' : 'Generate Proof'}
@@ -2402,7 +2430,7 @@ export default function Page() {
         )}
                   <div>
                     <div style={{ 
-                      fontSize: '0.8rem',
+                      fontSize: 'clamp(0.75rem, 1.5vw, 0.8rem)',
                       color: 'rgba(255,255,255,0.5)',
                       marginBottom: '0.75rem',
                       fontWeight: '500',
@@ -2423,16 +2451,18 @@ export default function Page() {
                         background: 'rgba(255,255,255,0.03)',
                         color: 'rgba(255,255,255,0.7)',
                         fontFamily: 'ui-monospace, monospace',
-                        fontSize: '0.75rem',
+                        fontSize: 'clamp(0.7rem, 1.5vw, 0.75rem)',
                         resize: 'vertical',
-                        lineHeight: '1.6'
+                        lineHeight: '1.6',
+                        boxSizing: 'border-box',
+                        wordBreak: 'break-all'
                       }} 
                     />
     </div>
 
                   <div>
                     <div style={{ 
-                      fontSize: '0.8rem',
+                      fontSize: 'clamp(0.75rem, 1.5vw, 0.8rem)',
                       color: 'rgba(255,255,255,0.5)',
                       marginBottom: '0.75rem',
                       fontWeight: '500',
@@ -2453,16 +2483,18 @@ export default function Page() {
                         background: 'rgba(255,255,255,0.03)',
                         color: 'rgba(255,255,255,0.7)',
                         fontFamily: 'ui-monospace, monospace',
-                        fontSize: '0.75rem',
+                        fontSize: 'clamp(0.7rem, 1.5vw, 0.75rem)',
                         resize: 'vertical',
-                        lineHeight: '1.6'
+                        lineHeight: '1.6',
+                        boxSizing: 'border-box',
+                        wordBreak: 'break-all'
                       }} 
                     />
                   </div>
 
                   <div>
                     <div style={{ 
-                      fontSize: '0.8rem',
+                      fontSize: 'clamp(0.75rem, 1.5vw, 0.8rem)',
                       color: 'rgba(255,255,255,0.5)',
                       marginBottom: '0.75rem',
                       fontWeight: '500',
@@ -2483,16 +2515,18 @@ export default function Page() {
                         background: 'rgba(255,255,255,0.03)',
                         color: 'rgba(255,255,255,0.7)',
                         fontFamily: 'ui-monospace, monospace',
-                        fontSize: '0.75rem',
+                        fontSize: 'clamp(0.7rem, 1.5vw, 0.75rem)',
                         resize: 'vertical',
-                        lineHeight: '1.6'
+                        lineHeight: '1.6',
+                        boxSizing: 'border-box',
+                        wordBreak: 'break-all'
                       }} 
                     />
                   </div>
 
                   <div>
                     <div style={{ 
-                      fontSize: '0.8rem',
+                      fontSize: 'clamp(0.75rem, 1.5vw, 0.8rem)',
                       color: 'rgba(255,255,255,0.5)',
                       marginBottom: '0.75rem',
                       fontWeight: '500',
@@ -2507,15 +2541,18 @@ export default function Page() {
                       border: '1px solid rgba(255,255,255,0.1)',
                       background: 'rgba(255,255,255,0.03)',
                       fontFamily: 'ui-monospace, monospace',
-                      fontSize: '0.875rem',
-                      color: 'rgba(255,255,255,0.7)'
+                      fontSize: 'clamp(0.8rem, 2vw, 0.875rem)',
+                      color: 'rgba(255,255,255,0.7)',
+                      wordBreak: 'break-word',
+                      overflowWrap: 'break-word'
                     }}>
                       {JSON.stringify(proof.directions)}
                       <div style={{ 
-                        fontSize: '0.75rem', 
+                        fontSize: 'clamp(0.7rem, 1.5vw, 0.75rem)', 
                         color: 'rgba(255,255,255,0.4)', 
                         marginTop: '0.5rem',
-                        fontFamily: 'inherit'
+                        fontFamily: 'inherit',
+                        lineHeight: '1.5'
                       }}>
                         (true = current node is right child / sibling on left, false = current node is left child / sibling on right)
                       </div>
@@ -2539,7 +2576,7 @@ export default function Page() {
                       transition: 'all 0.3s ease'
                     }}>
                       <div style={{
-                        fontSize: '0.875rem',
+                        fontSize: 'clamp(0.8rem, 2vw, 0.875rem)',
                         color: 'rgba(255,255,255,0.8)',
                         marginBottom: '1rem'
                       }}>
@@ -2555,10 +2592,12 @@ export default function Page() {
                            '⏳ Verifying...'}
                         </strong>
                         <div style={{ 
-                          fontSize: '0.75rem', 
+                          fontSize: 'clamp(0.7rem, 1.5vw, 0.75rem)', 
                           color: 'rgba(255,255,255,0.6)',
                           marginTop: '0.25rem',
-                          fontFamily: 'ui-monospace, monospace'
+                          fontFamily: 'ui-monospace, monospace',
+                          wordBreak: 'break-all',
+                          overflowWrap: 'break-word'
                         }}>
                           {deployedTokenAddress}
                         </div>
@@ -2593,11 +2632,12 @@ export default function Page() {
                           }`,
                           borderRadius: '6px',
                           padding: '0.875rem 1.5rem',
-                          fontSize: '0.9rem',
+                          fontSize: 'clamp(0.85rem, 2vw, 0.9rem)',
                           fontWeight: '600',
                           cursor: loading || onChainVerificationStatus === 'pending' ? 'not-allowed' : 'pointer',
                           width: '100%',
-                          transition: 'all 0.2s'
+                          transition: 'all 0.2s',
+                          minHeight: '44px'
                         }}
                         onMouseEnter={(e) => {
                           if (!loading) {
@@ -2617,7 +2657,7 @@ export default function Page() {
                       </button>
                       
                       <div style={{
-                        fontSize: '0.75rem',
+                        fontSize: 'clamp(0.7rem, 1.5vw, 0.75rem)',
                         color: 'rgba(255,255,255,0.5)',
                         marginTop: '0.75rem',
                         lineHeight: '1.5'
@@ -2625,7 +2665,8 @@ export default function Page() {
                         This will call the <code style={{ 
                           background: 'rgba(0,0,0,0.3)', 
                           padding: '0.125rem 0.25rem', 
-                          borderRadius: '3px' 
+                          borderRadius: '3px',
+                          fontSize: 'inherit'
                         }}>verifyField()</code> function on your deployed token contract to verify the proof cryptographically onchain.
                       </div>
                     </div>
@@ -2639,14 +2680,14 @@ export default function Page() {
               <section style={{ marginBottom: '4rem' }}>
                 <div style={{ marginBottom: '2rem' }}>
                   <h2 style={{
-                    fontSize: '1.5rem',
+                    fontSize: 'clamp(1.25rem, 3vw, 1.5rem)',
                     fontWeight: '500',
                     marginBottom: '0.5rem',
                     letterSpacing: '-0.01em'
                   }}>
                     Fetch FIX Message from Contract
                   </h2>
-                  <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.95rem' }}>
+                  <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 'clamp(0.875rem, 2vw, 0.95rem)' }}>
                     Retrieve the CBOR-encoded FIX descriptor stored onchain and decode it
                   </p>
                   <div style={{
@@ -2656,8 +2697,10 @@ export default function Page() {
                     border: '1px solid rgba(255,255,255,0.1)',
                     borderRadius: '6px',
                     fontFamily: 'ui-monospace, monospace',
-                    fontSize: '0.85rem',
-                    color: 'rgba(255,255,255,0.7)'
+                    fontSize: 'clamp(0.75rem, 2vw, 0.85rem)',
+                    color: 'rgba(255,255,255,0.7)',
+                    wordBreak: 'break-all',
+                    overflowWrap: 'break-word'
                   }}>
                     <span style={{ color: 'rgba(255,255,255,0.5)' }}>Token: </span>
                     {deployedTokenAddress}
@@ -2702,12 +2745,13 @@ export default function Page() {
                       }`,
                       borderRadius: '6px',
                       padding: '0.875rem 1.5rem',
-                      fontSize: '0.9rem',
+                      fontSize: 'clamp(0.85rem, 2vw, 0.9rem)',
                       fontWeight: '600',
                       cursor: fetchCBORStatus === 'loading' ? 'not-allowed' : 'pointer',
                       width: '100%',
                       transition: 'all 0.2s',
-                      marginBottom: '1.5rem'
+                      marginBottom: '1.5rem',
+                      minHeight: '44px'
                     }}
                   >
                     {fetchCBORStatus === 'loading' ? '⏳ Fetching from Contract...' :
@@ -2734,7 +2778,7 @@ export default function Page() {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                       <div>
                         <div style={{
-                          fontSize: '0.8rem',
+                          fontSize: 'clamp(0.75rem, 1.5vw, 0.8rem)',
                           color: 'rgba(255,255,255,0.5)',
                           marginBottom: '0.75rem',
                           fontWeight: '500',
@@ -2755,15 +2799,18 @@ export default function Page() {
                             background: 'rgba(255,255,255,0.03)',
                             color: 'rgba(255,255,255,0.7)',
                             fontFamily: 'ui-monospace, monospace',
-                            fontSize: '0.75rem',
+                            fontSize: 'clamp(0.7rem, 1.5vw, 0.75rem)',
                             resize: 'vertical',
-                            lineHeight: '1.6'
+                            lineHeight: '1.6',
+                            boxSizing: 'border-box',
+                            wordBreak: 'break-all'
                           }}
                         />
                         <div style={{
-                          fontSize: '0.75rem',
+                          fontSize: 'clamp(0.7rem, 1.5vw, 0.75rem)',
                           color: 'rgba(255,255,255,0.4)',
-                          marginTop: '0.5rem'
+                          marginTop: '0.5rem',
+                          lineHeight: '1.5'
                         }}>
                           This is the canonical CBOR encoding retrieved from the contract&apos;s SSTORE2 data pointer
                         </div>
@@ -2796,10 +2843,11 @@ export default function Page() {
                                 color: decodeMode === 'offchain'
                                   ? 'rgba(59, 130, 246, 0.9)'
                                   : 'rgba(255,255,255,0.6)',
-                                fontSize: '0.875rem',
+                                fontSize: 'clamp(0.8rem, 2vw, 0.875rem)',
                                 fontWeight: '600',
                                 cursor: 'pointer',
-                                transition: 'all 0.2s'
+                                transition: 'all 0.2s',
+                                minHeight: '44px'
                               }}
                             >
                               🔧 Off-chain Decoded
@@ -2819,10 +2867,11 @@ export default function Page() {
                                 color: decodeMode === 'onchain'
                                   ? 'rgba(34, 197, 94, 0.9)'
                                   : 'rgba(255,255,255,0.6)',
-                                fontSize: '0.875rem',
+                                fontSize: 'clamp(0.8rem, 2vw, 0.875rem)',
                                 fontWeight: '600',
                                 cursor: 'pointer',
-                                transition: 'all 0.2s'
+                                transition: 'all 0.2s',
+                                minHeight: '44px'
                               }}
                             >
                               ⛓️ On-chain Human-Readable
@@ -2857,7 +2906,7 @@ export default function Page() {
                                   style={{
                                     flex: 1,
                                     padding: '0.5rem',
-                                    fontSize: '0.8rem',
+                                    fontSize: 'clamp(0.75rem, 1.5vw, 0.8rem)',
                                     background: offchainFormat === 'numeric' 
                                       ? 'rgba(59, 130, 246, 0.15)' 
                                       : 'transparent',
@@ -2869,7 +2918,8 @@ export default function Page() {
                                       ? 'rgba(59, 130, 246, 0.9)'
                                       : 'rgba(255,255,255,0.5)',
                                     cursor: 'pointer',
-                                    transition: 'all 0.2s'
+                                    transition: 'all 0.2s',
+                                    minHeight: '44px'
                                   }}
                                 >
                                   #️⃣ Numeric Tags
@@ -2879,7 +2929,7 @@ export default function Page() {
                                   style={{
                                     flex: 1,
                                     padding: '0.5rem',
-                                    fontSize: '0.8rem',
+                                    fontSize: 'clamp(0.75rem, 1.5vw, 0.8rem)',
                                     background: offchainFormat === 'named' 
                                       ? 'rgba(59, 130, 246, 0.15)' 
                                       : 'transparent',
@@ -2891,7 +2941,8 @@ export default function Page() {
                                       ? 'rgba(59, 130, 246, 0.9)'
                                       : 'rgba(255,255,255,0.5)',
                                     cursor: 'pointer',
-                                    transition: 'all 0.2s'
+                                    transition: 'all 0.2s',
+                                    minHeight: '44px'
                                   }}
                                 >
                                   📝 Tag Names
@@ -2910,16 +2961,19 @@ export default function Page() {
                                   background: 'rgba(59, 130, 246, 0.05)',
                                   color: 'rgba(59, 130, 246, 0.9)',
                                   fontFamily: 'ui-monospace, monospace',
-                                  fontSize: '0.875rem',
+                                  fontSize: 'clamp(0.8rem, 2vw, 0.875rem)',
                                   resize: 'vertical',
                                   lineHeight: '1.6',
-                                  fontWeight: '500'
+                                  fontWeight: '500',
+                                  boxSizing: 'border-box',
+                                  wordBreak: 'break-word'
                                 }}
                               />
                               <div style={{
-                                fontSize: '0.75rem',
+                                fontSize: 'clamp(0.7rem, 1.5vw, 0.75rem)',
                                 color: 'rgba(255,255,255,0.4)',
-                                marginTop: '0.5rem'
+                                marginTop: '0.5rem',
+                                lineHeight: '1.5'
                               }}>
                                 {offchainFormat === 'numeric' 
                                   ? 'Decoded off-chain using fixparser library. Shows numeric tags (e.g., "55=AAPL").'
@@ -2972,16 +3026,19 @@ export default function Page() {
                                       background: 'rgba(34, 197, 94, 0.05)',
                                       color: 'rgba(34, 197, 94, 0.9)',
                                       fontFamily: 'ui-monospace, monospace',
-                                      fontSize: '0.875rem',
+                                      fontSize: 'clamp(0.8rem, 2vw, 0.875rem)',
                                       resize: 'vertical',
                                       lineHeight: '1.6',
-                                      fontWeight: '500'
+                                      fontWeight: '500',
+                                      boxSizing: 'border-box',
+                                      wordBreak: 'break-word'
                                     }}
                                   />
                                   <div style={{
-                                    fontSize: '0.75rem',
+                                    fontSize: 'clamp(0.7rem, 1.5vw, 0.75rem)',
                                     color: 'rgba(255,255,255,0.4)',
-                                    marginTop: '0.5rem'
+                                    marginTop: '0.5rem',
+                                    lineHeight: '1.5'
                                   }}>
                                     Generated entirely on-chain by calling getHumanReadableDescriptor(). Tag names from on-chain FixDictionary contract. Fully trustless and composable with other smart contracts.
                                   </div>
@@ -3003,22 +3060,22 @@ export default function Page() {
         <section style={{ marginBottom: '4rem' }}>
           <div style={{ marginBottom: '3rem' }}>
             <h2 style={{ 
-              fontSize: '1.5rem', 
+              fontSize: 'clamp(1.25rem, 3vw, 1.5rem)', 
               fontWeight: '500',
               marginBottom: '0.5rem',
               letterSpacing: '-0.01em'
             }}>
               How It Works
             </h2>
-            <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.95rem' }}>
+            <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 'clamp(0.875rem, 2vw, 0.95rem)' }}>
               Understanding the encoding process
             </p>
       </div>
           
           <div style={{ 
             display: 'grid', 
-            gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', 
-            gap: '2rem' 
+            gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))', 
+            gap: 'clamp(1.5rem, 3vw, 2rem)' 
           }}>
             {[
               {
@@ -3131,7 +3188,7 @@ export default function Page() {
                   {item.step}
                 </div>
                 <h3 style={{ 
-                  fontSize: '1.125rem',
+                  fontSize: 'clamp(1rem, 2.5vw, 1.125rem)',
                   fontWeight: '500',
                   marginBottom: '0.75rem',
                   color: 'rgba(255,255,255,0.9)'
@@ -3139,7 +3196,7 @@ export default function Page() {
                   {item.title}
                 </h3>
                 <p style={{ 
-                  fontSize: '0.9rem', 
+                  fontSize: 'clamp(0.85rem, 2vw, 0.9rem)', 
                   color: 'rgba(255,255,255,0.5)', 
                   lineHeight: '1.7' 
                 }}>
@@ -3154,18 +3211,18 @@ export default function Page() {
       {/* Footer */}
       <footer style={{ 
         borderTop: '1px solid rgba(255,255,255,0.1)',
-        padding: '3rem 2rem',
+        padding: 'clamp(2rem, 4vw, 3rem) clamp(1rem, 3vw, 2rem)',
         textAlign: 'center'
       }}>
         <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
           <p style={{ 
             color: 'rgba(255,255,255,0.5)',
-            fontSize: '0.875rem',
+            fontSize: 'clamp(0.8rem, 2vw, 0.875rem)',
             marginBottom: '1rem'
           }}>
             Transform FIX descriptors into verifiable onchain commitments
           </p>
-          <div style={{ display: 'flex', justifyContent: 'center', gap: '2rem', fontSize: '0.875rem' }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 'clamp(1rem, 3vw, 2rem)', fontSize: 'clamp(0.8rem, 2vw, 0.875rem)' }}>
               <a 
                 href="https://github.com/swapnilraj/fix-descriptor" 
                 style={{ color: 'rgba(255,255,255,0.4)', transition: 'color 0.2s' }}
