@@ -4,6 +4,7 @@ import Link from 'next/link';
 
 export default function SpecPage() {
   const [activeSection, setActiveSection] = useState<string>('');
+  const [tocOpen, setTocOpen] = useState<boolean>(false);
 
   const sections = [
     { id: 'overview', title: '1. Overview' },
@@ -40,14 +41,14 @@ export default function SpecPage() {
   };
 
   // Component for clickable section headings
-  const SectionHeading = ({ id, children, fontSize = '2rem' }: { id: string; children: React.ReactNode; fontSize?: string }) => (
+  const SectionHeading = ({ id, children, fontSize = 'clamp(1.5rem, 4vw, 2rem)' }: { id: string; children: React.ReactNode; fontSize?: string }) => (
     <h2 
       id={id}
       onClick={() => handleSectionClick(id)}
       style={{ 
         fontSize, 
         fontWeight: '600',
-        marginBottom: '1.5rem',
+        marginBottom: 'clamp(1rem, 3vw, 1.5rem)',
         letterSpacing: '-0.01em',
         cursor: 'pointer',
         position: 'relative',
@@ -89,9 +90,9 @@ export default function SpecPage() {
           id={id}
           onClick={() => handleSectionClick(id)}
           style={{ 
-            fontSize: '1.25rem', 
+            fontSize: 'clamp(1.1rem, 3vw, 1.25rem)', 
             fontWeight: '500', 
-            marginBottom: '1rem', 
+            marginBottom: 'clamp(0.75rem, 2vw, 1rem)', 
             color: 'rgba(255,255,255,0.9)',
             cursor: 'pointer',
             display: 'block',
@@ -125,7 +126,7 @@ export default function SpecPage() {
       );
     }
     return (
-      <h3 style={{ fontSize: '1.25rem', fontWeight: '500', marginBottom: '1rem', color: 'rgba(255,255,255,0.9)' }}>
+      <h3 style={{ fontSize: 'clamp(1.1rem, 3vw, 1.25rem)', fontWeight: '500', marginBottom: 'clamp(0.75rem, 2vw, 1rem)', color: 'rgba(255,255,255,0.9)' }}>
         {children}
       </h3>
     );
@@ -141,16 +142,16 @@ export default function SpecPage() {
         top: 0,
         zIndex: 100
       }}>
-        <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '1.5rem 2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ maxWidth: '1400px', margin: '0 auto', padding: 'clamp(1rem, 3vw, 1.5rem) clamp(1rem, 3vw, 2rem)', display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 'clamp(1rem, 3vw, 2rem)' }}>
           <Link href="/" style={{ 
-            fontSize: '1.25rem', 
+            fontSize: 'clamp(1rem, 3vw, 1.25rem)', 
             fontWeight: '600',
             color: 'rgba(255,255,255,0.9)',
             textDecoration: 'none'
           }}>
             FixDescriptorKit
           </Link>
-          <nav style={{ display: 'flex', gap: '2rem', fontSize: '0.9rem' }}>
+          <nav style={{ display: 'flex', gap: 'clamp(1rem, 3vw, 2rem)', fontSize: 'clamp(0.8rem, 2vw, 0.9rem)' }}>
             <Link href="/" style={{ color: 'rgba(255,255,255,0.6)', textDecoration: 'none' }}>
               Explorer
             </Link>
@@ -161,18 +162,139 @@ export default function SpecPage() {
         </div>
       </header>
 
+      {/* Mobile TOC Section */}
+      {tocOpen && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0, 0, 0, 0.8)',
+          zIndex: 200,
+          display: 'flex',
+          alignItems: 'flex-start',
+          justifyContent: 'center',
+          padding: '2rem',
+          overflowY: 'auto'
+        }}
+        onClick={() => setTocOpen(false)}
+        >
+          <div style={{
+            background: '#0a0a0a',
+            border: '1px solid rgba(255,255,255,0.2)',
+            borderRadius: '12px',
+            padding: 'clamp(1.5rem, 4vw, 2rem)',
+            maxWidth: '500px',
+            width: '100%',
+            maxHeight: '80vh',
+            overflowY: 'auto'
+          }}
+          onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+              <div style={{ fontSize: 'clamp(0.75rem, 2vw, 0.875rem)', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Contents
+              </div>
+              <button
+                onClick={() => setTocOpen(false)}
+                style={{
+                  background: 'rgba(255,255,255,0.1)',
+                  border: '1px solid rgba(255,255,255,0.2)',
+                  borderRadius: '6px',
+                  color: 'rgba(255,255,255,0.9)',
+                  padding: '0.5rem 1rem',
+                  fontSize: 'clamp(0.8rem, 2vw, 0.9rem)',
+                  cursor: 'pointer',
+                  minHeight: '44px'
+                }}
+              >
+                Close
+              </button>
+            </div>
+            {sections.map(section => (
+              <a
+                key={section.id}
+                href={`#${section.id}`}
+                onClick={(e) => {
+                  e.preventDefault();
+                  handleSectionClick(section.id);
+                  setTocOpen(false);
+                }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  padding: 'clamp(0.75rem, 2vw, 0.875rem) clamp(0.75rem, 2vw, 1rem)',
+                  color: activeSection === section.id ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.6)',
+                  fontSize: 'clamp(0.875rem, 2vw, 1rem)',
+                  textDecoration: 'none',
+                  borderLeft: activeSection === section.id ? '3px solid rgba(255,255,255,0.9)' : '3px solid transparent',
+                  paddingLeft: 'clamp(0.75rem, 2vw, 1rem)',
+                  transition: 'all 0.2s',
+                  minHeight: '44px'
+                }}
+              >
+                {section.title}
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Floating TOC Button for Mobile */}
+      <button
+        onClick={() => setTocOpen(true)}
+        style={{
+          position: 'fixed',
+          bottom: 'clamp(1rem, 3vw, 2rem)',
+          right: 'clamp(1rem, 3vw, 2rem)',
+          background: 'rgba(255, 255, 255, 0.1)',
+          backdropFilter: 'blur(10px)',
+          border: '1px solid rgba(255,255,255,0.2)',
+          borderRadius: '50px',
+          color: 'rgba(255,255,255,0.9)',
+          padding: 'clamp(0.75rem, 2vw, 1rem) clamp(1.25rem, 3vw, 1.5rem)',
+          fontSize: 'clamp(0.8rem, 2vw, 0.9rem)',
+          fontWeight: '500',
+          cursor: 'pointer',
+          zIndex: 150,
+          boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+          minHeight: '44px',
+          display: 'none'
+        }}
+        className="mobile-toc-button"
+      >
+        📑 Contents
+      </button>
+
+      <style jsx>{`
+        @media (max-width: 768px) {
+          .mobile-toc-button {
+            display: block !important;
+          }
+          .desktop-sidebar {
+            display: none !important;
+          }
+        }
+        @media (min-width: 769px) {
+          .mobile-toc-button {
+            display: none !important;
+          }
+        }
+      `}</style>
+
       <div style={{ display: 'flex', maxWidth: '1400px', margin: '0 auto' }}>
-        {/* Table of Contents - Sidebar */}
-        <aside style={{ 
+        {/* Table of Contents - Sidebar (Desktop) */}
+        <aside className="desktop-sidebar" style={{ 
           width: '280px', 
-          padding: '3rem 2rem',
+          padding: 'clamp(2rem, 4vw, 3rem) clamp(1rem, 3vw, 2rem)',
           borderRight: '1px solid rgba(255,255,255,0.1)',
           position: 'sticky',
           top: '80px',
           height: 'calc(100vh - 80px)',
           overflowY: 'auto'
         }}>
-          <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.4)', marginBottom: '1rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+          <div style={{ fontSize: 'clamp(0.7rem, 1.5vw, 0.75rem)', color: 'rgba(255,255,255,0.4)', marginBottom: 'clamp(0.75rem, 2vw, 1rem)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
             Contents
           </div>
           {sections.map(section => (
@@ -185,12 +307,12 @@ export default function SpecPage() {
               }}
               style={{
                 display: 'block',
-                padding: '0.5rem 0',
+                padding: 'clamp(0.4rem, 1.5vw, 0.5rem) 0',
                 color: activeSection === section.id ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.5)',
-                fontSize: '0.875rem',
+                fontSize: 'clamp(0.8rem, 1.8vw, 0.875rem)',
                 textDecoration: 'none',
                 borderLeft: activeSection === section.id ? '2px solid rgba(255,255,255,0.9)' : '2px solid transparent',
-                paddingLeft: '1rem',
+                paddingLeft: 'clamp(0.75rem, 2vw, 1rem)',
                 transition: 'all 0.2s'
               }}
             >
@@ -200,32 +322,32 @@ export default function SpecPage() {
         </aside>
 
         {/* Main Content */}
-        <main style={{ flex: 1, padding: '3rem 4rem', maxWidth: '900px' }}>
+        <main style={{ flex: 1, padding: 'clamp(1.5rem, 4vw, 3rem) clamp(1rem, 3vw, 4rem)', maxWidth: 'min(900px, 100%)', width: '100%' }}>
           {/* Title */}
-          <div style={{ marginBottom: '3rem' }}>
+          <div style={{ marginBottom: 'clamp(2rem, 5vw, 3rem)' }}>
             <h1 style={{ 
-              fontSize: '3rem', 
+              fontSize: 'clamp(2rem, 5vw, 3rem)', 
               fontWeight: '600',
-              marginBottom: '1rem',
+              marginBottom: 'clamp(0.75rem, 2vw, 1rem)',
               letterSpacing: '-0.02em',
               lineHeight: '1.1'
             }}>
               FIX Descriptor Specification
             </h1>
             <p style={{ 
-              fontSize: '1.25rem',
+              fontSize: 'clamp(1rem, 3vw, 1.25rem)',
               color: 'rgba(255,255,255,0.6)',
               lineHeight: '1.6'
             }}>
               Canonicalization, CBOR, and Merkle Specification for Onchain FIX Asset Descriptors
             </p>
             <div style={{ 
-              marginTop: '2rem',
-              padding: '1rem 1.5rem',
+              marginTop: 'clamp(1.5rem, 3vw, 2rem)',
+              padding: 'clamp(0.75rem, 2vw, 1rem) clamp(1rem, 3vw, 1.5rem)',
               background: 'rgba(255,255,255,0.05)',
               border: '1px solid rgba(255,255,255,0.1)',
               borderRadius: '6px',
-              fontSize: '0.9rem',
+              fontSize: 'clamp(0.8rem, 2vw, 0.9rem)',
               color: 'rgba(255,255,255,0.7)'
             }}>
               <strong style={{ color: 'rgba(255,255,255,0.9)' }}>Version 1.0</strong> · Last Updated: September 2025
@@ -233,30 +355,33 @@ export default function SpecPage() {
 
             {/* Prominent CTA for Explorer */}
             <div style={{ 
-              marginTop: '2rem',
-              padding: '1.5rem 2rem',
+              marginTop: 'clamp(1.5rem, 3vw, 2rem)',
+              padding: 'clamp(1rem, 3vw, 1.5rem) clamp(1.25rem, 4vw, 2rem)',
               background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(147, 51, 234, 0.1) 100%)',
               border: '1px solid rgba(59, 130, 246, 0.3)',
               borderRadius: '8px',
             }}>
-              <div style={{ fontSize: '1rem', fontWeight: '500', marginBottom: '0.75rem', color: 'rgba(255,255,255,0.9)' }}>
+              <div style={{ fontSize: 'clamp(0.9rem, 2vw, 1rem)', fontWeight: '500', marginBottom: 'clamp(0.5rem, 2vw, 0.75rem)', color: 'rgba(255,255,255,0.9)' }}>
                 🎮 First time reading this spec?
               </div>
-              <p style={{ fontSize: '0.95rem', color: 'rgba(255,255,255,0.7)', lineHeight: '1.6', marginBottom: '1rem' }}>
+              <p style={{ fontSize: 'clamp(0.85rem, 2vw, 0.95rem)', color: 'rgba(255,255,255,0.7)', lineHeight: '1.6', marginBottom: 'clamp(0.75rem, 2vw, 1rem)' }}>
                 Try the interactive explorer to see each step of the transformation process in action. 
                 Visualize how FIX messages become canonical trees, CBOR bytes, and Merkle commitments.
               </p>
               <Link href="/" style={{
-                display: 'inline-block',
-                padding: '0.75rem 1.5rem',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: 'clamp(0.65rem, 2vw, 0.75rem) clamp(1.25rem, 3vw, 1.5rem)',
                 background: 'rgba(59, 130, 246, 0.2)',
                 border: '1px solid rgba(59, 130, 246, 0.4)',
                 borderRadius: '6px',
                 color: 'rgba(59, 130, 246, 1)',
                 textDecoration: 'none',
                 fontWeight: '500',
-                fontSize: '0.95rem',
-                transition: 'all 0.2s'
+                fontSize: 'clamp(0.85rem, 2vw, 0.95rem)',
+                transition: 'all 0.2s',
+                minHeight: '44px'
               }}>
                 Launch Interactive Explorer →
               </Link>
@@ -264,7 +389,7 @@ export default function SpecPage() {
           </div>
 
           {/* Section 1: Overview */}
-          <section style={{ marginBottom: '4rem' }}>
+          <section style={{ marginBottom: 'clamp(2rem, 5vw, 4rem)' }}>
             <SectionHeading id="overview">
               1. Overview
             </SectionHeading>
@@ -272,7 +397,7 @@ export default function SpecPage() {
             <SubsectionHeading id="problem-statement">
               1.1 Problem Statement
             </SubsectionHeading>
-            <p style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', marginBottom: '2rem' }}>
+            <p style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', marginBottom: 'clamp(1.5rem, 3vw, 2rem)', fontSize: 'clamp(0.9rem, 2vw, 1rem)' }}>
               When tokenizing securities, traditional financial systems need standardized instrument data. 
               The <strong>Financial Information eXchange (FIX) Protocol</strong> is the de facto standard 
               for describing financial instruments in traditional markets. However, today every blockchain 
@@ -283,7 +408,7 @@ export default function SpecPage() {
             <SubsectionHeading id="solution">
               1.2 Solution
             </SubsectionHeading>
-            <p style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', marginBottom: '2rem' }}>
+            <p style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', marginBottom: 'clamp(1.5rem, 3vw, 2rem)', fontSize: 'clamp(0.9rem, 2vw, 1rem)' }}>
               This specification defines how to <strong>embed FIX descriptors directly in token contracts</strong> using 
               canonical CBOR encoding and Merkle commitments. This enables automatic integration with existing 
               financial infrastructure while maintaining onchain verifiability—without requiring any onchain FIX parsing.
@@ -292,7 +417,7 @@ export default function SpecPage() {
             <SubsectionHeading id="what-this-covers">
               1.3 What This Spec Covers
             </SubsectionHeading>
-            <ul style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', marginBottom: '2rem', paddingLeft: '1.5rem' }}>
+            <ul style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', marginBottom: 'clamp(1.5rem, 3vw, 2rem)', paddingLeft: 'clamp(1rem, 3vw, 1.5rem)', fontSize: 'clamp(0.9rem, 2vw, 1rem)' }}>
               <li style={{ marginBottom: '0.5rem' }}>Converting FIX messages to canonical trees</li>
               <li style={{ marginBottom: '0.5rem' }}>CBOR encoding rules for deterministic representation</li>
               <li style={{ marginBottom: '0.5rem' }}>Merkle commitment generation for efficient field verification</li>
@@ -304,7 +429,7 @@ export default function SpecPage() {
               1.4 What This Spec Does NOT Cover
             </SubsectionHeading>
             <div style={{ 
-              padding: '1.5rem',
+              padding: 'clamp(1rem, 3vw, 1.5rem)',
               background: 'rgba(239, 68, 68, 0.1)',
               border: '1px solid rgba(239, 68, 68, 0.2)',
               borderRadius: '8px',
@@ -322,7 +447,7 @@ export default function SpecPage() {
               1.5 How It Works (High Level)
             </SubsectionHeading>
             <div style={{ 
-              padding: '1.5rem',
+              padding: 'clamp(1rem, 3vw, 1.5rem)',
               background: 'rgba(255,255,255,0.03)',
               border: '1px solid rgba(255,255,255,0.1)',
               borderRadius: '8px',
@@ -338,7 +463,7 @@ export default function SpecPage() {
             </div>
 
             <div style={{ 
-              padding: '1.5rem',
+              padding: 'clamp(1rem, 3vw, 1.5rem)',
               background: 'rgba(255,255,255,0.03)',
               border: '1px solid rgba(255,255,255,0.1)',
               borderRadius: '8px',
@@ -355,7 +480,7 @@ export default function SpecPage() {
             </div>
 
             <div style={{ 
-              padding: '1.5rem',
+              padding: 'clamp(1rem, 3vw, 1.5rem)',
               background: 'rgba(255,255,255,0.03)',
               border: '1px solid rgba(255,255,255,0.1)',
               borderRadius: '8px'
@@ -372,12 +497,12 @@ export default function SpecPage() {
           </section>
 
           {/* Section 2: Running Example */}
-          <section style={{ marginBottom: '4rem' }}>
+          <section style={{ marginBottom: 'clamp(2rem, 5vw, 4rem)' }}>
             <SectionHeading id="running-example">
               2. Running Example: US Treasury Bond
             </SectionHeading>
 
-            <p style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', marginBottom: '2rem' }}>
+            <p style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', marginBottom: 'clamp(1.5rem, 3vw, 2rem)', fontSize: 'clamp(0.9rem, 2vw, 1rem)' }}>
               Throughout this specification, we&apos;ll reference this concrete example: 
               a <strong>US Treasury Bond</strong> maturing on November 15, 2030, with a 4.25% coupon rate.
             </p>
@@ -386,12 +511,12 @@ export default function SpecPage() {
               FIX Message Input
             </SubsectionHeading>
             <div style={{ 
-              padding: '1.5rem',
+              padding: 'clamp(1rem, 3vw, 1.5rem)',
               background: 'rgba(255,255,255,0.03)',
               border: '1px solid rgba(255,255,255,0.1)',
               borderRadius: '8px',
               fontFamily: 'ui-monospace, monospace',
-              fontSize: '0.85rem',
+              fontSize: 'clamp(0.7rem, 1.8vw, 0.85rem)',
               marginBottom: '2rem',
               overflowX: 'auto'
             }}>
@@ -422,12 +547,12 @@ export default function SpecPage() {
               After parsing and canonicalization (sorting keys, removing session fields):
             </p>
             <div style={{ 
-              padding: '1.5rem',
+              padding: 'clamp(1rem, 3vw, 1.5rem)',
               background: 'rgba(255,255,255,0.03)',
               border: '1px solid rgba(255,255,255,0.1)',
               borderRadius: '8px',
               fontFamily: 'ui-monospace, monospace',
-              fontSize: '0.85rem',
+              fontSize: 'clamp(0.7rem, 1.8vw, 0.85rem)',
               marginBottom: '2rem',
               overflowX: 'auto'
             }}>
@@ -458,16 +583,16 @@ export default function SpecPage() {
               This tree is encoded to canonical CBOR (deterministic binary format):
             </p>
             <div style={{ 
-              padding: '1.5rem',
+              padding: 'clamp(1rem, 3vw, 1.5rem)',
               background: 'rgba(255,255,255,0.03)',
               border: '1px solid rgba(255,255,255,0.1)',
               borderRadius: '8px',
               marginBottom: '2rem'
             }}>
-              <div style={{ color: 'rgba(255,255,255,0.8)', marginBottom: '0.75rem', fontSize: '0.9rem' }}>
+              <div style={{ color: 'rgba(255,255,255,0.8)', marginBottom: '0.75rem', fontSize: 'clamp(0.8rem, 2vw, 0.9rem)' }}>
                 <strong>Size:</strong> ~243 bytes
               </div>
-              <div style={{ color: 'rgba(255,255,255,0.8)', fontSize: '0.9rem' }}>
+              <div style={{ color: 'rgba(255,255,255,0.8)', fontSize: 'clamp(0.8rem, 2vw, 0.9rem)' }}>
                 <strong>Format:</strong> CBOR map with integer keys (sorted), text string values
               </div>
             </div>
@@ -479,12 +604,12 @@ export default function SpecPage() {
               Each field becomes a Merkle leaf. Example paths:
             </p>
             <div style={{ 
-              padding: '1.5rem',
+              padding: 'clamp(1rem, 3vw, 1.5rem)',
               background: 'rgba(255,255,255,0.03)',
               border: '1px solid rgba(255,255,255,0.1)',
               borderRadius: '8px',
               fontFamily: 'ui-monospace, monospace',
-              fontSize: '0.85rem',
+              fontSize: 'clamp(0.7rem, 1.8vw, 0.85rem)',
               marginBottom: '1rem'
             }}>
               <div style={{ color: 'rgba(255,255,255,0.8)', marginBottom: '0.75rem' }}>
@@ -500,7 +625,7 @@ export default function SpecPage() {
                 [454, 1, 456] → &quot;4&quot; = keccak256(CBOR.encode([454, 1, 456]) || &quot;4&quot;)
               </div>
             </div>
-            <p style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', marginBottom: '2rem' }}>
+            <p style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', marginBottom: 'clamp(1.5rem, 3vw, 2rem)', fontSize: 'clamp(0.9rem, 2vw, 1rem)' }}>
               All leaves are sorted and combined into a binary Merkle tree, producing a <strong>fixRoot</strong>.
             </p>
 
@@ -508,12 +633,12 @@ export default function SpecPage() {
               Onchain Storage
             </SubsectionHeading>
             <div style={{ 
-              padding: '1.5rem',
+              padding: 'clamp(1rem, 3vw, 1.5rem)',
               background: 'rgba(255,255,255,0.03)',
               border: '1px solid rgba(255,255,255,0.1)',
               borderRadius: '8px',
               fontFamily: 'ui-monospace, monospace',
-              fontSize: '0.85rem',
+              fontSize: 'clamp(0.7rem, 1.8vw, 0.85rem)',
               marginBottom: '2rem'
             }}>
               <pre style={{ margin: 0, color: 'rgba(255,255,255,0.9)', lineHeight: '1.7' }}>{`FixDescriptor {
@@ -527,7 +652,7 @@ export default function SpecPage() {
             </div>
 
             <div style={{ 
-              padding: '1.5rem',
+              padding: 'clamp(1rem, 3vw, 1.5rem)',
               background: 'rgba(59, 130, 246, 0.1)',
               border: '1px solid rgba(59, 130, 246, 0.2)',
               borderRadius: '8px'
@@ -543,12 +668,12 @@ export default function SpecPage() {
           </section>
 
           {/* Section 3: Terminology */}
-          <section style={{ marginBottom: '4rem' }}>
+          <section style={{ marginBottom: 'clamp(2rem, 5vw, 4rem)' }}>
             <SectionHeading id="terminology">
               3. Terminology and Notation
             </SectionHeading>
 
-            <div style={{ display: 'grid', gap: '1.5rem' }}>
+            <div style={{ display: 'grid', gap: 'clamp(1rem, 3vw, 1.5rem)' }}>
               {[
                 {
                   term: 'Descriptor',
@@ -592,7 +717,7 @@ export default function SpecPage() {
                 }
               ].map((item, idx) => (
                 <div key={idx} style={{ 
-                  padding: '1.5rem',
+                  padding: 'clamp(1rem, 3vw, 1.5rem)',
                   background: 'rgba(255,255,255,0.03)',
                   border: '1px solid rgba(255,255,255,0.1)',
                   borderRadius: '8px'
@@ -628,12 +753,12 @@ export default function SpecPage() {
           </section>
 
           {/* Section 4: Architecture Overview */}
-          <section style={{ marginBottom: '4rem' }}>
+          <section style={{ marginBottom: 'clamp(2rem, 5vw, 4rem)' }}>
             <SectionHeading id="architecture">
               4. Architecture Overview
             </SectionHeading>
 
-            <p style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', marginBottom: '2rem' }}>
+            <p style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', marginBottom: 'clamp(1.5rem, 3vw, 2rem)', fontSize: 'clamp(0.9rem, 2vw, 1rem)' }}>
               Before diving into the detailed specifications, here&apos;s the big picture of how 
               FIX descriptors flow from input to onchain storage:
             </p>
@@ -696,7 +821,7 @@ export default function SpecPage() {
               Key Components
             </SubsectionHeading>
 
-            <div style={{ display: 'grid', gap: '1rem', marginBottom: '2rem' }}>
+            <div style={{ display: 'grid', gap: 'clamp(0.75rem, 2vw, 1rem)', marginBottom: 'clamp(1.5rem, 3vw, 2rem)' }}>
               {[
                 {
                   title: '1. FIX Message → Canonical Tree',
@@ -758,7 +883,7 @@ export default function SpecPage() {
             </ul>
 
             <div style={{ 
-              padding: '1.5rem',
+              padding: 'clamp(1rem, 3vw, 1.5rem)',
               background: 'rgba(59, 130, 246, 0.1)',
               border: '1px solid rgba(59, 130, 246, 0.2)',
               borderRadius: '8px'
@@ -774,7 +899,7 @@ export default function SpecPage() {
           </section>
 
           {/* Section 5: Descriptor Content */}
-          <section style={{ marginBottom: '4rem' }}>
+          <section style={{ marginBottom: 'clamp(2rem, 5vw, 4rem)' }}>
             <SectionHeading id="descriptor-content">
               5. Descriptor Content
             </SectionHeading>
@@ -785,7 +910,7 @@ export default function SpecPage() {
             <p style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', marginBottom: '1rem' }}>
               Business and instrument fields such as:
             </p>
-            <ul style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', marginBottom: '2rem', paddingLeft: '1.5rem' }}>
+            <ul style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', marginBottom: 'clamp(1.5rem, 3vw, 2rem)', paddingLeft: 'clamp(1rem, 3vw, 1.5rem)', fontSize: 'clamp(0.9rem, 2vw, 1rem)' }}>
               <li style={{ marginBottom: '0.5rem' }}><strong>Identification:</strong> 48 (SecurityID), 22 (SecurityIDSource), 55 (Symbol), 454 (SecurityAltID group)</li>
               <li style={{ marginBottom: '0.5rem' }}><strong>Classification:</strong> 167 (SecurityType), 461 (CFICode)</li>
               <li style={{ marginBottom: '0.5rem' }}><strong>Economics/Terms:</strong> 15 (Currency), 541 (MaturityDate), 223 (CouponRate)</li>
@@ -796,7 +921,7 @@ export default function SpecPage() {
               5.2 Excluded Fields
             </SubsectionHeading>
             <div style={{ 
-              padding: '1.5rem',
+              padding: 'clamp(1rem, 3vw, 1.5rem)',
               background: 'rgba(239, 68, 68, 0.1)',
               border: '1px solid rgba(239, 68, 68, 0.2)',
               borderRadius: '8px',
@@ -817,7 +942,7 @@ export default function SpecPage() {
               consistency across implementations:
             </p>
             <div style={{ 
-              padding: '1.5rem',
+              padding: 'clamp(1rem, 3vw, 1.5rem)',
               background: 'rgba(255,255,255,0.03)',
               border: '1px solid rgba(255,255,255,0.1)',
               borderRadius: '8px',
@@ -836,7 +961,7 @@ export default function SpecPage() {
           </section>
 
           {/* Section 6: Canonical Tree Model */}
-          <section style={{ marginBottom: '4rem' }}>
+          <section style={{ marginBottom: 'clamp(2rem, 5vw, 4rem)' }}>
             <SectionHeading id="canonical-tree">
               6. Canonical Tree Model
             </SectionHeading>
@@ -853,12 +978,12 @@ export default function SpecPage() {
               Input FIX (simplified):
             </p>
             <div style={{ 
-              padding: '1.5rem',
+              padding: 'clamp(1rem, 3vw, 1.5rem)',
               background: 'rgba(255,255,255,0.03)',
               border: '1px solid rgba(255,255,255,0.1)',
               borderRadius: '8px',
               fontFamily: 'ui-monospace, monospace',
-              fontSize: '0.85rem',
+              fontSize: 'clamp(0.7rem, 1.8vw, 0.85rem)',
               marginBottom: '1rem'
             }}>
               <pre style={{ margin: 0, color: 'rgba(255,255,255,0.9)', lineHeight: '1.7' }}>{`55=USTB-2030-11-15
@@ -871,12 +996,12 @@ export default function SpecPage() {
               Canonical Tree (JSON representation):
             </p>
             <div style={{ 
-              padding: '1.5rem',
+              padding: 'clamp(1rem, 3vw, 1.5rem)',
               background: 'rgba(255,255,255,0.03)',
               border: '1px solid rgba(255,255,255,0.1)',
               borderRadius: '8px',
               fontFamily: 'ui-monospace, monospace',
-              fontSize: '0.85rem',
+              fontSize: 'clamp(0.7rem, 1.8vw, 0.85rem)',
               marginBottom: '2rem'
             }}>
               <pre style={{ margin: 0, color: 'rgba(255,255,255,0.9)', lineHeight: '1.7' }}>{`{
@@ -905,7 +1030,7 @@ export default function SpecPage() {
 
             <div style={{ marginBottom: '2rem' }}>
               <div style={{ 
-                padding: '1.5rem',
+                padding: 'clamp(1rem, 3vw, 1.5rem)',
                 background: 'rgba(255,255,255,0.03)',
                 border: '1px solid rgba(255,255,255,0.1)',
                 borderRadius: '8px',
@@ -927,7 +1052,7 @@ export default function SpecPage() {
               </div>
 
               <div style={{ 
-                padding: '1.5rem',
+                padding: 'clamp(1rem, 3vw, 1.5rem)',
                 background: 'rgba(255,255,255,0.03)',
                 border: '1px solid rgba(255,255,255,0.1)',
                 borderRadius: '8px'
@@ -951,7 +1076,7 @@ export default function SpecPage() {
             <SubsectionHeading id="mandatory-rules">
               Mandatory Rules
             </SubsectionHeading>
-            <ol style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', paddingLeft: '1.5rem' }}>
+            <ol style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', paddingLeft: 'clamp(1rem, 3vw, 1.5rem)', fontSize: 'clamp(0.9rem, 2vw, 1rem)' }}>
               <li style={{ marginBottom: '1rem' }}>
                 Each <strong>map key</strong> is the integer FIX tag
               </li>
@@ -971,7 +1096,7 @@ export default function SpecPage() {
           </section>
 
           {/* Section 7: CBOR Encoding */}
-          <section style={{ marginBottom: '4rem' }}>
+          <section style={{ marginBottom: 'clamp(2rem, 5vw, 4rem)' }}>
             <SectionHeading id="cbor-encoding">
               7. Canonical CBOR Encoding
             </SectionHeading>
@@ -980,7 +1105,7 @@ export default function SpecPage() {
               The canonical tree is serialized to CBOR using canonical form:
             </p>
 
-            <div style={{ display: 'grid', gap: '1rem', marginBottom: '2rem' }}>
+            <div style={{ display: 'grid', gap: 'clamp(0.75rem, 2vw, 1rem)', marginBottom: 'clamp(1.5rem, 3vw, 2rem)' }}>
               {[
                 { label: 'Top Level', value: 'CBOR map ({}), keys = unsigned integers (FIX tags), sorted ascending' },
                 { label: 'Scalar Value', value: 'CBOR text string with exact FIX value bytes (UTF-8). No reformatting' },
@@ -1016,7 +1141,7 @@ export default function SpecPage() {
             </div>
 
             <div style={{ 
-              padding: '1.5rem',
+              padding: 'clamp(1rem, 3vw, 1.5rem)',
               background: 'rgba(34, 197, 94, 0.1)',
               border: '1px solid rgba(34, 197, 94, 0.2)',
               borderRadius: '8px'
@@ -1029,7 +1154,7 @@ export default function SpecPage() {
           </section>
 
           {/* Section 8: Merkle Commitment */}
-          <section style={{ marginBottom: '4rem' }}>
+          <section style={{ marginBottom: 'clamp(2rem, 5vw, 4rem)' }}>
             <SectionHeading id="merkle-commitment">
               8. Merkle Commitment
             </SectionHeading>
@@ -1042,7 +1167,7 @@ export default function SpecPage() {
               Each leaf commits to a (path, valueBytes) pair. Let&apos;s start with examples:
             </p>
             <div style={{ 
-              padding: '1.5rem',
+              padding: 'clamp(1rem, 3vw, 1.5rem)',
               background: 'rgba(255,255,255,0.03)',
               border: '1px solid rgba(255,255,255,0.1)',
               borderRadius: '8px',
@@ -1057,7 +1182,7 @@ export default function SpecPage() {
               <div style={{ color: 'rgba(255,255,255,0.8)' }}>[453, 0, 802, 2, 523] → Nested group example</div>
             </div>
 
-            <p style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', marginBottom: '2rem' }}>
+            <p style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', marginBottom: 'clamp(1.5rem, 3vw, 2rem)', fontSize: 'clamp(0.9rem, 2vw, 1rem)' }}>
               <strong>Path encoding rules:</strong> Each path is an array of unsigned integers, encoded as canonical CBOR. 
               Paths are used for both Merkle leaves and verification.
             </p>
@@ -1066,7 +1191,7 @@ export default function SpecPage() {
               8.2 Leaf Hash
             </SubsectionHeading>
             <div style={{ 
-              padding: '1.5rem',
+              padding: 'clamp(1rem, 3vw, 1.5rem)',
               background: 'rgba(255,255,255,0.05)',
               border: '1px solid rgba(255,255,255,0.2)',
               borderRadius: '8px',
@@ -1078,7 +1203,7 @@ export default function SpecPage() {
             }}>
               leaf = keccak256( pathCBOR || valueBytes )
             </div>
-            <ul style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', marginBottom: '2rem', paddingLeft: '1.5rem' }}>
+            <ul style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', marginBottom: 'clamp(1.5rem, 3vw, 2rem)', paddingLeft: 'clamp(1rem, 3vw, 1.5rem)', fontSize: 'clamp(0.9rem, 2vw, 1rem)' }}>
               <li style={{ marginBottom: '0.5rem' }}><code style={{ background: 'rgba(255,255,255,0.1)', padding: '0.2rem 0.5rem', borderRadius: '3px' }}>pathCBOR</code>: the canonical CBOR bytes of the path array</li>
               <li><code style={{ background: 'rgba(255,255,255,0.1)', padding: '0.2rem 0.5rem', borderRadius: '3px' }}>valueBytes</code>: the exact FIX value bytes (UTF-8 string payload, no CBOR framing)</li>
             </ul>
@@ -1089,7 +1214,7 @@ export default function SpecPage() {
             <p style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', marginBottom: '1.5rem' }}>
               Produce one leaf per <strong>present field</strong>:
             </p>
-            <ul style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', marginBottom: '2rem', paddingLeft: '1.5rem' }}>
+            <ul style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', marginBottom: 'clamp(1.5rem, 3vw, 2rem)', paddingLeft: 'clamp(1rem, 3vw, 1.5rem)', fontSize: 'clamp(0.9rem, 2vw, 1rem)' }}>
               <li style={{ marginBottom: '0.5rem' }}>Scalars: one leaf for each (tag, value)</li>
               <li>Each group entry: one leaf per present field inside that entry (with its path including the group index)</li>
             </ul>
@@ -1115,7 +1240,7 @@ export default function SpecPage() {
               A Merkle proof is the usual vector of sibling hashes from the leaf to the root. The verifier needs:
             </p>
             <div style={{ 
-              padding: '1.5rem',
+              padding: 'clamp(1rem, 3vw, 1.5rem)',
               background: 'rgba(255,255,255,0.03)',
               border: '1px solid rgba(255,255,255,0.1)',
               borderRadius: '8px',
@@ -1132,7 +1257,7 @@ export default function SpecPage() {
           </section>
 
           {/* Section 9: Onchain Representation */}
-          <section style={{ marginBottom: '4rem' }}>
+          <section style={{ marginBottom: 'clamp(2rem, 5vw, 4rem)' }}>
             <SectionHeading id="onchain-representation">
               9. Onchain Representation
             </SectionHeading>
@@ -1150,12 +1275,12 @@ export default function SpecPage() {
               9.2 Descriptor Struct
             </SubsectionHeading>
             <div style={{ 
-              padding: '1.5rem',
+              padding: 'clamp(1rem, 3vw, 1.5rem)',
               background: 'rgba(255,255,255,0.03)',
               border: '1px solid rgba(255,255,255,0.1)',
               borderRadius: '8px',
               fontFamily: 'ui-monospace, monospace',
-              fontSize: '0.85rem',
+              fontSize: 'clamp(0.7rem, 1.8vw, 0.85rem)',
               marginBottom: '2rem',
               overflowX: 'auto'
             }}>
@@ -1174,12 +1299,12 @@ export default function SpecPage() {
               9.3 Standard Interface
             </SubsectionHeading>
             <div style={{ 
-              padding: '1.5rem',
+              padding: 'clamp(1rem, 3vw, 1.5rem)',
               background: 'rgba(255,255,255,0.03)',
               border: '1px solid rgba(255,255,255,0.1)',
               borderRadius: '8px',
               fontFamily: 'ui-monospace, monospace',
-              fontSize: '0.85rem',
+              fontSize: 'clamp(0.7rem, 1.8vw, 0.85rem)',
               marginBottom: '2rem',
               overflowX: 'auto'
             }}>
@@ -1198,7 +1323,7 @@ export default function SpecPage() {
             <SubsectionHeading id="cbor-storage">
               9.4 CBOR Storage (SSTORE2 Pattern)
             </SubsectionHeading>
-            <ul style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', marginBottom: '2rem', paddingLeft: '1.5rem' }}>
+            <ul style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', marginBottom: 'clamp(1.5rem, 3vw, 2rem)', paddingLeft: 'clamp(1rem, 3vw, 1.5rem)', fontSize: 'clamp(0.9rem, 2vw, 1rem)' }}>
               <li style={{ marginBottom: '0.75rem' }}>The CBOR is deployed as the runtime bytecode of a minimal data contract (prefixed with a STOP byte)</li>
               <li style={{ marginBottom: '0.75rem' }}>Anyone can retrieve bytes via <code style={{ background: 'rgba(255,255,255,0.1)', padding: '0.2rem 0.5rem', borderRadius: '3px', fontSize: '0.9em' }}>eth_getCode(fixCBORPtr)</code></li>
               <li>Optionally expose a chunk retrieval function using EXTCODECOPY</li>
@@ -1208,12 +1333,12 @@ export default function SpecPage() {
               9.5 Events and Versioning
             </SubsectionHeading>
             <div style={{ 
-              padding: '1.5rem',
+              padding: 'clamp(1rem, 3vw, 1.5rem)',
               background: 'rgba(255,255,255,0.03)',
               border: '1px solid rgba(255,255,255,0.1)',
               borderRadius: '8px',
               fontFamily: 'ui-monospace, monospace',
-              fontSize: '0.85rem',
+              fontSize: 'clamp(0.7rem, 1.8vw, 0.85rem)',
               marginBottom: '1rem'
             }}>
               <div style={{ color: 'rgba(255,255,255,0.8)', marginBottom: '0.75rem' }}>
@@ -1226,7 +1351,7 @@ export default function SpecPage() {
           </section>
 
           {/* Section 10: Human-Readable Output */}
-          <section style={{ marginBottom: '4rem' }}>
+          <section style={{ marginBottom: 'clamp(2rem, 5vw, 4rem)' }}>
             <SectionHeading id="human-readable">
               10. Human-Readable Output
             </SectionHeading>
@@ -1242,7 +1367,7 @@ export default function SpecPage() {
             </SubsectionHeading>
 
             <div style={{ 
-              padding: '1.5rem',
+              padding: 'clamp(1rem, 3vw, 1.5rem)',
               background: 'rgba(255,255,255,0.03)',
               borderRadius: '12px',
               marginBottom: '2rem',
@@ -1272,30 +1397,32 @@ export default function SpecPage() {
 
             <div style={{ marginBottom: '2rem' }}>
               <div style={{
-                padding: '1.5rem',
+                padding: 'clamp(1rem, 3vw, 1.5rem)',
                 background: 'rgba(255,255,255,0.03)',
                 borderRadius: '12px',
                 marginBottom: '1rem',
                 fontFamily: 'ui-monospace, monospace',
-                fontSize: '0.875rem',
-                border: '1px solid rgba(255,255,255,0.1)'
+                fontSize: 'clamp(0.75rem, 1.8vw, 0.875rem)',
+                border: '1px solid rgba(255,255,255,0.1)',
+                overflowX: 'auto'
               }}>
                 <div style={{ color: 'rgba(255,255,255,0.5)', marginBottom: '0.75rem' }}>Scalar Fields:</div>
-                <div style={{ color: 'rgba(34, 197, 94, 0.9)' }}>
+                <div style={{ color: 'rgba(34, 197, 94, 0.9)', whiteSpace: 'nowrap' }}>
                   Symbol=AAPL|SecurityID=US0378331005|SecurityIDSource=1|SecurityType=CS|Currency=USD
                 </div>
               </div>
 
               <div style={{
-                padding: '1.5rem',
+                padding: 'clamp(1rem, 3vw, 1.5rem)',
                 background: 'rgba(255,255,255,0.03)',
                 borderRadius: '12px',
                 fontFamily: 'ui-monospace, monospace',
-                fontSize: '0.875rem',
-                border: '1px solid rgba(255,255,255,0.1)'
+                fontSize: 'clamp(0.75rem, 1.8vw, 0.875rem)',
+                border: '1px solid rgba(255,255,255,0.1)',
+                overflowX: 'auto'
               }}>
                 <div style={{ color: 'rgba(255,255,255,0.5)', marginBottom: '0.75rem' }}>Repeating Groups:</div>
-                <div style={{ color: 'rgba(34, 197, 94, 0.9)' }}>
+                <div style={{ color: 'rgba(34, 197, 94, 0.9)', whiteSpace: 'nowrap' }}>
                   NoSecurityAltID=2|[0]SecurityAltID=000402AJ1|[0]SecurityAltIDSource=1|[1]SecurityAltID=US000402AJ19|[1]SecurityAltIDSource=4
                 </div>
               </div>
@@ -1321,7 +1448,7 @@ export default function SpecPage() {
             </p>
 
             <div style={{ 
-              padding: '1.5rem',
+              padding: 'clamp(1rem, 3vw, 1.5rem)',
               background: 'rgba(59, 130, 246, 0.05)',
               borderRadius: '12px',
               marginBottom: '1.5rem',
@@ -1340,7 +1467,7 @@ export default function SpecPage() {
             </div>
 
             <div style={{ 
-              padding: '1.5rem',
+              padding: 'clamp(1rem, 3vw, 1.5rem)',
               background: 'rgba(34, 197, 94, 0.05)',
               borderRadius: '12px',
               border: '1px solid rgba(34, 197, 94, 0.2)'
@@ -1360,7 +1487,7 @@ export default function SpecPage() {
           </section>
 
           {/* Section 11: FIX Dictionary Architecture */}
-          <section style={{ marginBottom: '4rem' }}>
+          <section style={{ marginBottom: 'clamp(2rem, 5vw, 4rem)' }}>
             <SectionHeading id="fix-dictionary">
               11. FIX Dictionary Architecture
             </SectionHeading>
@@ -1379,7 +1506,7 @@ export default function SpecPage() {
             </p>
 
             <div style={{
-              padding: '1.5rem',
+              padding: 'clamp(1rem, 3vw, 1.5rem)',
               background: 'rgba(255,255,255,0.03)',
               borderRadius: '12px',
               marginBottom: '2rem',
@@ -1401,7 +1528,7 @@ export default function SpecPage() {
             </p>
 
             <div style={{
-              padding: '1.5rem',
+              padding: 'clamp(1rem, 3vw, 1.5rem)',
               background: 'rgba(255,255,255,0.03)',
               borderRadius: '12px',
               marginBottom: '2rem',
@@ -1425,7 +1552,7 @@ export default function SpecPage() {
             </SubsectionHeading>
 
             <div style={{ 
-              padding: '1.5rem',
+              padding: 'clamp(1rem, 3vw, 1.5rem)',
               background: 'rgba(255,255,255,0.03)',
               borderRadius: '12px',
               marginBottom: '2rem',
@@ -1468,7 +1595,7 @@ export default function SpecPage() {
             </p>
 
             <div style={{ 
-              padding: '1.5rem',
+              padding: 'clamp(1rem, 3vw, 1.5rem)',
               background: 'rgba(255,255,255,0.03)',
               borderRadius: '12px',
               marginBottom: '2rem',
@@ -1486,7 +1613,7 @@ export default function SpecPage() {
           </section>
 
           {/* Section 12: Verification (was 10) */}
-          <section style={{ marginBottom: '4rem' }}>
+          <section style={{ marginBottom: 'clamp(2rem, 5vw, 4rem)' }}>
             <SectionHeading id="verification">
               12. Onchain Verification
             </SectionHeading>
@@ -1495,12 +1622,12 @@ export default function SpecPage() {
               Library Interface
             </SubsectionHeading>
             <div style={{ 
-              padding: '1.5rem',
+              padding: 'clamp(1rem, 3vw, 1.5rem)',
               background: 'rgba(255,255,255,0.03)',
               border: '1px solid rgba(255,255,255,0.1)',
               borderRadius: '8px',
               fontFamily: 'ui-monospace, monospace',
-              fontSize: '0.85rem',
+              fontSize: 'clamp(0.7rem, 1.8vw, 0.85rem)',
               marginBottom: '2rem',
               overflowX: 'auto'
             }}>
@@ -1518,7 +1645,7 @@ export default function SpecPage() {
             <SubsectionHeading id="verification-algorithm">
               Verification Algorithm
             </SubsectionHeading>
-            <ol style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', paddingLeft: '1.5rem' }}>
+            <ol style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', paddingLeft: 'clamp(1rem, 3vw, 1.5rem)', fontSize: 'clamp(0.9rem, 2vw, 1rem)' }}>
               <li style={{ marginBottom: '0.75rem' }}>
                 <code style={{ background: 'rgba(255,255,255,0.1)', padding: '0.2rem 0.5rem', borderRadius: '3px', fontSize: '0.9em' }}>
                   bytes32 leaf = keccak256(abi.encodePacked(pathCBOR, value))
@@ -1533,12 +1660,12 @@ export default function SpecPage() {
           </section>
 
           {/* Section 11: Onchain Retrieval */}
-          <section style={{ marginBottom: '4rem' }}>
+          <section style={{ marginBottom: 'clamp(2rem, 5vw, 4rem)' }}>
             <SectionHeading id="retrieval">
               13. Offchain Retrieval
             </SectionHeading>
 
-            <p style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', marginBottom: '2rem' }}>
+            <p style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', marginBottom: 'clamp(1.5rem, 3vw, 2rem)', fontSize: 'clamp(0.9rem, 2vw, 1rem)' }}>
               Once a FIX descriptor is committed onchain, participants MUST be able to retrieve
               the canonical CBOR representation and reconstruct the original descriptor tree. This
               section specifies the retrieval interface and decoding requirements.
@@ -1553,12 +1680,12 @@ export default function SpecPage() {
               access to accommodate large descriptors.
             </p>
             <div style={{
-              padding: '1.5rem',
+              padding: 'clamp(1rem, 3vw, 1.5rem)',
               background: 'rgba(255,255,255,0.03)',
               border: '1px solid rgba(255,255,255,0.1)',
               borderRadius: '8px',
               fontFamily: 'ui-monospace, monospace',
-              fontSize: '0.85rem',
+              fontSize: 'clamp(0.7rem, 1.8vw, 0.85rem)',
               marginBottom: '2rem',
               overflowX: 'auto'
             }}>
@@ -1566,7 +1693,7 @@ export default function SpecPage() {
     external view returns (bytes memory);`}</pre>
             </div>
 
-            <ul style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', marginBottom: '2rem', paddingLeft: '1.5rem' }}>
+            <ul style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', marginBottom: 'clamp(1.5rem, 3vw, 2rem)', paddingLeft: 'clamp(1rem, 3vw, 1.5rem)', fontSize: 'clamp(0.9rem, 2vw, 1rem)' }}>
               <li style={{ marginBottom: '0.75rem' }}>
                 <strong>Chunked Access:</strong> The function accepts <code style={{ background: 'rgba(255,255,255,0.1)', padding: '0.2rem 0.5rem', borderRadius: '3px', fontSize: '0.9em' }}>start</code> offset and <code style={{ background: 'rgba(255,255,255,0.1)', padding: '0.2rem 0.5rem', borderRadius: '3px', fontSize: '0.9em' }}>size</code> parameters,
                 allowing callers to retrieve large CBOR in multiple transactions to manage gas costs.
@@ -1588,7 +1715,7 @@ export default function SpecPage() {
               Retrieved CBOR bytes MUST be decoded according to the canonical structure defined
               in Section 6. Decoders MUST reconstruct the descriptor tree with the following guarantees:
             </p>
-            <ul style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', marginBottom: '2rem', paddingLeft: '1.5rem' }}>
+            <ul style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', marginBottom: 'clamp(1.5rem, 3vw, 2rem)', paddingLeft: 'clamp(1rem, 3vw, 1.5rem)', fontSize: 'clamp(0.9rem, 2vw, 1rem)' }}>
               <li style={{ marginBottom: '0.75rem' }}>
                 CBOR maps SHALL be converted to descriptor tree objects with numeric tag keys
               </li>
@@ -1626,7 +1753,7 @@ export default function SpecPage() {
             </ol>
 
             <div style={{
-              padding: '1.5rem',
+              padding: 'clamp(1rem, 3vw, 1.5rem)',
               background: 'rgba(59, 130, 246, 0.1)',
               border: '1px solid rgba(59, 130, 246, 0.2)',
               borderRadius: '8px',
@@ -1648,7 +1775,7 @@ export default function SpecPage() {
             <p style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', marginBottom: '1rem' }}>
               Onchain retrieval enables several important workflows:
             </p>
-            <ul style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', marginBottom: '2rem', paddingLeft: '1.5rem' }}>
+            <ul style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', marginBottom: 'clamp(1.5rem, 3vw, 2rem)', paddingLeft: 'clamp(1rem, 3vw, 1.5rem)', fontSize: 'clamp(0.9rem, 2vw, 1rem)' }}>
               <li style={{ marginBottom: '0.75rem' }}>
                 <strong>Transparency:</strong> Any party can audit the complete descriptor data
                 associated with a tokenized asset without relying on off-chain sources
@@ -1669,7 +1796,7 @@ export default function SpecPage() {
           </section>
 
           {/* Section 14: Security Considerations (was 12) */}
-          <section style={{ marginBottom: '4rem' }}>
+          <section style={{ marginBottom: 'clamp(2rem, 5vw, 4rem)' }}>
             <SectionHeading id="security">
               14. Security Considerations
             </SectionHeading>
@@ -1677,7 +1804,7 @@ export default function SpecPage() {
             <SubsectionHeading id="trust-assumptions">
               Trust Assumptions
             </SubsectionHeading>
-            <ul style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', marginBottom: '2rem', paddingLeft: '1.5rem' }}>
+            <ul style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', marginBottom: 'clamp(1.5rem, 3vw, 2rem)', paddingLeft: 'clamp(1rem, 3vw, 1.5rem)', fontSize: 'clamp(0.9rem, 2vw, 1rem)' }}>
               <li style={{ marginBottom: '0.75rem' }}>
                 <strong>Issuer Control:</strong> The descriptor is set by the token contract issuer. There is no external 
                 authority validating the FIX data accuracy—users must trust the issuer.
@@ -1696,7 +1823,7 @@ export default function SpecPage() {
               What Merkle Proofs Guarantee
             </SubsectionHeading>
             <div style={{ 
-              padding: '1.5rem',
+              padding: 'clamp(1rem, 3vw, 1.5rem)',
               background: 'rgba(34, 197, 94, 0.1)',
               border: '1px solid rgba(34, 197, 94, 0.2)',
               borderRadius: '8px',
@@ -1713,7 +1840,7 @@ export default function SpecPage() {
             </div>
 
             <div style={{ 
-              padding: '1.5rem',
+              padding: 'clamp(1rem, 3vw, 1.5rem)',
               background: 'rgba(239, 68, 68, 0.1)',
               border: '1px solid rgba(239, 68, 68, 0.2)',
               borderRadius: '8px',
@@ -1731,12 +1858,12 @@ export default function SpecPage() {
           </section>
 
           {/* Section 15: Gas Cost Analysis (was 13) */}
-          <section style={{ marginBottom: '4rem' }}>
+          <section style={{ marginBottom: 'clamp(2rem, 5vw, 4rem)' }}>
             <SectionHeading id="gas-costs">
               15. Gas Cost Analysis
             </SectionHeading>
 
-            <p style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', marginBottom: '2rem' }}>
+            <p style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', marginBottom: 'clamp(1.5rem, 3vw, 2rem)', fontSize: 'clamp(0.9rem, 2vw, 1rem)' }}>
               Understanding gas costs helps implementers make informed decisions about descriptor size and verification strategies.
             </p>
 
@@ -1749,7 +1876,7 @@ export default function SpecPage() {
             </p>
 
             <div style={{ 
-              padding: '1.5rem',
+              padding: 'clamp(1rem, 3vw, 1.5rem)',
               background: 'rgba(255,255,255,0.03)',
               borderRadius: '12px',
               marginBottom: '2rem',
@@ -1769,7 +1896,7 @@ export default function SpecPage() {
             </div>
 
             <div style={{ 
-              padding: '1.5rem',
+              padding: 'clamp(1rem, 3vw, 1.5rem)',
               background: 'rgba(34, 197, 94, 0.05)',
               borderRadius: '12px',
               marginBottom: '2rem',
@@ -1787,7 +1914,7 @@ export default function SpecPage() {
             </div>
 
             <div style={{ 
-              padding: '1.5rem',
+              padding: 'clamp(1rem, 3vw, 1.5rem)',
               background: 'rgba(59, 130, 246, 0.05)',
               borderRadius: '12px',
               marginBottom: '2rem',
@@ -1807,7 +1934,7 @@ export default function SpecPage() {
             </div>
 
             <div style={{ 
-              padding: '1.5rem',
+              padding: 'clamp(1rem, 3vw, 1.5rem)',
               background: 'rgba(147, 51, 234, 0.05)',
               borderRadius: '12px',
               marginBottom: '2rem',
@@ -1837,7 +1964,7 @@ export default function SpecPage() {
               Deployment Costs
             </SubsectionHeading>
             <div style={{ 
-              padding: '1.5rem',
+              padding: 'clamp(1rem, 3vw, 1.5rem)',
               background: 'rgba(255,255,255,0.03)',
               border: '1px solid rgba(255,255,255,0.1)',
               borderRadius: '8px',
@@ -1854,7 +1981,7 @@ export default function SpecPage() {
             </div>
 
             <div style={{ 
-              padding: '1.5rem',
+              padding: 'clamp(1rem, 3vw, 1.5rem)',
               background: 'rgba(255,255,255,0.03)',
               border: '1px solid rgba(255,255,255,0.1)',
               borderRadius: '8px',
@@ -1872,7 +1999,7 @@ export default function SpecPage() {
           </section>
 
           {/* Section 16: Implementation Guide (was 14) */}
-          <section style={{ marginBottom: '4rem' }}>
+          <section style={{ marginBottom: 'clamp(2rem, 5vw, 4rem)' }}>
             <SectionHeading id="implementation">
               16. Implementation Guide
             </SectionHeading>
@@ -1881,7 +2008,7 @@ export default function SpecPage() {
               Given a FIX descriptor message, follow this implementation flow:
             </p>
 
-            <div style={{ display: 'grid', gap: '1rem', marginBottom: '2rem' }}>
+            <div style={{ display: 'grid', gap: 'clamp(0.75rem, 2vw, 1rem)', marginBottom: 'clamp(1.5rem, 3vw, 2rem)' }}>
               {[
                 { num: 1, title: 'Parse FIX', desc: 'Extract only business fields (exclude session tags - see Section 5)' },
                 { num: 2, title: 'Build Canonical Tree', desc: 'Map scalars directly; create array of entry maps for groups (see Section 6)' },
@@ -1894,7 +2021,7 @@ export default function SpecPage() {
                 { num: 9, title: 'Produce Utilities', desc: 'Build proof generator and reader tools for fetching CBOR and generating proofs off-chain' }
               ].map((step) => (
                 <div key={step.num} style={{ 
-                  padding: '1.5rem',
+                  padding: 'clamp(1rem, 3vw, 1.5rem)',
                   background: 'rgba(255,255,255,0.03)',
                   border: '1px solid rgba(255,255,255,0.1)',
                   borderRadius: '8px',
@@ -1922,7 +2049,7 @@ export default function SpecPage() {
             </div>
 
             <div style={{ 
-              padding: '1.5rem',
+              padding: 'clamp(1rem, 3vw, 1.5rem)',
               background: 'rgba(59, 130, 246, 0.1)',
               border: '1px solid rgba(59, 130, 246, 0.2)',
               borderRadius: '8px'
@@ -1959,21 +2086,21 @@ export default function SpecPage() {
 
           {/* Footer */}
           <div style={{ 
-            marginTop: '6rem',
-            paddingTop: '3rem',
+            marginTop: 'clamp(4rem, 8vw, 6rem)',
+            paddingTop: 'clamp(2rem, 4vw, 3rem)',
             borderTop: '1px solid rgba(255,255,255,0.1)',
             textAlign: 'center',
             color: 'rgba(255,255,255,0.5)',
-            fontSize: '0.9rem'
+            fontSize: 'clamp(0.8rem, 2vw, 0.9rem)'
           }}>
-            <p style={{ marginBottom: '1rem' }}>
+            <p style={{ marginBottom: 'clamp(0.75rem, 2vw, 1rem)' }}>
               <strong>FixDescriptorKit Specification v1.0</strong>
             </p>
-            <p style={{ marginBottom: '1rem' }}>
-              <Link href="/" style={{ color: 'rgba(255,255,255,0.6)', marginRight: '1.5rem' }}>
+            <p style={{ marginBottom: 'clamp(0.75rem, 2vw, 1rem)', display: 'flex', flexWrap: 'wrap', gap: 'clamp(1rem, 3vw, 1.5rem)', justifyContent: 'center', alignItems: 'center' }}>
+              <Link href="/" style={{ color: 'rgba(255,255,255,0.6)', textDecoration: 'none', minHeight: '44px', display: 'flex', alignItems: 'center' }}>
                 Try the Explorer
               </Link>
-              <a href="https://github.com/swapnilraj/fix-descriptor" style={{ color: 'rgba(255,255,255,0.6)' }}>
+              <a href="https://github.com/swapnilraj/fix-descriptor" style={{ color: 'rgba(255,255,255,0.6)', textDecoration: 'none', minHeight: '44px', display: 'flex', alignItems: 'center' }}>
                 View on GitHub
               </a>
             </p>
