@@ -1300,7 +1300,7 @@ export default function Page() {
         background: '#0a0a0a',
         padding: '3rem 0'
       }}>
-        <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '0 clamp(1rem, 3vw, 2rem)', position: 'relative' }}>
+        <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '0 clamp(1rem, 3vw, 2rem)', position: 'relative', display: 'flex', justifyContent: 'center' }}>
           <div style={{
             overflowX: 'auto',
             overflowY: 'hidden',
@@ -1309,13 +1309,14 @@ export default function Page() {
             scrollbarColor: 'rgba(255,255,255,0.2) transparent',
             paddingBottom: '1rem',
             maskImage: 'linear-gradient(to right, transparent, black 2rem, black calc(100% - 2rem), transparent)',
-            WebkitMaskImage: 'linear-gradient(to right, transparent, black 2rem, black calc(100% - 2rem), transparent)'
+            WebkitMaskImage: 'linear-gradient(to right, transparent, black 2rem, black calc(100% - 2rem), transparent)',
+            maxWidth: '100%'
           }}>
             <div
               ref={stepsContainerRef}
               style={{ 
               display: 'flex', 
-              justifyContent: 'flex-start',
+              justifyContent: 'center',
               alignItems: 'flex-start',
               gap: 'clamp(0.75rem, 2vw, 1rem)',
               position: 'relative',
