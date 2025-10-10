@@ -58,10 +58,47 @@ After deployment, call `setFixDescriptor()` with your descriptor data:
 - Deploy CBOR data via DataContractFactory
 - Call `setFixDescriptor()` on your asset contract
 
+### Deploy FIX Dictionary
+
+The FIX Dictionary enables human-readable on-chain descriptor output. Deploy it BEFORE deploying new asset tokens that need this feature.
+
+> **Gas Cost Note**: Dictionary deployment costs ~8.7M gas (one-time). On Ethereum L1 this is ~$650 at 30 gwei, but only ~$0.02 on L2 networks like Optimism or Base. Once deployed, all view calls (web apps) are FREE. See `docs/GAS_ANALYSIS_HUMAN_READABLE.md` for detailed cost analysis.
+
+**1. Generate Dictionary Data:**
+
+```bash
+cd packages/fixdescriptorkit-typescript
+npx tsx scripts/generate-dictionary.ts
+# Output: contracts/generated/fix44-dictionary.hex (~23KB)
+```
+
+**2. Deploy Dictionary Contract:**
+
+```bash
+cd ../../contracts
+forge script script/DeployDictionary.s.sol \
+  --rpc-url $RPC_URL \
+  --broadcast \
+  --verify \
+  -vvv
+```
+
+**3. Save Dictionary Address:**
+
+After deployment, note the `FixDictionary` address from the logs and add it to your web app environment:
+
+```bash
+echo "NEXT_PUBLIC_DICTIONARY_ADDRESS=0x..." >> ../apps/web/.env.local
+```
+
+**Important:** This address is required when deploying new tokens with human-readable descriptor support.
+
 ### Contract Addresses
 
 After deployment, save your contract addresses:
 - DataContractFactory: `0x...`
+- AssetTokenFactory: `0x...`
+- FixDictionary: `0x...` (for human-readable output)
 - Your AssetToken: `0x...`
 
 You'll need these for the web app configuration.
@@ -102,6 +139,8 @@ After deployment, go to your Vercel project dashboard → Settings → Environme
 - **Value:** Your deployed DataContractFactory address
 - **Name:** `NEXT_PUBLIC_ASSET_CONTRACT_ADDRESS` 
 - **Value:** Your deployed asset contract address (implementing IFixDescriptor)
+- **Name:** `NEXT_PUBLIC_DICTIONARY_ADDRESS`
+- **Value:** Your deployed FixDictionary address (required for human-readable output on new deployments)
 
 **Note:** With the new embedded architecture, you deploy your own asset contracts (ERC20, ERC721, etc.) that implement the `IFixDescriptor` interface. There is no central registry.
 

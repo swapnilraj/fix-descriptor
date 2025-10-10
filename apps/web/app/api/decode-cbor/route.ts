@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { decodeCanonicalCBOR, treeToFixMessage } from 'fixdescriptorkit-typescript';
+import { decodeCanonicalCBOR, treeToFixMessage, applyTagNames } from 'fixdescriptorkit-typescript';
 
 export async function POST(request: NextRequest) {
   try {
@@ -19,12 +19,16 @@ export async function POST(request: NextRequest) {
     // Decode CBOR to tree structure
     const tree = decodeCanonicalCBOR(bytes);
 
-    // Convert tree back to FIX format
+    // Convert tree to FIX format with numeric tags
     const fixMessage = treeToFixMessage(tree);
+    
+    // Convert tree to FIX format with human-readable tag names
+    const fixMessageNamed = applyTagNames(tree);
 
     return NextResponse.json({
       success: true,
-      fixMessage,
+      fixMessage,         // numeric tags: "55=AAPL|48=US..."
+      fixMessageNamed,    // named tags: "Symbol=AAPL|SecurityID=US..."
       tree
     });
   } catch (error) {

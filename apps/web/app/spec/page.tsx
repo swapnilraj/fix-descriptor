@@ -15,11 +15,13 @@ export default function SpecPage() {
     { id: 'cbor-encoding', title: '7. CBOR Encoding' },
     { id: 'merkle-commitment', title: '8. Merkle Commitment' },
     { id: 'onchain-representation', title: '9. Onchain Representation' },
-    { id: 'verification', title: '10. Onchain Verification' },
-    { id: 'retrieval', title: '11. Offchain Retrieval' },
-    { id: 'security', title: '12. Security Considerations' },
-    { id: 'gas-costs', title: '13. Gas Cost Analysis' },
-    { id: 'implementation', title: '14. Implementation Guide' },
+    { id: 'human-readable', title: '10. Human-Readable Output' },
+    { id: 'fix-dictionary', title: '11. FIX Dictionary Architecture' },
+    { id: 'verification', title: '12. Onchain Verification' },
+    { id: 'retrieval', title: '13. Offchain Retrieval' },
+    { id: 'security', title: '14. Security Considerations' },
+    { id: 'gas-costs', title: '15. Gas Cost Analysis' },
+    { id: 'implementation', title: '16. Implementation Guide' },
   ];
 
   // Set active section from URL hash on mount
@@ -1223,10 +1225,270 @@ export default function SpecPage() {
             </div>
           </section>
 
-          {/* Section 10: Verification */}
+          {/* Section 10: Human-Readable Output */}
+          <section style={{ marginBottom: '4rem' }}>
+            <SectionHeading id="human-readable">
+              10. Human-Readable Output
+            </SectionHeading>
+
+            <p style={{ marginBottom: '2rem', lineHeight: '1.8', color: 'rgba(255,255,255,0.7)' }}>
+              While the canonical CBOR encoding provides compact and deterministic storage, it uses numeric tag values that are not human-readable. 
+              The <code style={{ background: 'rgba(255,255,255,0.1)', padding: '0.25rem 0.5rem', borderRadius: '4px' }}>getHumanReadableDescriptor()</code> function 
+              provides an on-chain method to generate a human-readable representation of the FIX descriptor by substituting tag numbers with their textual names from a FIX dictionary.
+            </p>
+
+            <SubsectionHeading id="readable-function">
+              10.1 The getHumanReadableDescriptor() Function
+            </SubsectionHeading>
+
+            <div style={{ 
+              padding: '1.5rem',
+              background: 'rgba(255,255,255,0.03)',
+              borderRadius: '12px',
+              marginBottom: '2rem',
+              fontFamily: 'ui-monospace, monospace',
+              fontSize: '0.875rem',
+              border: '1px solid rgba(255,255,255,0.1)'
+            }}>
+              <div style={{ color: 'rgba(147, 197, 253, 0.9)', marginBottom: '0.5rem' }}>
+                function getHumanReadableDescriptor() external view returns (string memory)
+              </div>
+            </div>
+
+            <p style={{ marginBottom: '2rem', lineHeight: '1.8', color: 'rgba(255,255,255,0.7)' }}>
+              This function:
+            </p>
+            <ul style={{ marginBottom: '2rem', paddingLeft: '2rem', lineHeight: '2', color: 'rgba(255,255,255,0.7)' }}>
+              <li>Reads the CBOR-encoded descriptor from the SSTORE2 contract</li>
+              <li>Parses the CBOR map to extract tags and values</li>
+              <li>Looks up human-readable tag names from the FixDictionary contract</li>
+              <li>Formats the output in FIX format: <code style={{ background: 'rgba(255,255,255,0.1)', padding: '0.25rem 0.5rem', borderRadius: '4px' }}>TagName=Value|TagName2=Value2|...</code></li>
+              <li>Handles both scalar fields and repeating groups</li>
+            </ul>
+
+            <SubsectionHeading id="readable-output-format">
+              10.2 Output Format
+            </SubsectionHeading>
+
+            <div style={{ marginBottom: '2rem' }}>
+              <div style={{
+                padding: '1.5rem',
+                background: 'rgba(255,255,255,0.03)',
+                borderRadius: '12px',
+                marginBottom: '1rem',
+                fontFamily: 'ui-monospace, monospace',
+                fontSize: '0.875rem',
+                border: '1px solid rgba(255,255,255,0.1)'
+              }}>
+                <div style={{ color: 'rgba(255,255,255,0.5)', marginBottom: '0.75rem' }}>Scalar Fields:</div>
+                <div style={{ color: 'rgba(34, 197, 94, 0.9)' }}>
+                  Symbol=AAPL|SecurityID=US0378331005|SecurityIDSource=1|SecurityType=CS|Currency=USD
+                </div>
+              </div>
+
+              <div style={{
+                padding: '1.5rem',
+                background: 'rgba(255,255,255,0.03)',
+                borderRadius: '12px',
+                fontFamily: 'ui-monospace, monospace',
+                fontSize: '0.875rem',
+                border: '1px solid rgba(255,255,255,0.1)'
+              }}>
+                <div style={{ color: 'rgba(255,255,255,0.5)', marginBottom: '0.75rem' }}>Repeating Groups:</div>
+                <div style={{ color: 'rgba(34, 197, 94, 0.9)' }}>
+                  NoSecurityAltID=2|[0]SecurityAltID=000402AJ1|[0]SecurityAltIDSource=1|[1]SecurityAltID=US000402AJ19|[1]SecurityAltIDSource=4
+                </div>
+              </div>
+            </div>
+
+            <SubsectionHeading id="readable-benefits">
+              10.3 Benefits
+            </SubsectionHeading>
+
+            <ul style={{ marginBottom: '2rem', paddingLeft: '2rem', lineHeight: '2', color: 'rgba(255,255,255,0.7)' }}>
+              <li><strong>On-chain Composability:</strong> Other contracts can call this function to read human-readable descriptors</li>
+              <li><strong>No Off-chain Dependencies:</strong> Everything is verifiable and readable directly on the blockchain</li>
+              <li><strong>Gas Efficient:</strong> Uses optimized SSTORE2 pattern for dictionary storage</li>
+              <li><strong>Standard Compliance:</strong> Output follows FIX protocol format conventions</li>
+            </ul>
+
+            <SubsectionHeading id="readable-vs-offchain">
+              10.4 On-chain vs Off-chain Decoding
+            </SubsectionHeading>
+
+            <p style={{ marginBottom: '1.5rem', lineHeight: '1.8', color: 'rgba(255,255,255,0.7)' }}>
+              Both approaches can show human-readable tag names. The key difference is WHERE decoding happens and WHETHER other contracts can call it.
+            </p>
+
+            <div style={{ 
+              padding: '1.5rem',
+              background: 'rgba(59, 130, 246, 0.05)',
+              borderRadius: '12px',
+              marginBottom: '1.5rem',
+              border: '1px solid rgba(59, 130, 246, 0.2)'
+            }}>
+              <div style={{ fontWeight: '600', marginBottom: '0.5rem', color: 'rgba(59, 130, 246, 0.9)' }}>
+                Off-chain Decoding
+              </div>
+              <ul style={{ paddingLeft: '1.5rem', color: 'rgba(255,255,255,0.7)', lineHeight: '1.8' }}>
+                <li>Uses fixparser library (JavaScript/TypeScript)</li>
+                <li>Can show tag names from off-chain dictionaries</li>
+                <li>0 gas cost (view call)</li>
+                <li>Not callable by other smart contracts</li>
+                <li>Requires off-chain infrastructure/libraries</li>
+              </ul>
+            </div>
+
+            <div style={{ 
+              padding: '1.5rem',
+              background: 'rgba(34, 197, 94, 0.05)',
+              borderRadius: '12px',
+              border: '1px solid rgba(34, 197, 94, 0.2)'
+            }}>
+              <div style={{ fontWeight: '600', marginBottom: '0.5rem', color: 'rgba(34, 197, 94, 0.9)' }}>
+                On-chain Human-Readable
+              </div>
+              <ul style={{ paddingLeft: '1.5rem', color: 'rgba(255,255,255,0.7)', lineHeight: '1.8' }}>
+                <li>Calls getHumanReadableDescriptor() on the contract</li>
+                <li>Shows tag names from on-chain FixDictionary</li>
+                <li>0 gas cost (when called as view)</li>
+                <li>~200k-500k gas (when called by another contract)</li>
+                <li>Fully composable with other smart contracts</li>
+                <li>Trustless, no off-chain dependencies</li>
+              </ul>
+            </div>
+          </section>
+
+          {/* Section 11: FIX Dictionary Architecture */}
+          <section style={{ marginBottom: '4rem' }}>
+            <SectionHeading id="fix-dictionary">
+              11. FIX Dictionary Architecture
+            </SectionHeading>
+
+            <p style={{ marginBottom: '2rem', lineHeight: '1.8', color: 'rgba(255,255,255,0.7)' }}>
+              The FIX Dictionary provides an on-chain mapping from numeric FIX tag numbers to their human-readable names. It uses an innovative storage 
+              strategy that eliminates expensive mapping lookups by storing tag names in fixed-size slots, enabling O(1) direct indexing.
+            </p>
+
+            <SubsectionHeading id="dictionary-storage-strategy">
+              11.1 Storage Strategy
+            </SubsectionHeading>
+
+            <p style={{ marginBottom: '1.5rem', lineHeight: '1.8', color: 'rgba(255,255,255,0.7)' }}>
+              Instead of using a Solidity mapping, the dictionary stores all tag names in a single SSTORE2 contract with a fixed 24-byte slot per tag:
+            </p>
+
+            <div style={{
+              padding: '1.5rem',
+              background: 'rgba(255,255,255,0.03)',
+              borderRadius: '12px',
+              marginBottom: '2rem',
+              border: '1px solid rgba(255,255,255,0.1)'
+            }}>
+              <div style={{ fontFamily: 'ui-monospace, monospace', fontSize: '0.875rem' }}>
+                <div style={{ color: 'rgba(147, 197, 253, 0.9)', marginBottom: '1rem' }}>
+                  Slot Structure (24 bytes per tag):
+                </div>
+                <div style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8' }}>
+                  <div>Byte 0:     Length of tag name (0-23)</div>
+                  <div>Bytes 1-23: UTF-8 encoded tag name (zero-padded)</div>
+                </div>
+              </div>
+            </div>
+
+            <p style={{ marginBottom: '1.5rem', lineHeight: '1.8', color: 'rgba(255,255,255,0.7)' }}>
+              <strong>Example for Tag 15 (Currency):</strong>
+            </p>
+
+            <div style={{
+              padding: '1.5rem',
+              background: 'rgba(255,255,255,0.03)',
+              borderRadius: '12px',
+              marginBottom: '2rem',
+              fontFamily: 'ui-monospace, monospace',
+              fontSize: '0.875rem',
+              border: '1px solid rgba(255,255,255,0.1)'
+            }}>
+              <div style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8' }}>
+                <div>Offset: 15 × 24 = 360 bytes</div>
+                <div style={{ marginTop: '1rem' }}>
+                  <div>[Slot at offset 360]</div>
+                  <div>Byte 0:    0x08 (length = 8)</div>
+                  <div>Bytes 1-8: "Currency"</div>
+                  <div>Bytes 9-23: 0x00... (zero padding)</div>
+                </div>
+              </div>
+            </div>
+
+            <SubsectionHeading id="dictionary-lookup">
+              11.2 Tag Name Lookup
+            </SubsectionHeading>
+
+            <div style={{ 
+              padding: '1.5rem',
+              background: 'rgba(255,255,255,0.03)',
+              borderRadius: '12px',
+              marginBottom: '2rem',
+              fontFamily: 'ui-monospace, monospace',
+              fontSize: '0.875rem',
+              border: '1px solid rgba(255,255,255,0.1)'
+            }}>
+              <div style={{ color: 'rgba(147, 197, 253, 0.9)', marginBottom: '0.5rem' }}>
+                function getTagName(uint16 tag) public view returns (string memory)
+              </div>
+              <div style={{ color: 'rgba(255,255,255,0.5)', marginTop: '1rem' }}>
+                // Direct offset calculation: O(1) lookup
+              </div>
+              <div style={{ color: 'rgba(255,255,255,0.7)' }}>
+                offset = tag × 24 + 1  // +1 to skip STOP byte
+              </div>
+              <div style={{ color: 'rgba(255,255,255,0.7)' }}>
+                extcodecopy(dataContract, slot, offset, 24)
+              </div>
+            </div>
+
+            <SubsectionHeading id="dictionary-gas-efficiency">
+              11.3 Gas Efficiency
+            </SubsectionHeading>
+
+            <ul style={{ marginBottom: '2rem', paddingLeft: '2rem', lineHeight: '2', color: 'rgba(255,255,255,0.7)' }}>
+              <li><strong>No Expensive Mappings:</strong> Avoids 20,000+ gas per SSTORE for mapping updates</li>
+              <li><strong>Single Deployment:</strong> All 957 tags stored in one SSTORE2 contract (~23KB)</li>
+              <li><strong>O(1) Lookups:</strong> Direct offset calculation without iteration</li>
+              <li><strong>EXTCODECOPY:</strong> Efficient bytecode reading (100 gas + 3 gas/word)</li>
+            </ul>
+
+            <SubsectionHeading id="dictionary-versioning">
+              11.4 Dictionary Versioning
+            </SubsectionHeading>
+
+            <p style={{ marginBottom: '2rem', lineHeight: '1.8', color: 'rgba(255,255,255,0.7)' }}>
+              Different FIX versions (4.2, 4.4, 5.0) can have different dictionaries. The <code style={{ background: 'rgba(255,255,255,0.1)', padding: '0.25rem 0.5rem', borderRadius: '4px' }}>FixDictionaryFactory</code> contract 
+              manages deployments keyed by FIX major and minor version numbers.
+            </p>
+
+            <div style={{ 
+              padding: '1.5rem',
+              background: 'rgba(255,255,255,0.03)',
+              borderRadius: '12px',
+              marginBottom: '2rem',
+              fontFamily: 'ui-monospace, monospace',
+              fontSize: '0.875rem',
+              border: '1px solid rgba(255,255,255,0.1)'
+            }}>
+              <div style={{ color: 'rgba(147, 197, 253, 0.9)' }}>
+                mapping(uint16 =&gt; mapping(uint16 =&gt; FixDictionary)) public dictionaries;
+              </div>
+              <div style={{ color: 'rgba(255,255,255,0.7)', marginTop: '0.5rem' }}>
+                // dictionaries[fixMajor][fixMinor] =&gt; FixDictionary contract
+              </div>
+            </div>
+          </section>
+
+          {/* Section 12: Verification (was 10) */}
           <section style={{ marginBottom: '4rem' }}>
             <SectionHeading id="verification">
-              10. Onchain Verification
+              12. Onchain Verification
             </SectionHeading>
 
             <SubsectionHeading id="library-interface">
@@ -1273,7 +1535,7 @@ export default function SpecPage() {
           {/* Section 11: Onchain Retrieval */}
           <section style={{ marginBottom: '4rem' }}>
             <SectionHeading id="retrieval">
-              11. Offchain Retrieval
+              13. Offchain Retrieval
             </SectionHeading>
 
             <p style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', marginBottom: '2rem' }}>
@@ -1406,10 +1668,10 @@ export default function SpecPage() {
             </ul>
           </section>
 
-          {/* Section 12: Security Considerations */}
+          {/* Section 14: Security Considerations (was 12) */}
           <section style={{ marginBottom: '4rem' }}>
             <SectionHeading id="security">
-              12. Security Considerations
+              14. Security Considerations
             </SectionHeading>
 
             <SubsectionHeading id="trust-assumptions">
@@ -1468,15 +1730,108 @@ export default function SpecPage() {
             </div>
           </section>
 
-          {/* Section 13: Gas Cost Analysis */}
+          {/* Section 15: Gas Cost Analysis (was 13) */}
           <section style={{ marginBottom: '4rem' }}>
             <SectionHeading id="gas-costs">
-              13. Gas Cost Analysis
+              15. Gas Cost Analysis
             </SectionHeading>
 
             <p style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', marginBottom: '2rem' }}>
               Understanding gas costs helps implementers make informed decisions about descriptor size and verification strategies.
             </p>
+
+            <SubsectionHeading id="human-readable-gas">
+              15.1 Human-Readable Descriptor Costs
+            </SubsectionHeading>
+
+            <p style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', marginBottom: '1.5rem' }}>
+              The human-readable descriptor feature introduces additional gas considerations for deployment and usage.
+            </p>
+
+            <div style={{ 
+              padding: '1.5rem',
+              background: 'rgba(255,255,255,0.03)',
+              borderRadius: '12px',
+              marginBottom: '2rem',
+              border: '1px solid rgba(255,255,255,0.1)'
+            }}>
+              <div style={{ fontWeight: '600', marginBottom: '1rem', color: 'rgba(255,255,255,0.9)' }}>
+                One-Time Deployment Costs
+              </div>
+              <div style={{ fontFamily: 'ui-monospace, monospace', fontSize: '0.875rem', color: 'rgba(255,255,255,0.7)', lineHeight: '1.8' }}>
+                <div style={{ marginBottom: '0.5rem' }}>FixDictionary (23KB): <span style={{ color: 'rgba(251, 191, 36, 0.9)' }}>~8,700,000 gas</span></div>
+                <div style={{ marginBottom: '0.5rem' }}>FixDictionaryFactory: <span style={{ color: 'rgba(251, 191, 36, 0.9)' }}>~620,000 gas</span></div>
+                <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+                  Cost on L1 (30 gwei): <span style={{ color: 'rgba(239, 68, 68, 0.9)' }}>~$650 USD</span>
+                </div>
+                <div>Cost on L2 (0.001 gwei): <span style={{ color: 'rgba(34, 197, 94, 0.9)' }}>~$0.02 USD</span></div>
+              </div>
+            </div>
+
+            <div style={{ 
+              padding: '1.5rem',
+              background: 'rgba(34, 197, 94, 0.05)',
+              borderRadius: '12px',
+              marginBottom: '2rem',
+              border: '1px solid rgba(34, 197, 94, 0.2)'
+            }}>
+              <div style={{ fontWeight: '600', marginBottom: '1rem', color: 'rgba(34, 197, 94, 0.9)' }}>
+                Off-chain Usage (View Calls)
+              </div>
+              <div style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8' }}>
+                <div style={{ marginBottom: '0.5rem' }}>Gas Cost: <span style={{ fontWeight: '600', color: 'rgba(34, 197, 94, 0.9)' }}>0 gas</span></div>
+                <div style={{ fontSize: '0.875rem', color: 'rgba(255,255,255,0.5)' }}>
+                  View functions execute locally without transactions. Unlimited free calls for web apps, analytics, and data explorers.
+                </div>
+              </div>
+            </div>
+
+            <div style={{ 
+              padding: '1.5rem',
+              background: 'rgba(59, 130, 246, 0.05)',
+              borderRadius: '12px',
+              marginBottom: '2rem',
+              border: '1px solid rgba(59, 130, 246, 0.2)'
+            }}>
+              <div style={{ fontWeight: '600', marginBottom: '1rem', color: 'rgba(59, 130, 246, 0.9)' }}>
+                On-chain Usage (Contract Calls)
+              </div>
+              <div style={{ fontFamily: 'ui-monospace, monospace', fontSize: '0.875rem', color: 'rgba(255,255,255,0.7)', lineHeight: '1.8' }}>
+                <div style={{ marginBottom: '0.5rem' }}>Simple descriptor (5 fields): <span style={{ color: 'rgba(34, 197, 94, 0.9)' }}>~180,000 gas</span></div>
+                <div style={{ marginBottom: '0.5rem' }}>Medium descriptor (12 fields): <span style={{ color: 'rgba(251, 191, 36, 0.9)' }}>~250,000 gas</span></div>
+                <div style={{ marginBottom: '0.5rem' }}>Complex descriptor (25+ fields): <span style={{ color: 'rgba(239, 68, 68, 0.9)' }}>~500,000 gas</span></div>
+                <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid rgba(59, 130, 246, 0.1)', fontSize: '0.8rem', color: 'rgba(255,255,255,0.5)' }}>
+                  Per-tag lookup cost: ~4,400 gas (O(1) constant time)
+                </div>
+              </div>
+            </div>
+
+            <div style={{ 
+              padding: '1.5rem',
+              background: 'rgba(147, 51, 234, 0.05)',
+              borderRadius: '12px',
+              marginBottom: '2rem',
+              border: '1px solid rgba(147, 51, 234, 0.2)'
+            }}>
+              <div style={{ fontWeight: '600', marginBottom: '0.75rem', color: 'rgba(147, 51, 234, 0.9)' }}>
+                Recommendations
+              </div>
+              <ul style={{ margin: 0, paddingLeft: '1.5rem', color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', fontSize: '0.875rem' }}>
+                <li><strong>Deploy on L2</strong> - 100-1000× cheaper deployment costs</li>
+                <li><strong>Use view calls for UIs</strong> - Always free for web applications</li>
+                <li><strong>Share dictionary</strong> - One deployment serves entire ecosystem</li>
+                <li><strong>Cache on-chain reads</strong> - If descriptor is immutable</li>
+                <li><strong>Reserve on-chain calls</strong> - Only when contract composability is needed</li>
+              </ul>
+            </div>
+
+            <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.875rem', marginBottom: '2rem', fontStyle: 'italic' }}>
+              For detailed gas analysis including break-even calculations and optimization strategies, see <code style={{ background: 'rgba(255,255,255,0.1)', padding: '0.25rem 0.5rem', borderRadius: '4px' }}>docs/GAS_ANALYSIS_HUMAN_READABLE.md</code>
+            </p>
+
+            <SubsectionHeading id="base-operations">
+              15.2 Base Operation Costs
+            </SubsectionHeading>
 
             <SubsectionHeading id="deployment-costs">
               Deployment Costs
@@ -1516,10 +1871,10 @@ export default function SpecPage() {
             </div>
           </section>
 
-          {/* Section 14: Implementation Guide */}
+          {/* Section 16: Implementation Guide (was 14) */}
           <section style={{ marginBottom: '4rem' }}>
             <SectionHeading id="implementation">
-              14. Implementation Guide
+              16. Implementation Guide
             </SectionHeading>
 
             <p style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', marginBottom: '1.5rem' }}>

@@ -25,8 +25,9 @@ function main() {
   // Get hex string
   const hex = getDictionaryHex();
   
-  // Write to file
-  const outputDir = path.join(process.cwd(), 'contracts', 'generated');
+  // Write to file (go up to repo root, then into contracts/generated)
+  const repoRoot = path.join(path.dirname(new URL(import.meta.url).pathname), '..', '..', '..');
+  const outputDir = path.join(repoRoot, 'contracts', 'generated');
   if (!fs.existsSync(outputDir)) {
     fs.mkdirSync(outputDir, { recursive: true });
   }

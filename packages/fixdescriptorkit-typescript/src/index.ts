@@ -31,6 +31,7 @@ export {
   encodeDictionary,
   decodeDictionary,
   getDictionaryHex,
+  applyTagNames,
   type DictionaryEntry,
 } from './dictionary';
 

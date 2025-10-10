@@ -20,10 +20,8 @@ contract DeployDictionary is Script {
         FixDictionaryFactory factory = new FixDictionaryFactory();
         console.log("FixDictionaryFactory deployed at:", address(factory));
         
-        // Load dictionary data from generated file
-        string memory root = vm.projectRoot();
-        string memory path = string.concat(root, "/generated/fix44-dictionary.hex");
-        bytes memory dictionaryData = vm.parseBytes(vm.readFile(path));
+        // Load dictionary data from generated file (relative to contracts directory)
+        bytes memory dictionaryData = vm.parseBytes(vm.readFile("./generated/fix44-dictionary.hex"));
         
         console.log("Dictionary data size:", dictionaryData.length);
         

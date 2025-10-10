@@ -55,38 +55,79 @@ else
 fi
 echo ""
 
-# Deploy contracts
-echo -e "${BLUE}🚀 Step 3: Deploying contracts...${NC}"
+# Generate FIX Dictionary data
+echo -e "${BLUE}📚 Step 3: Generating FIX Dictionary data...${NC}"
+cd ../packages/fixdescriptorkit-typescript
+npx tsx scripts/generate-dictionary.ts
+if [ $? -eq 0 ]; then
+    echo -e "${GREEN}✅ Dictionary data generated${NC}"
+else
+    echo -e "${RED}❌ Dictionary generation failed${NC}"
+    exit 1
+fi
+echo ""
+
+# Deploy FIX Dictionary
+echo -e "${BLUE}📖 Step 4: Deploying FIX Dictionary...${NC}"
+cd ../../contracts
 echo "   Network: $NEXT_PUBLIC_RPC_URL"
 echo ""
 
+# Use PIPESTATUS to capture forge script exit code even with tee
+forge script script/DeployDictionary.s.sol \
+  --rpc-url $NEXT_PUBLIC_RPC_URL \
+  --broadcast \
+  --slow \
+  -vvv 2>&1 | tee ../dictionary-deployment.log
+DICT_DEPLOY_STATUS=${PIPESTATUS[0]}
+
+if [ $DICT_DEPLOY_STATUS -eq 0 ]; then
+    echo ""
+    echo -e "${GREEN}✅ Dictionary deployed successfully!${NC}"
+else
+    echo ""
+    echo -e "${RED}❌ Dictionary deployment failed (exit code: $DICT_DEPLOY_STATUS)${NC}"
+    echo -e "${YELLOW}Check dictionary-deployment.log for details${NC}"
+    exit 1
+fi
+echo ""
+
+# Deploy factory contracts
+echo -e "${BLUE}🚀 Step 5: Deploying factory contracts...${NC}"
+echo "   Network: $NEXT_PUBLIC_RPC_URL"
+echo ""
+
+# Use PIPESTATUS to capture forge script exit code even with tee
 forge script script/DeployAssetToken.s.sol \
   --rpc-url $NEXT_PUBLIC_RPC_URL \
   --broadcast \
   --slow \
-  -vvv | tee ../deployment-output.log
+  -vvv 2>&1 | tee ../deployment-output.log
+FACTORY_DEPLOY_STATUS=${PIPESTATUS[0]}
 
-if [ $? -eq 0 ]; then
+if [ $FACTORY_DEPLOY_STATUS -eq 0 ]; then
     echo ""
     echo -e "${GREEN}✅ Deployment successful!${NC}"
 else
     echo ""
-    echo -e "${RED}❌ Deployment failed${NC}"
+    echo -e "${RED}❌ Deployment failed (exit code: $FACTORY_DEPLOY_STATUS)${NC}"
+    echo -e "${YELLOW}Check deployment-output.log for details${NC}"
     exit 1
 fi
 
 cd ..
 
 echo ""
-echo -e "${BLUE}📋 Step 4: Extracting deployment addresses...${NC}"
+echo -e "${BLUE}📋 Step 6: Extracting deployment addresses...${NC}"
 
-# Extract addresses from deployment log
+# Extract addresses from deployment logs
+DICTIONARY=$(grep "FIX 4.4 Dictionary deployed at:" dictionary-deployment.log | awk '{print $NF}')
 DATA_FACTORY=$(grep "DataContractFactory deployed at:" deployment-output.log | awk '{print $NF}')
 TOKEN_FACTORY=$(grep "AssetTokenFactory deployed at:" deployment-output.log | awk '{print $NF}')
 
-if [ -z "$DATA_FACTORY" ] || [ -z "$TOKEN_FACTORY" ]; then
-    echo -e "${YELLOW}⚠️  Could not automatically extract addresses${NC}"
-    echo "Please check deployment-output.log manually"
+if [ -z "$DICTIONARY" ] || [ -z "$DATA_FACTORY" ] || [ -z "$TOKEN_FACTORY" ]; then
+    echo -e "${YELLOW}⚠️  Could not automatically extract all addresses${NC}"
+    echo "Please check deployment-output.log and dictionary-deployment.log manually"
     echo ""
     exit 0
 fi
@@ -98,6 +139,7 @@ echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━
 echo ""
 echo -e "${BLUE}📍 Deployed Contract Addresses:${NC}"
 echo ""
+echo -e "  FixDictionary:        ${GREEN}$DICTIONARY${NC}"
 echo -e "  DataContractFactory:  ${GREEN}$DATA_FACTORY${NC}"
 echo -e "  AssetTokenFactory:    ${GREEN}$TOKEN_FACTORY${NC}"
 echo ""
@@ -105,7 +147,7 @@ echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━
 echo ""
 
 # Update or create .env.local
-echo -e "${BLUE}📝 Step 5: Updating web app configuration...${NC}"
+echo -e "${BLUE}📝 Step 7: Updating web app configuration...${NC}"
 
 ENV_FILE="apps/web/.env.local"
 
@@ -118,12 +160,14 @@ fi
 # Update or append the variables
 if [ -f "$ENV_FILE" ]; then
     # Remove old values if they exist
+    sed -i.tmp '/NEXT_PUBLIC_DICTIONARY_ADDRESS/d' "$ENV_FILE"
     sed -i.tmp '/NEXT_PUBLIC_DATA_FACTORY_ADDRESS/d' "$ENV_FILE"
     sed -i.tmp '/NEXT_PUBLIC_TOKEN_FACTORY_ADDRESS/d' "$ENV_FILE"
     rm "$ENV_FILE.tmp"
 fi
 
 # Append new values
+echo "NEXT_PUBLIC_DICTIONARY_ADDRESS=$DICTIONARY" >> "$ENV_FILE"
 echo "NEXT_PUBLIC_DATA_FACTORY_ADDRESS=$DATA_FACTORY" >> "$ENV_FILE"
 echo "NEXT_PUBLIC_TOKEN_FACTORY_ADDRESS=$TOKEN_FACTORY" >> "$ENV_FILE"
 
@@ -153,6 +197,18 @@ echo -e "   ${YELLOW}vercel --prod${NC}"
 echo ""
 echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo ""
-echo -e "${BLUE}📄 Full deployment log saved to: ${YELLOW}deployment-output.log${NC}"
+echo -e "${BLUE}📝 Web App Environment Variables:${NC}"
+echo ""
+echo -e "${YELLOW}Copy these to your apps/web/.env.local file:${NC}"
+echo ""
+echo -e "${GREEN}NEXT_PUBLIC_DICTIONARY_ADDRESS=$DICTIONARY${NC}"
+echo -e "${GREEN}NEXT_PUBLIC_DATA_FACTORY_ADDRESS=$DATA_FACTORY${NC}"
+echo -e "${GREEN}NEXT_PUBLIC_TOKEN_FACTORY_ADDRESS=$TOKEN_FACTORY${NC}"
+echo ""
+echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo ""
+echo -e "${BLUE}📄 Full deployment logs saved to:${NC}"
+echo -e "   ${YELLOW}dictionary-deployment.log${NC}"
+echo -e "   ${YELLOW}deployment-output.log${NC}"
 echo ""
 echo -e "${GREEN}Happy deploying! 🚀${NC}"

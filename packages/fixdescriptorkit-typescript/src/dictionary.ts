@@ -1041,3 +1041,62 @@ export function getDictionaryHex(): string {
   return '0x' + Array.from(encoded).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
+/**
+ * Apply human-readable tag names to a FIX descriptor tree
+ * Converts numeric tags (e.g., "55=AAPL") to named tags (e.g., "Symbol=AAPL")
+ * Matches on-chain FixHumanReadable format exactly
+ * @param tree - DescriptorTree with numeric tags
+ * @returns FIX message string with human-readable tag names
+ */
+export function applyTagNames(tree: Record<number, any>): string {
+  const pairs: string[] = [];
+
+  function processNode(obj: Record<number, any>): void {
+    // Sort tags numerically for consistent output
+    const sortedTags = Object.keys(obj)
+      .map(Number)
+      .sort((a, b) => a - b);
+
+    for (const tag of sortedTags) {
+      const value = obj[tag];
+      const tagName = FIX_44_DICTIONARY[tag] || String(tag);
+
+      if (typeof value === 'string') {
+        // Scalar value
+        pairs.push(`${tagName}=${value}`);
+      } else if (value && typeof value === 'object' && 'tag' in value && 'entries' in value) {
+        // Group node
+        const group = value as { tag: number; entries: Array<Record<number, any>> };
+        // Add group count
+        pairs.push(`${tagName}=${group.entries.length}`);
+        
+        // Process each entry
+        group.entries.forEach((entry, idx) => {
+          const entryFields: string[] = [];
+          const sortedEntryTags = Object.keys(entry)
+            .map(Number)
+            .sort((a, b) => a - b);
+          
+          // Collect all fields within this group entry
+          for (const entryTag of sortedEntryTags) {
+            const entryValue = entry[entryTag];
+            const entryTagName = FIX_44_DICTIONARY[entryTag] || String(entryTag);
+            
+            if (typeof entryValue === 'string') {
+              entryFields.push(`${entryTagName}=${entryValue}`);
+            }
+          }
+          
+          // Format as [index]field1=val1,field2=val2
+          if (entryFields.length > 0) {
+            pairs.push(`[${idx}]${entryFields.join(',')}`);
+          }
+        });
+      }
+    }
+  }
+
+  processNode(tree);
+  return pairs.join('|');
+}
+

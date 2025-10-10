@@ -3,7 +3,7 @@ import { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import Link from 'next/link';
 import { abi as TokenFactoryAbi } from '@/lib/abis/AssetTokenFactory';
 import { abi as AssetTokenAbi } from '@/lib/abis/AssetTokenERC20';
-import { chainFromEnv } from '@/lib/viemClient';
+import { chainFromEnv, getDictionaryAddressOptional } from '@/lib/viemClient';
 import { createWalletClient, custom, type Address, createPublicClient, http, decodeEventLog } from 'viem';
 
 // Extend Window interface for MetaMask
@@ -476,8 +476,16 @@ export default function Page() {
   // CBOR fetching state
   const [fetchedCBOR, setFetchedCBOR] = useState<string | null>(null);
   const [decodedFIX, setDecodedFIX] = useState<string | null>(null);
+  const [decodedFIXNamed, setDecodedFIXNamed] = useState<string | null>(null);
   const [fetchCBORStatus, setFetchCBORStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [fetchCBORError, setFetchCBORError] = useState<string | null>(null);
+  
+  // Human-readable output state
+  const [decodeMode, setDecodeMode] = useState<'offchain' | 'onchain'>('offchain');
+  const [offchainFormat, setOffchainFormat] = useState<'numeric' | 'named'>('numeric');
+  const [onchainReadable, setOnchainReadable] = useState<string | null>(null);
+  const [onchainReadableStatus, setOnchainReadableStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [onchainReadableError, setOnchainReadableError] = useState<string | null>(null);
 
   // Check wallet connection on mount and listen for account changes
   useEffect(() => {
@@ -814,6 +822,12 @@ export default function Page() {
       // Dictionary hash for DEMO_FIX_SCHEMA
       const dictHash = '0xb24215c985384ddaa6767272d452780aa4352201a1df669564cde3905cb6a215' as `0x${string}`;
       
+      // Get dictionary address from environment (optional, warn if not set)
+      const dictionaryAddress = getDictionaryAddressOptional();
+      if (!dictionaryAddress) {
+        console.warn('NEXT_PUBLIC_DICTIONARY_ADDRESS not set. Token will be deployed without human-readable descriptor support.');
+      }
+      
       // Prepare descriptor (factory will set fixCBORPtr and fixCBORLen)
       const descriptor = {
         fixMajor: 4,
@@ -822,7 +836,8 @@ export default function Page() {
         fixRoot: preview.root as `0x${string}`,
         fixCBORPtr: '0x0000000000000000000000000000000000000000' as `0x${string}`,
         fixCBORLen: 0,
-        fixURI: ''
+        fixURI: '',
+        dictionaryContract: dictionaryAddress || '0x0000000000000000000000000000000000000000' as `0x${string}`
       };
 
       // Convert supply to wei (18 decimals)
@@ -995,7 +1010,8 @@ export default function Page() {
       }
 
       const decodeResult = await decodeResponse.json();
-      setDecodedFIX(decodeResult.fixMessage);
+      setDecodedFIX(decodeResult.fixMessage);           // numeric tags
+      setDecodedFIXNamed(decodeResult.fixMessageNamed); // named tags
       setFetchCBORStatus('success');
 
     } catch (error) {
@@ -1003,6 +1019,53 @@ export default function Page() {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       setFetchCBORError(errorMessage);
       setFetchCBORStatus('error');
+    }
+  }
+
+  async function fetchHumanReadable() {
+    if (!deployedTokenAddress) {
+      setOnchainReadableError('Please deploy a token first');
+      return;
+    }
+
+    try {
+      setOnchainReadableStatus('loading');
+      setOnchainReadableError(null);
+      setOnchainReadable(null);
+
+      const publicClient = createPublicClient({
+        chain: chainFromEnv,
+        transport: http()
+      });
+
+      type Abi = readonly unknown[];
+      const tokenAbi: Abi = AssetTokenAbi;
+
+      // Call getHumanReadableDescriptor on the token contract
+      const readable = await publicClient.readContract({
+        address: deployedTokenAddress as `0x${string}`,
+        abi: tokenAbi,
+        functionName: 'getHumanReadableDescriptor',
+        args: []
+      }) as string;
+
+      setOnchainReadable(readable);
+      setOnchainReadableStatus('success');
+
+    } catch (error) {
+      console.error('Failed to fetch human-readable descriptor:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      
+      // Provide helpful error messages
+      let userFriendlyError = errorMessage;
+      if (errorMessage.includes('Dictionary not set')) {
+        userFriendlyError = 'This token was not deployed with a FIX Dictionary. Please deploy a new token using the "Quick Deploy Token" button after setting NEXT_PUBLIC_DICTIONARY_ADDRESS in your environment.';
+      } else if (errorMessage.includes('Descriptor not initialized')) {
+        userFriendlyError = 'The token descriptor has not been initialized. Please deploy a new token with the "Quick Deploy Token" button.';
+      }
+      
+      setOnchainReadableError(userFriendlyError);
+      setOnchainReadableStatus('error');
     }
   }
 
@@ -2608,8 +2671,11 @@ export default function Page() {
                   borderRadius: '12px'
                 }}>
                   <button
-                    onClick={fetchCBORFromContract}
-                    disabled={fetchCBORStatus === 'loading'}
+                    onClick={() => {
+                      fetchCBORFromContract();
+                      fetchHumanReadable();
+                    }}
+                    disabled={fetchCBORStatus === 'loading' || onchainReadableStatus === 'loading'}
                     style={{
                       background: fetchCBORStatus === 'loading' ?
                         'rgba(59, 130, 246, 0.2)' :
@@ -2703,8 +2769,66 @@ export default function Page() {
                         </div>
                       </div>
 
-                      {decodedFIX && (
+                      {(decodedFIX || onchainReadable) && (
                         <div>
+                          {/* Toggle buttons for decode mode */}
+                          <div style={{
+                            display: 'flex',
+                            gap: '0.5rem',
+                            marginBottom: '1rem',
+                            padding: '0.5rem',
+                            background: 'rgba(255,255,255,0.03)',
+                            borderRadius: '8px',
+                            border: '1px solid rgba(255,255,255,0.1)'
+                          }}>
+                            <button
+                              onClick={() => setDecodeMode('offchain')}
+                              style={{
+                                flex: 1,
+                                padding: '0.625rem 1rem',
+                                background: decodeMode === 'offchain' 
+                                  ? 'rgba(59, 130, 246, 0.2)' 
+                                  : 'transparent',
+                                border: decodeMode === 'offchain'
+                                  ? '1px solid rgba(59, 130, 246, 0.4)'
+                                  : '1px solid rgba(255,255,255,0.1)',
+                                borderRadius: '6px',
+                                color: decodeMode === 'offchain'
+                                  ? 'rgba(59, 130, 246, 0.9)'
+                                  : 'rgba(255,255,255,0.6)',
+                                fontSize: '0.875rem',
+                                fontWeight: '600',
+                                cursor: 'pointer',
+                                transition: 'all 0.2s'
+                              }}
+                            >
+                              🔧 Off-chain Decoded
+                            </button>
+                            <button
+                              onClick={() => setDecodeMode('onchain')}
+                              style={{
+                                flex: 1,
+                                padding: '0.625rem 1rem',
+                                background: decodeMode === 'onchain' 
+                                  ? 'rgba(34, 197, 94, 0.2)' 
+                                  : 'transparent',
+                                border: decodeMode === 'onchain'
+                                  ? '1px solid rgba(34, 197, 94, 0.4)'
+                                  : '1px solid rgba(255,255,255,0.1)',
+                                borderRadius: '6px',
+                                color: decodeMode === 'onchain'
+                                  ? 'rgba(34, 197, 94, 0.9)'
+                                  : 'rgba(255,255,255,0.6)',
+                                fontSize: '0.875rem',
+                                fontWeight: '600',
+                                cursor: 'pointer',
+                                transition: 'all 0.2s'
+                              }}
+                            >
+                              ⛓️ On-chain Human-Readable
+                            </button>
+                          </div>
+
                           <div style={{
                             fontSize: '0.8rem',
                             color: 'rgba(255,255,255,0.5)',
@@ -2713,33 +2837,158 @@ export default function Page() {
                             textTransform: 'uppercase',
                             letterSpacing: '0.05em'
                           }}>
-                            Decoded FIX Message
+                            {decodeMode === 'offchain' ? 'Decoded FIX Message (Off-chain)' : 'Human-Readable Descriptor (On-chain)'}
                           </div>
-                          <textarea
-                            readOnly
-                            value={decodedFIX}
-                            rows={6}
-                            style={{
-                              width: '100%',
-                              padding: '1rem',
-                              borderRadius: '8px',
-                              border: '1px solid rgba(34, 197, 94, 0.2)',
-                              background: 'rgba(34, 197, 94, 0.05)',
-                              color: 'rgba(34, 197, 94, 0.9)',
-                              fontFamily: 'ui-monospace, monospace',
-                              fontSize: '0.875rem',
-                              resize: 'vertical',
-                              lineHeight: '1.6',
-                              fontWeight: '500'
-                            }}
-                          />
-                          <div style={{
-                            fontSize: '0.75rem',
-                            color: 'rgba(255,255,255,0.4)',
-                            marginTop: '0.5rem'
-                          }}>
-                            The CBOR data was successfully decoded back into FIX format.
-                          </div>
+                          {/* Off-chain decoded view */}
+                          {decodeMode === 'offchain' && decodedFIX && (
+                            <>
+                              {/* Sub-toggle for numeric vs named */}
+                              <div style={{
+                                display: 'flex',
+                                gap: '0.5rem',
+                                marginBottom: '0.75rem',
+                                padding: '0.25rem',
+                                background: 'rgba(255,255,255,0.02)',
+                                borderRadius: '6px',
+                                border: '1px solid rgba(255,255,255,0.08)'
+                              }}>
+                                <button
+                                  onClick={() => setOffchainFormat('numeric')}
+                                  style={{
+                                    flex: 1,
+                                    padding: '0.5rem',
+                                    fontSize: '0.8rem',
+                                    background: offchainFormat === 'numeric' 
+                                      ? 'rgba(59, 130, 246, 0.15)' 
+                                      : 'transparent',
+                                    border: offchainFormat === 'numeric'
+                                      ? '1px solid rgba(59, 130, 246, 0.3)'
+                                      : '1px solid transparent',
+                                    borderRadius: '4px',
+                                    color: offchainFormat === 'numeric'
+                                      ? 'rgba(59, 130, 246, 0.9)'
+                                      : 'rgba(255,255,255,0.5)',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s'
+                                  }}
+                                >
+                                  #️⃣ Numeric Tags
+                                </button>
+                                <button
+                                  onClick={() => setOffchainFormat('named')}
+                                  style={{
+                                    flex: 1,
+                                    padding: '0.5rem',
+                                    fontSize: '0.8rem',
+                                    background: offchainFormat === 'named' 
+                                      ? 'rgba(59, 130, 246, 0.15)' 
+                                      : 'transparent',
+                                    border: offchainFormat === 'named'
+                                      ? '1px solid rgba(59, 130, 246, 0.3)'
+                                      : '1px solid transparent',
+                                    borderRadius: '4px',
+                                    color: offchainFormat === 'named'
+                                      ? 'rgba(59, 130, 246, 0.9)'
+                                      : 'rgba(255,255,255,0.5)',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s'
+                                  }}
+                                >
+                                  📝 Tag Names
+                                </button>
+                              </div>
+
+                              <textarea
+                                readOnly
+                                value={(offchainFormat === 'numeric' ? decodedFIX : decodedFIXNamed) || ''}
+                                rows={6}
+                                style={{
+                                  width: '100%',
+                                  padding: '1rem',
+                                  borderRadius: '8px',
+                                  border: '1px solid rgba(59, 130, 246, 0.2)',
+                                  background: 'rgba(59, 130, 246, 0.05)',
+                                  color: 'rgba(59, 130, 246, 0.9)',
+                                  fontFamily: 'ui-monospace, monospace',
+                                  fontSize: '0.875rem',
+                                  resize: 'vertical',
+                                  lineHeight: '1.6',
+                                  fontWeight: '500'
+                                }}
+                              />
+                              <div style={{
+                                fontSize: '0.75rem',
+                                color: 'rgba(255,255,255,0.4)',
+                                marginTop: '0.5rem'
+                              }}>
+                                {offchainFormat === 'numeric' 
+                                  ? 'Decoded off-chain using fixparser library. Shows numeric tags (e.g., "55=AAPL").'
+                                  : 'Decoded off-chain with tag names from TypeScript FIX_44_DICTIONARY package. Shows human-readable names (e.g., "Symbol=AAPL"). Dictionary source: npm package (off-chain).'}
+                              </div>
+                            </>
+                          )}
+
+                          {/* On-chain human-readable view */}
+                          {decodeMode === 'onchain' && (
+                            <>
+                              {onchainReadableStatus === 'loading' && (
+                                <div style={{
+                                  padding: '2rem',
+                                  background: 'rgba(59, 130, 246, 0.1)',
+                                  border: '1px solid rgba(59, 130, 246, 0.2)',
+                                  borderRadius: '8px',
+                                  textAlign: 'center',
+                                  color: 'rgba(59, 130, 246, 0.9)',
+                                  fontSize: '0.875rem'
+                                }}>
+                                  ⏳ Fetching human-readable output from blockchain...
+                                </div>
+                              )}
+
+                              {onchainReadableStatus === 'error' && onchainReadableError && (
+                                <div style={{
+                                  padding: '1rem',
+                                  background: 'rgba(239, 68, 68, 0.1)',
+                                  border: '1px solid rgba(239, 68, 68, 0.3)',
+                                  borderRadius: '8px',
+                                  color: 'rgba(239, 68, 68, 0.9)',
+                                  fontSize: '0.875rem'
+                                }}>
+                                  ❌ {onchainReadableError}
+                                </div>
+                              )}
+
+                              {onchainReadableStatus === 'success' && onchainReadable && (
+                                <>
+                                  <textarea
+                                    readOnly
+                                    value={onchainReadable}
+                                    rows={6}
+                                    style={{
+                                      width: '100%',
+                                      padding: '1rem',
+                                      borderRadius: '8px',
+                                      border: '1px solid rgba(34, 197, 94, 0.2)',
+                                      background: 'rgba(34, 197, 94, 0.05)',
+                                      color: 'rgba(34, 197, 94, 0.9)',
+                                      fontFamily: 'ui-monospace, monospace',
+                                      fontSize: '0.875rem',
+                                      resize: 'vertical',
+                                      lineHeight: '1.6',
+                                      fontWeight: '500'
+                                    }}
+                                  />
+                                  <div style={{
+                                    fontSize: '0.75rem',
+                                    color: 'rgba(255,255,255,0.4)',
+                                    marginTop: '0.5rem'
+                                  }}>
+                                    Generated entirely on-chain by calling getHumanReadableDescriptor(). Tag names from on-chain FixDictionary contract. Fully trustless and composable with other smart contracts.
+                                  </div>
+                                </>
+                              )}
+                            </>
+                          )}
                         </div>
                       )}
                     </div>

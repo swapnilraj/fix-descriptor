@@ -158,6 +158,11 @@ export const abi = [
             "internalType": "bytes32"
           },
           {
+            "name": "dictionaryContract",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
             "name": "fixRoot",
             "type": "bytes32",
             "internalType": "bytes32"
@@ -191,6 +196,19 @@ export const abi = [
         "name": "",
         "type": "bytes32",
         "internalType": "bytes32"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getHumanReadableDescriptor",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "string",
+        "internalType": "string"
       }
     ],
     "stateMutability": "view"
@@ -251,6 +269,11 @@ export const abi = [
             "name": "dictHash",
             "type": "bytes32",
             "internalType": "bytes32"
+          },
+          {
+            "name": "dictionaryContract",
+            "type": "address",
+            "internalType": "address"
           },
           {
             "name": "fixRoot",
@@ -547,6 +570,11 @@ export const abi = [
       }
     ],
     "anonymous": false
+  },
+  {
+    "type": "error",
+    "name": "DictionaryNotSet",
+    "inputs": []
   },
   {
     "type": "error",

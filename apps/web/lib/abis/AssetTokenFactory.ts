@@ -100,6 +100,11 @@ export const abi = [
             "internalType": "bytes32"
           },
           {
+            "name": "dictionaryContract",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
             "name": "fixRoot",
             "type": "bytes32",
             "internalType": "bytes32"

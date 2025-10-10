@@ -28,6 +28,11 @@ export const abi = [
             "internalType": "bytes32"
           },
           {
+            "name": "dictionaryContract",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
             "name": "fixRoot",
             "type": "bytes32",
             "internalType": "bytes32"
@@ -61,6 +66,19 @@ export const abi = [
         "name": "root",
         "type": "bytes32",
         "internalType": "bytes32"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getHumanReadableDescriptor",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "string",
+        "internalType": "string"
       }
     ],
     "stateMutability": "view"
