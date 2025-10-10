@@ -1,7 +1,35 @@
 import type { NextConfig } from "next";
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  // External packages for server components
+  serverExternalPackages: ['fixdescriptorkit-typescript'],
+  
+  // Webpack configuration for monorepo
+  webpack: (config) => {
+    // Handle local packages
+    config.resolve.symlinks = false;
+    
+    // Add path alias for @ to point to the apps/web directory
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      '@': path.resolve(__dirname),
+    };
+    
+    // Ensure proper module resolution
+    config.resolve.fallback = {
+      ...config.resolve.fallback,
+      fs: false,
+      net: false,
+      tls: false,
+    };
+    
+    return config;
+  },
 };
 
 export default nextConfig;

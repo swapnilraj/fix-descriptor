@@ -1414,7 +1414,7 @@ export default function SpecPage() {
                 <div style={{ marginTop: '1rem' }}>
                   <div>[Slot at offset 360]</div>
                   <div>Byte 0:    0x08 (length = 8)</div>
-                  <div>Bytes 1-8: "Currency"</div>
+                  <div>Bytes 1-8: &quot;Currency&quot;</div>
                   <div>Bytes 9-23: 0x00... (zero padding)</div>
                 </div>
               </div>
@@ -1437,10 +1437,10 @@ export default function SpecPage() {
                 function getTagName(uint16 tag) public view returns (string memory)
               </div>
               <div style={{ color: 'rgba(255,255,255,0.5)', marginTop: '1rem' }}>
-                // Direct offset calculation: O(1) lookup
+                {/* Direct offset calculation: O(1) lookup */}
               </div>
               <div style={{ color: 'rgba(255,255,255,0.7)' }}>
-                offset = tag × 24 + 1  // +1 to skip STOP byte
+                offset = tag × 24 + 1  {/* +1 to skip STOP byte */}
               </div>
               <div style={{ color: 'rgba(255,255,255,0.7)' }}>
                 extcodecopy(dataContract, slot, offset, 24)
@@ -1480,7 +1480,7 @@ export default function SpecPage() {
                 mapping(uint16 =&gt; mapping(uint16 =&gt; FixDictionary)) public dictionaries;
               </div>
               <div style={{ color: 'rgba(255,255,255,0.7)', marginTop: '0.5rem' }}>
-                // dictionaries[fixMajor][fixMinor] =&gt; FixDictionary contract
+                {/* dictionaries[fixMajor][fixMinor] => FixDictionary contract */}
               </div>
             </div>
           </section>
