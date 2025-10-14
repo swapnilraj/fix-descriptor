@@ -2148,16 +2148,28 @@ export default function SpecPage() {
 
             <div style={{ 
               padding: 'clamp(1rem, 3vw, 1.5rem)',
-              background: 'rgba(34, 197, 94, 0.05)',
+              background: 'rgba(255,255,255,0.03)',
               borderRadius: '12px',
               marginBottom: '2rem',
-              border: '1px solid rgba(34, 197, 94, 0.2)'
+              border: '1px solid rgba(255,255,255,0.1)'
             }}>
-              <div style={{ fontWeight: '600', marginBottom: '1rem', color: 'rgba(34, 197, 94, 0.9)' }}>
+              <div style={{ fontWeight: '600', marginBottom: '0.75rem', color: 'rgba(255,255,255,0.9)' }}>
                 Off-chain Usage (View Calls)
               </div>
               <div style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8' }}>
-                <div style={{ marginBottom: '0.5rem' }}>Gas Cost: <span style={{ fontWeight: '600', color: 'rgba(34, 197, 94, 0.9)' }}>0 gas</span></div>
+                <div style={{ marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <span style={{
+                    display: 'inline-block',
+                    padding: '0.1rem 0.5rem',
+                    borderRadius: '9999px',
+                    background: 'rgba(34,197,94,0.15)',
+                    border: '1px solid rgba(34,197,94,0.25)',
+                    color: 'rgba(34,197,94,0.95)',
+                    fontSize: '0.75rem',
+                    fontWeight: 600
+                  }}>0 gas</span>
+                  <span>Gas Cost</span>
+                </div>
                 <div style={{ fontSize: '0.875rem', color: 'rgba(255,255,255,0.5)' }}>
                   View functions execute locally without transactions. Unlimited free calls for web apps, analytics, and data explorers.
                 </div>
@@ -2166,46 +2178,59 @@ export default function SpecPage() {
 
             <div style={{ 
               padding: 'clamp(1rem, 3vw, 1.5rem)',
-              background: 'rgba(59, 130, 246, 0.05)',
+              background: 'rgba(255,255,255,0.03)',
               borderRadius: '12px',
               marginBottom: '2rem',
-              border: '1px solid rgba(59, 130, 246, 0.2)'
+              border: '1px solid rgba(255,255,255,0.1)'
             }}>
-              <div style={{ fontWeight: '600', marginBottom: '1rem', color: 'rgba(59, 130, 246, 0.9)' }}>
+              <div style={{ fontWeight: '600', marginBottom: '0.75rem', color: 'rgba(255, 255, 255, 0.9)' }}>
                 On-chain Usage (Contract Calls)
               </div>
               <div style={{ fontFamily: 'ui-monospace, monospace', fontSize: '0.875rem', color: 'rgba(255,255,255,0.7)', lineHeight: '1.8' }}>
-                <div style={{ marginBottom: '0.5rem' }}>Simple descriptor (5 fields): <span style={{ color: 'rgba(34, 197, 94, 0.9)' }}>~180,000 gas</span></div>
-                <div style={{ marginBottom: '0.5rem' }}>Medium descriptor (12 fields): <span style={{ color: 'rgba(251, 191, 36, 0.9)' }}>~250,000 gas</span></div>
-                <div style={{ marginBottom: '0.5rem' }}>Complex descriptor (25+ fields): <span style={{ color: 'rgba(239, 68, 68, 0.9)' }}>~500,000 gas</span></div>
+                <div style={{ marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <span style={{
+                    display: 'inline-block',
+                    padding: '0.1rem 0.5rem',
+                    borderRadius: '9999px',
+                    background: 'rgba(34,197,94,0.15)',
+                    border: '1px solid rgba(34,197,94,0.25)',
+                    color: 'rgba(34,197,94,0.95)',
+                    fontSize: '0.75rem',
+                    fontWeight: 600
+                  }}>low</span>
+                  <span>Simple descriptor (5 fields): ~180,000 gas</span>
+                </div>
+                <div style={{ marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <span style={{
+                    display: 'inline-block',
+                    padding: '0.1rem 0.5rem',
+                    borderRadius: '9999px',
+                    background: 'rgba(251,191,36,0.15)',
+                    border: '1px solid rgba(251,191,36,0.25)',
+                    color: 'rgba(251,191,36,0.95)',
+                    fontSize: '0.75rem',
+                    fontWeight: 600
+                  }}>medium</span>
+                  <span>Medium descriptor (12 fields): ~250,000 gas</span>
+                </div>
+                <div style={{ marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <span style={{
+                    display: 'inline-block',
+                    padding: '0.1rem 0.5rem',
+                    borderRadius: '9999px',
+                    background: 'rgba(239,68,68,0.15)',
+                    border: '1px solid rgba(239,68,68,0.25)',
+                    color: 'rgba(239,68,68,0.95)',
+                    fontSize: '0.75rem',
+                    fontWeight: 600
+                  }}>high</span>
+                  <span>Complex descriptor (25+ fields): ~500,000 gas</span>
+                </div>
                 <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid rgba(59, 130, 246, 0.1)', fontSize: '0.8rem', color: 'rgba(255,255,255,0.5)' }}>
                   Per-tag lookup cost: ~4,400 gas (O(1) constant time)
                 </div>
               </div>
             </div>
-
-            <div style={{ 
-              padding: 'clamp(1rem, 3vw, 1.5rem)',
-              background: 'rgba(147, 51, 234, 0.05)',
-              borderRadius: '12px',
-              marginBottom: '2rem',
-              border: '1px solid rgba(147, 51, 234, 0.2)'
-            }}>
-              <div style={{ fontWeight: '600', marginBottom: '0.75rem', color: 'rgba(147, 51, 234, 0.9)' }}>
-                Recommendations
-              </div>
-              <ul style={{ margin: 0, paddingLeft: '1.5rem', color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', fontSize: '0.875rem' }}>
-                <li><strong>Deploy on L2</strong> - 100-1000× cheaper deployment costs</li>
-                <li><strong>Use view calls for UIs</strong> - Always free for web applications</li>
-                <li><strong>Share dictionary</strong> - One deployment serves entire ecosystem</li>
-                <li><strong>Cache on-chain reads</strong> - If descriptor is immutable</li>
-                <li><strong>Reserve on-chain calls</strong> - Only when contract composability is needed</li>
-              </ul>
-            </div>
-
-            <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.875rem', marginBottom: '2rem', fontStyle: 'italic' }}>
-              For detailed gas analysis including break-even calculations and optimization strategies, see <code style={{ background: 'rgba(255,255,255,0.1)', padding: '0.25rem 0.5rem', borderRadius: '4px' }}>docs/GAS_ANALYSIS_HUMAN_READABLE.md</code>
-            </p>
 
             <SubsectionHeading id="base-operations">
               15.2 Base Operation Costs
