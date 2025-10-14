@@ -132,6 +132,82 @@ export default function SpecPage() {
     );
   };
 
+  // Reusable, consistent SVG icon component
+  type IconName = 'file' | 'package' | 'fingerprint' | 'shieldCheck' | 'download' | 'refresh';
+  const Icon = ({ name, size = 16, color = 'currentColor' }: { name: IconName; size?: number; color?: string }) => {
+    const common = { width: size, height: size, viewBox: '0 0 24 24', fill: 'none', stroke: color, strokeWidth: 1.75, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const, 'aria-hidden': true };
+    switch (name) {
+      case 'file':
+        return (
+          <svg {...common}>
+            <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" />
+            <polyline points="13 2 13 9 20 9" />
+          </svg>
+        );
+      case 'package':
+        return (
+          <svg {...common}>
+            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+          </svg>
+        );
+      case 'fingerprint':
+        return (
+          <svg {...common}>
+            <circle cx="12" cy="12" r="3" />
+            <path d="M3 7V5a2 2 0 0 1 2-2h2" />
+            <path d="M17 3h2a2 2 0 0 1 2 2v2" />
+            <path d="M21 17v2a2 2 0 0 1-2 2h-2" />
+            <path d="M7 21H5a2 2 0 0 1-2-2v-2" />
+          </svg>
+        );
+      case 'shieldCheck':
+        return (
+          <svg {...common}>
+            <path d="M12 3l7 4v6c0 5-3.5 7.5-7 8-3.5-.5-7-3-7-8V7l7-4z" />
+            <path d="M9 12l2 2 4-4" />
+          </svg>
+        );
+      case 'download':
+        return (
+          <svg {...common}>
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+            <path d="M7 10l5 5 5-5" />
+            <path d="M12 15V3" />
+          </svg>
+        );
+      case 'refresh':
+        return (
+          <svg {...common}>
+            <path d="M21 12a9 9 0 1 1-2.64-6.36" />
+            <path d="M21 3v6h-6" />
+          </svg>
+        );
+      default:
+        return null;
+    }
+  };
+
+  // Consistent arrow connector
+  const Arrow = () => (
+    <div style={{ display: 'flex', justifyContent: 'center', margin: '1.25rem 0' }}>
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" style={{ opacity: 0.45 }} aria-hidden>
+        <path d="M12 5v14" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
+        <path d="M8 15l4 4 4-4" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    </div>
+  );
+
+  // Branching connector (true split)
+  const SplitConnector = () => (
+    <div style={{ width: '100%', height: '40px', margin: '4px 0 16px 0' }} aria-hidden>
+      <svg viewBox="0 0 100 40" width="100%" height="40" fill="none" stroke="currentColor" style={{ opacity: 0.5 }}>
+        <path d="M50 0 L50 10" strokeWidth="1.75" strokeLinecap="round" />
+        <path d="M50 10 Q46 20 32 36" strokeWidth="1.75" strokeLinecap="round" />
+        <path d="M50 10 Q54 20 68 36" strokeWidth="1.75" strokeLinecap="round" />
+      </svg>
+    </div>
+  );
+
   return (
     <div style={{ minHeight: '100vh', background: '#0a0a0a', color: '#ffffff' }}>
       {/* Header */}
@@ -763,58 +839,233 @@ export default function SpecPage() {
               FIX descriptors flow from input to onchain storage:
             </p>
 
-            <div style={{ 
-              padding: '2rem',
-              background: 'rgba(255,255,255,0.03)',
-              border: '1px solid rgba(255,255,255,0.1)',
-              borderRadius: '8px',
-              fontFamily: 'ui-monospace, monospace',
-              fontSize: '0.8rem',
+            <div className="arch-diagram" style={{ 
+              padding: 'clamp(2.5rem, 5vw, 3rem)',
+              background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.55) 0%, rgba(2, 6, 23, 0.55) 100%)',
+              borderRadius: '20px',
+              border: '1px solid rgba(100, 116, 139, 0.18)',
               marginBottom: '3rem',
-              overflowX: 'auto'
+              maxWidth: '900px',
+              margin: '0 auto 3rem auto',
+              position: 'relative'
             }}>
-              <pre style={{ margin: 0, color: 'rgba(255,255,255,0.8)', lineHeight: '2' }}>{`                ┌─────────────────────┐
-                │   FIX Message       │
-                │                     │
-                │ Input: Standard     │
-                │ securities data     │
-                │ (business fields)   │
-                └──────────┬──────────┘
-                           │
-                           ▼
-                ┌─────────────────────┐
-                │  Canonical Tree     │
-                │                     │
-                │ • Remove session    │
-                │   fields            │
-                │ • Sort map keys     │
-                │ • Preserve groups   │
-                └──────────┬──────────┘
-                           │
-          ┌────────────────┼────────────────┐
-          │                │                │
-          ▼                ▼                ▼
-    ┌──────────┐   ┌──────────┐   ┌──────────┐
-    │   CBOR   │   │  Merkle  │   │  Path    │
-    │ Encoding │   │   Tree   │   │ Indexing │
-    └────┬─────┘   └────┬─────┘   └────┬─────┘
-         │              │              │
-         │ Compact,     │ Commitment   │ Field
-         │ determinis-  │ for verifi-  │ location
-         │ tic binary   │ cation       │ tracking
-         │              │              │
-         └──────────────┴──────────────┘
-                        │
-                        ▼
-            ┌──────────────────────┐
-            │   Onchain Storage    │
-            │                      │
-            │ • FixDescriptor      │
-            │   struct (minimal)   │
-            │ • CBOR via SSTORE2   │
-            │ • Merkle root        │
-            │ • Verification func  │
-            └──────────────────────┘`}</pre>
+              <style>{`
+                @media (max-width: 640px) {
+                  .arch-diagram .diagram-guide { display: none; }
+                  .arch-diagram .split-desktop { display: none; }
+                  .arch-diagram .split-mobile { display: block; }
+                  .arch-diagram .diagram-card { padding: 1rem 1.25rem !important; border-radius: 10px !important; }
+                  .arch-diagram .parallel-grid, .arch-diagram .retrieval-grid { grid-template-columns: 1fr !important; row-gap: 0.75rem !important; }
+                  .arch-diagram .diagram-card h4, .arch-diagram .diagram-card div { line-height: 1.3; }
+                }
+                @media (min-width: 641px) {
+                  .arch-diagram .split-desktop { display: block; }
+                  .arch-diagram .split-mobile { display: none; }
+                }
+              `}</style>
+              {/* Stage 1: Input */}
+              <div style={{ marginBottom: '2rem' }}>
+                <div className="diagram-card" style={{
+                  background: 'linear-gradient(135deg, rgba(79,70,229,0.50) 0%, rgba(67,56,202,0.50) 100%)',
+                  padding: '1.5rem 2rem',
+                  borderRadius: '12px',
+                  textAlign: 'center',
+                  boxShadow: '0 8px 24px rgba(79, 70, 229, 0.15)',
+                  border: '1px solid rgba(99,102,241,0.30)'
+                }}>
+                  <div style={{ 
+                    fontSize: '1.125rem', 
+                    fontWeight: '600', 
+                    color: 'white',
+                    marginBottom: '0.5rem'
+                  }}>
+                    FIX Message Input
+                  </div>
+                  <div style={{ fontSize: '0.875rem', color: 'rgba(255,255,255,0.85)' }}>
+                    Standard securities data (business fields)
+                  </div>
+                </div>
+              </div>
+
+              <Arrow />
+
+              {/* Stage 2: Canonical Tree */}
+              <div style={{ marginBottom: '2rem' }}>
+                <div className="diagram-card" style={{
+                  background: 'linear-gradient(135deg, rgba(139,92,246,0.45) 0%, rgba(124,58,237,0.45) 100%)',
+                  padding: '1.25rem 2rem',
+                  borderRadius: '12px',
+                  textAlign: 'center',
+                  boxShadow: '0 4px 16px rgba(124,58,237,0.18)',
+                  border: '1px solid rgba(124,58,237,0.30)'
+                }}>
+                  <div style={{ 
+                    fontSize: '1rem',
+                    fontWeight: '600',
+                    color: 'white',
+                    marginBottom: '0.5rem'
+                  }}>
+                    Canonical Tree
+                  </div>
+                  <div style={{ fontSize: '0.875rem', color: 'rgba(255,255,255,0.8)' }}>
+                    Sort keys, remove session fields, preserve groups
+                  </div>
+                </div>
+              </div>
+
+              <div className="split-connectors">
+                <div className="split-desktop"><SplitConnector /></div>
+                <div className="split-mobile"><Arrow /></div>
+              </div>
+
+              {/* Stage 3: Parallel Processing - CBOR & Merkle */}
+              <div style={{ marginBottom: '2rem' }}>
+                <div className="parallel-grid" style={{ 
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+                  gap: '1rem'
+                }}>
+                  <div className="diagram-card" style={{
+                    background: 'linear-gradient(135deg, rgba(168,85,247,0.40) 0%, rgba(147,51,234,0.40) 100%)',
+                    padding: '1.5rem 1.5rem',
+                    borderRadius: '12px',
+                    textAlign: 'center',
+                    boxShadow: '0 4px 14px rgba(168, 85, 247, 0.20)',
+                    border: '1px solid rgba(168, 85, 247, 0.28)'
+                  }}>
+                    <div style={{ 
+                      fontSize: '1.05rem',
+                      fontWeight: '600',
+                      color: 'white',
+                      marginBottom: '0.5rem'
+                    }}>
+                      CBOR Encoding
+                    </div>
+                    <div style={{ fontSize: '0.875rem', color: 'rgba(255,255,255,0.85)' }}>
+                      Deterministic binary format
+                    </div>
+                  </div>
+                  <div className="diagram-card" style={{
+                    background: 'linear-gradient(135deg, rgba(168,85,247,0.40) 0%, rgba(147,51,234,0.40) 100%)',
+                    padding: '1.5rem 1.5rem',
+                    borderRadius: '12px',
+                    textAlign: 'center',
+                    boxShadow: '0 4px 14px rgba(168, 85, 247, 0.20)',
+                    border: '1px solid rgba(168, 85, 247, 0.28)'
+                  }}>
+                    <div style={{ 
+                      fontSize: '1.05rem',
+                      fontWeight: '600',
+                      color: 'white',
+                      marginBottom: '0.5rem'
+                    }}>
+                      Merkle Tree
+                    </div>
+                    <div style={{ fontSize: '0.875rem', color: 'rgba(255,255,255,0.85)' }}>
+                      Cryptographic commitment
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <Arrow />
+
+              {/* Stage 4: Storage */}
+              <div style={{ marginBottom: '2rem' }}>
+                <div className="diagram-card" style={{
+                  background: 'linear-gradient(135deg, rgba(16,185,129,0.45) 0%, rgba(5,150,105,0.45) 100%)',
+                  padding: '1.5rem 2rem',
+                  borderRadius: '12px',
+                  boxShadow: '0 6px 18px rgba(16, 185, 129, 0.15)',
+                  border: '1px solid rgba(16,185,129,0.25)'
+                }}>
+                  <div style={{ 
+                    fontSize: '1.125rem',
+                    fontWeight: '600',
+                    color: 'white',
+                    marginBottom: '1rem',
+                    textAlign: 'center'
+                  }}>
+                    Onchain Storage
+                  </div>
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(2, 1fr)',
+                    gap: '0.875rem',
+                    fontSize: '0.875rem',
+                    color: 'rgba(255,255,255,0.9)'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <Icon name="file" />
+                      FixDescriptor struct
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <Icon name="package" />
+                      CBOR via SSTORE2
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <Icon name="fingerprint" />
+                      Merkle root
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <Icon name="shieldCheck" />
+                      Verification function
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <Arrow />
+
+              {/* Stage 5: Retrieval & Verification */}
+              <div>
+                <div className="retrieval-grid" style={{ 
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+                  gap: '1rem'
+                }}>
+                  <div className="diagram-card" style={{
+                    background: 'linear-gradient(135deg, rgba(167,139,250,0.40) 0%, rgba(139,92,246,0.40) 100%)',
+                    padding: '1.5rem 1.5rem',
+                    borderRadius: '12px',
+                    textAlign: 'center',
+                    boxShadow: '0 4px 14px rgba(139, 92, 246, 0.18)',
+                    border: '1px solid rgba(139, 92, 246, 0.28)'
+                  }}>
+                    <div style={{ 
+                      fontSize: '1.05rem',
+                      fontWeight: '600',
+                      color: 'white',
+                      marginBottom: '0.5rem'
+                    }}>
+                      Offchain Retrieval
+                    </div>
+                    <div style={{ fontSize: '0.875rem', color: 'rgba(255,255,255,0.85)' }}>
+                      Read CBOR, decode tree
+                    </div>
+                  </div>
+                  <div className="diagram-card" style={{
+                    background: 'linear-gradient(135deg, rgba(167,139,250,0.40) 0%, rgba(139,92,246,0.40) 100%)',
+                    padding: '1.5rem 1.5rem',
+                    borderRadius: '12px',
+                    textAlign: 'center',
+                    boxShadow: '0 4px 14px rgba(139, 92, 246, 0.18)',
+                    border: '1px solid rgba(139, 92, 246, 0.28)'
+                  }}>
+                    <div style={{ 
+                      fontSize: '1.05rem',
+                      fontWeight: '600',
+                      color: 'white',
+                      marginBottom: '0.5rem'
+                    }}>
+                      Onchain Verification
+                    </div>
+                    <div style={{ fontSize: '0.875rem', color: 'rgba(255,255,255,0.85)' }}>
+                      Prove fields with Merkle proofs
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
 
             <SubsectionHeading id="architecture-components">
