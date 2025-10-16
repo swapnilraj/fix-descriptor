@@ -36,15 +36,28 @@ library FixValueParser {
     function parseFixedPoint(bytes memory cborValue, uint8 decimals) internal pure returns (uint256) {
         string memory str = extractString(cborValue);
         bytes memory strBytes = bytes(str);
-
         require(strBytes.length > 0, "Empty value");
 
-        uint256 integerPart = 0;
-        uint256 fractionalPart = 0;
-        uint256 fractionalDigits = 0;
-        uint256 i = 0;
-        bool hasDecimal = false;
+        // Parse integer and fractional parts
+        (uint256 integerPart, uint256 fractionalPart, uint256 fractionalDigits) = 
+            _parseDecimalString(strBytes);
 
+        // Convert to fixed-point
+        return _convertToFixedPoint(integerPart, fractionalPart, fractionalDigits, decimals);
+    }
+
+    /// @notice Internal helper to parse decimal string into parts
+    /// @param strBytes Byte array of decimal string
+    /// @return integerPart Integer portion
+    /// @return fractionalPart Fractional portion
+    /// @return fractionalDigits Number of fractional digits
+    function _parseDecimalString(bytes memory strBytes) 
+        private 
+        pure 
+        returns (uint256 integerPart, uint256 fractionalPart, uint256 fractionalDigits) 
+    {
+        uint256 i = 0;
+        
         // Parse integer part
         while (i < strBytes.length && strBytes[i] != bytes1(".")) {
             require(strBytes[i] >= "0" && strBytes[i] <= "9", "Invalid digit");
@@ -54,9 +67,7 @@ library FixValueParser {
 
         // Parse fractional part if exists
         if (i < strBytes.length && strBytes[i] == bytes1(".")) {
-            hasDecimal = true;
             i++; // skip '.'
-
             while (i < strBytes.length) {
                 require(strBytes[i] >= "0" && strBytes[i] <= "9", "Invalid digit");
                 fractionalPart = fractionalPart * 10 + uint8(strBytes[i]) - uint8(bytes1("0"));
@@ -64,11 +75,23 @@ library FixValueParser {
                 i++;
             }
         }
+    }
 
-        // Convert to fixed-point with specified decimals
+    /// @notice Internal helper to convert parsed decimal to fixed-point
+    /// @param integerPart Integer portion
+    /// @param fractionalPart Fractional portion
+    /// @param fractionalDigits Number of fractional digits
+    /// @param decimals Target decimal places
+    /// @return Fixed-point result
+    function _convertToFixedPoint(
+        uint256 integerPart,
+        uint256 fractionalPart,
+        uint256 fractionalDigits,
+        uint8 decimals
+    ) private pure returns (uint256) {
         uint256 result = integerPart * (10 ** decimals);
 
-        if (hasDecimal && fractionalDigits > 0) {
+        if (fractionalDigits > 0) {
             if (fractionalDigits <= decimals) {
                 // Pad with zeros if needed
                 result += fractionalPart * (10 ** (decimals - fractionalDigits));
