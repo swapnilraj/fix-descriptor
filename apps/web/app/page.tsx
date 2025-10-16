@@ -5,6 +5,8 @@ import { abi as TokenFactoryAbi } from '@/lib/abis/AssetTokenFactory';
 import { abi as AssetTokenAbi } from '@/lib/abis/AssetTokenERC20';
 import { chainFromEnv, getDictionaryAddressOptional } from '@/lib/viemClient';
 import { createWalletClient, custom, type Address, createPublicClient, http, decodeEventLog } from 'viem';
+import { AddressLink, TransactionLink } from '@/components/BlockExplorerLink';
+import { shortenAddress } from '@/lib/blockExplorer';
 
 // Extend Window interface for MetaMask
 declare global {
@@ -455,7 +457,7 @@ export default function Page() {
   } | null>(null);
   const [pathInput, setPathInput] = useState('');
   const [proof, setProof] = useState<ProofResult>(null);
-  const [txInfo, setTxInfo] = useState<string>('');
+  const [txInfo, setTxInfo] = useState<React.ReactNode>('');
   const [currentStep, setCurrentStep] = useState<number>(0);
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -910,7 +912,26 @@ export default function Page() {
         }
       }
 
-      setTxInfo(`✅ Token deployed successfully!\n\nToken Address: ${tokenAddress}\nCBOR Deployed: ✓\nDescriptor Set: ✓\n\nTransaction: ${hash}\n\nYou can now verify proofs onchain using this token!`);
+      setTxInfo(
+        <div>
+          <div style={{ marginBottom: '1rem', fontWeight: '600' }}>✅ Token deployed successfully!</div>
+          <div style={{ marginBottom: '0.5rem' }}>
+            <span style={{ color: 'rgba(255,255,255,0.7)' }}>Token Address: </span>
+            <AddressLink address={tokenAddress} chainId={chainFromEnv.id} />
+          </div>
+          <div style={{ marginBottom: '0.5rem', color: 'rgba(34, 197, 94, 0.9)' }}>
+            ✓ CBOR Deployed<br />
+            ✓ Descriptor Set
+          </div>
+          <div style={{ marginTop: '0.5rem' }}>
+            <span style={{ color: 'rgba(255,255,255,0.7)' }}>Transaction: </span>
+            <TransactionLink hash={hash} chainId={chainFromEnv.id} />
+          </div>
+          <div style={{ marginTop: '1rem', color: 'rgba(255,255,255,0.8)' }}>
+            You can now verify proofs onchain using this token!
+          </div>
+        </div>
+      );
       setShowTokenDeploy(false);
       setCurrentStep(5); // Update step indicator to show deployment complete
       
@@ -1126,7 +1147,34 @@ export default function Page() {
 
       if (isValid) {
         setOnChainVerificationStatus('success');
-        setTxInfo(`✅ Onchain Verification SUCCESSFUL!\n\nToken Address: ${deployedTokenAddress}\nDescriptor Root: ${descriptorRoot}\nPath: ${proof.pathCBORHex}\nValue: ${proof.valueHex}\nProof Length: ${proof.proof.length}\n\nThe proof is cryptographically valid onchain! 🎉`);
+        setTxInfo(
+          <div>
+            <div style={{ marginBottom: '1rem', fontWeight: '600' }}>✅ Onchain Verification SUCCESSFUL!</div>
+            <div style={{ marginBottom: '0.5rem' }}>
+              <span style={{ color: 'rgba(255,255,255,0.7)' }}>Token Address: </span>
+              <AddressLink address={deployedTokenAddress} chainId={chainFromEnv.id} />
+            </div>
+            <div style={{ marginBottom: '0.5rem' }}>
+              <span style={{ color: 'rgba(255,255,255,0.7)' }}>Descriptor Root: </span>
+              <code style={{ color: '#60a5fa', fontFamily: 'monospace' }}>{String(descriptorRoot)}</code>
+            </div>
+            <div style={{ marginBottom: '0.5rem' }}>
+              <span style={{ color: 'rgba(255,255,255,0.7)' }}>Path: </span>
+              <code style={{ color: '#60a5fa', fontFamily: 'monospace', fontSize: '0.85em', wordBreak: 'break-all' }}>{proof.pathCBORHex}</code>
+            </div>
+            <div style={{ marginBottom: '0.5rem' }}>
+              <span style={{ color: 'rgba(255,255,255,0.7)' }}>Value: </span>
+              <code style={{ color: '#60a5fa', fontFamily: 'monospace', fontSize: '0.85em', wordBreak: 'break-all' }}>{proof.valueHex}</code>
+            </div>
+            <div style={{ marginBottom: '0.5rem' }}>
+              <span style={{ color: 'rgba(255,255,255,0.7)' }}>Proof Length: </span>
+              <span style={{ color: '#60a5fa' }}>{proof.proof.length}</span>
+            </div>
+            <div style={{ marginTop: '1rem', color: 'rgba(255,255,255,0.8)' }}>
+              The proof is cryptographically valid onchain! 🎉
+            </div>
+          </div>
+        );
       } else {
         setOnChainVerificationStatus('failed');
         setTxInfo(`❌ Onchain Verification FAILED!\n\nThe proof did not match the committed Merkle root.\n\nDescriptor Root: ${descriptorRoot}\nYour Proof Root: ${preview?.root}\n\nThis could mean:\n- The proof is for a different descriptor\n- The value was modified\n- The path is incorrect\n- The proof is invalid`);
@@ -1275,7 +1323,14 @@ export default function Page() {
               }} />
               <span style={{ color: walletConnected ? '#22c55e' : 'rgba(255,255,255,0.6)' }}>
                 {walletConnected ? (
-                  walletAddress ? `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}` : 'Connected'
+                  walletAddress ? (
+                    <AddressLink 
+                      address={walletAddress} 
+                      chainId={chainFromEnv.id} 
+                      truncate={true}
+                      style={{ color: '#22c55e' }}
+                    />
+                  ) : 'Connected'
                 ) : (
                   'Not Connected'
                 )}
@@ -1692,7 +1747,14 @@ export default function Page() {
                     <path d="M9 12l2 2 4-4" />
                     <circle cx="12" cy="12" r="10" />
                   </svg>
-                  {walletAddress ? `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}` : 'Connected'}
+                  {walletAddress ? (
+                    <AddressLink 
+                      address={walletAddress} 
+                      chainId={chainFromEnv.id} 
+                      truncate={true}
+                      style={{ color: '#22c55e' }}
+                    />
+                  ) : 'Connected'}
                 </>
               ) : (
                 <>
@@ -2600,7 +2662,7 @@ export default function Page() {
                           wordBreak: 'break-all',
                           overflowWrap: 'break-word'
                         }}>
-                          {deployedTokenAddress}
+                          <AddressLink address={deployedTokenAddress} chainId={chainFromEnv.id} />
                         </div>
                       </div>
                       
@@ -2704,7 +2766,7 @@ export default function Page() {
                     overflowWrap: 'break-word'
                   }}>
                     <span style={{ color: 'rgba(255,255,255,0.5)' }}>Token: </span>
-                    {deployedTokenAddress}
+                    <AddressLink address={deployedTokenAddress} chainId={chainFromEnv.id} />
                   </div>
                 </div>
 
