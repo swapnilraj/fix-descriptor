@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import Navigation from '@/components/Navigation';
 
 export default function SpecPage() {
   const [activeSection, setActiveSection] = useState<string>('');
@@ -210,33 +211,7 @@ export default function SpecPage() {
 
   return (
     <div style={{ minHeight: '100vh', background: '#0a0a0a', color: '#ffffff' }}>
-      {/* Header */}
-      <header style={{ 
-        borderBottom: '1px solid rgba(255,255,255,0.1)',
-        background: '#0a0a0a',
-        position: 'sticky',
-        top: 0,
-        zIndex: 100
-      }}>
-        <div style={{ maxWidth: '1400px', margin: '0 auto', padding: 'clamp(1rem, 3vw, 1.5rem) clamp(1rem, 3vw, 2rem)', display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 'clamp(1rem, 3vw, 2rem)' }}>
-          <Link href="/" style={{ 
-            fontSize: 'clamp(1rem, 3vw, 1.25rem)', 
-            fontWeight: '600',
-            color: 'rgba(255,255,255,0.9)',
-            textDecoration: 'none'
-          }}>
-            FixDescriptorKit
-          </Link>
-          <nav style={{ display: 'flex', gap: 'clamp(1rem, 3vw, 2rem)', fontSize: 'clamp(0.8rem, 2vw, 0.9rem)' }}>
-            <Link href="/" style={{ color: 'rgba(255,255,255,0.6)', textDecoration: 'none' }}>
-              Explorer
-            </Link>
-            <Link href="/spec" style={{ color: 'rgba(255,255,255,0.9)', textDecoration: 'none', borderBottom: '2px solid rgba(255,255,255,0.9)', paddingBottom: '0.25rem' }}>
-              Specification
-            </Link>
-          </nav>
-        </div>
-      </header>
+      <Navigation currentPage="spec" />
 
       {/* Mobile TOC Section */}
       {tocOpen && (

@@ -1290,7 +1290,7 @@ export default function Page() {
                 }}>
                   Explorer
                 </Link>
-                <a href="/spec" style={{ 
+                <Link href="/spec" style={{ 
                   color: 'rgba(255,255,255,0.6)', 
                   textDecoration: 'none',
                   transition: 'color 0.2s'
@@ -1299,7 +1299,17 @@ export default function Page() {
                 onMouseLeave={(e) => e.currentTarget.style.color = 'rgba(255,255,255,0.6)'}
                 >
                   Specification
-                </a>
+                </Link>
+                <Link href="/problem" style={{ 
+                  color: 'rgba(255,255,255,0.6)', 
+                  textDecoration: 'none',
+                  transition: 'color 0.2s'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.color = 'rgba(255,255,255,0.9)'}
+                onMouseLeave={(e) => e.currentTarget.style.color = 'rgba(255,255,255,0.6)'}
+                >
+                  The Problem
+                </Link>
               </nav>
             </div>
             
@@ -3302,6 +3312,15 @@ export default function Page() {
               onMouseLeave={(e) => e.currentTarget.style.color = 'rgba(255,255,255,0.4)'}
             >
               Specification
+            </a>
+            <span style={{ color: 'rgba(255,255,255,0.2)' }}>·</span>
+            <a 
+              href="/problem" 
+              style={{ color: 'rgba(255,255,255,0.4)', transition: 'color 0.2s' }}
+              onMouseEnter={(e) => e.currentTarget.style.color = 'rgba(255,255,255,0.7)'}
+              onMouseLeave={(e) => e.currentTarget.style.color = 'rgba(255,255,255,0.4)'}
+            >
+              The Problem
             </a>
           </div>
         </div>
