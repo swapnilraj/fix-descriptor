@@ -33,7 +33,7 @@ The FixDictionary contract stores all 957 FIX 4.4 tag names in a single SSTORE2 
 | Optimism | 0.001 gwei | $2,500 | ~$0.02 |
 | Arbitrum | 0.1 gwei | $2,500 | ~$2.18 |
 | Base | 0.05 gwei | $2,500 | ~$1.09 |
-| Hoodi Testnet | 3 gwei | N/A | Testnet ETH |
+| Sepolia Testnet | 3 gwei | N/A | Testnet ETH |
 
 **Key Points:**
 - This is a **one-time cost per network**

@@ -135,9 +135,9 @@ address token = factory.deployERC20(
 ## 🚀 Deployment
 
 ```bash
-# Deploy to Hoodi Testnet
+# Deploy to Sepolia Testnet
 forge script script/DeployAssetToken.s.sol \
-  --rpc-url https://ethereum-hoodi-rpc.publicnode.com \
+  --rpc-url https://ethereum-sepolia-rpc.publicnode.com \
   --private-key $PRIVATE_KEY \
   --broadcast \
   --verify

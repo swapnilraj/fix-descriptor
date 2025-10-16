@@ -353,7 +353,7 @@ graph TB
     end
     
     subgraph "Testing"
-        D[Vercel Preview] --> E[Hoodi Testnet]
+        D[Vercel Preview] --> E[Sepolia Testnet]
         F[GitHub Actions] --> E
     end
     
@@ -375,7 +375,7 @@ graph TB
 ### Environment Configuration
 
 - **Development**: Local blockchain with test accounts
-- **Staging**: Hoodi testnet with test tokens
+- **Staging**: Sepolia testnet with test tokens
 - **Production**: Mainnet with real assets and gas costs
 
 ## Security Considerations

@@ -22,9 +22,9 @@ cp .env.example .env
 2. **Deploy the DataContractFactory and example asset tokens:**
 
 ```bash
-# Deploy to Hoodi testnet
+# Deploy to Sepolia testnet
 forge script script/DeployAssetToken.s.sol \
-  --rpc-url https://ethereum-hoodi-rpc.publicnode.com \
+  --rpc-url https://ethereum-sepolia-rpc.publicnode.com \
   --broadcast \
   --verify
 
@@ -164,7 +164,7 @@ The deployment will:
 ✅ CBOR encoding with deterministic output  
 ✅ Merkle tree generation and proof verification
 ✅ Onchain deployment via SSTORE2
-✅ Smart contract integration with Hoodi testnet
+✅ Smart contract integration with Sepolia testnet
 ✅ Wallet connectivity and transaction signing
 
 ## Troubleshooting
@@ -211,7 +211,7 @@ Visit http://localhost:3000 to use the app.
 # Contracts
 cd contracts
 echo "PRIVATE_KEY=0xYOUR_PRIVATE_KEY" > .env
-echo "RPC_URL=https://ethereum-hoodi-rpc.publicnode.com" >> .env
+echo "RPC_URL=https://ethereum-sepolia-rpc.publicnode.com" >> .env
 
 # Web app
 cd ../apps/web
@@ -263,7 +263,7 @@ cd contracts
 cp .env.example .env
 # Edit .env:
 # PRIVATE_KEY=0x...
-# RPC_URL=https://ethereum-hoodi-rpc.publicnode.com
+# RPC_URL=https://ethereum-sepolia-rpc.publicnode.com
 # ETHERSCAN_API_KEY=...
 ```
 
@@ -280,12 +280,12 @@ touch .env.local
 
 ### Deploy
 
-Hoodi Testnet (recommended):
+Sepolia Testnet (recommended):
 
 ```bash
 cd /Users/swp/dev/swapnilraj/fixdescriptorkit-evm/contracts
 forge script script/DeployAssetToken.s.sol \
-  --rpc-url https://ethereum-hoodi-rpc.publicnode.com \
+  --rpc-url https://ethereum-sepolia-rpc.publicnode.com \
   --broadcast \
   --slow \
   -vvv
@@ -323,6 +323,5 @@ cast code 0xYOUR_TOKEN_FACTORY_ADDRESS --rpc-url $RPC_URL
 
 ## Supported Networks
 
-- Hoodi Testnet (Chain ID: 560048)
 - Sepolia Testnet (Chain ID: 11155111)
 - Ethereum Mainnet (Chain ID: 1)

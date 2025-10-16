@@ -1,12 +1,12 @@
 import { createPublicClient, http, Chain, type Address } from 'viem';
 
 export const chainFromEnv: Chain = {
-  id: Number(process.env.NEXT_PUBLIC_CHAIN_ID || 560048), // Default to Hoodi testnet
-  name: process.env.NEXT_PUBLIC_CHAIN_ID ? 'Configured' : 'Hoodi Testnet',
+  id: Number(process.env.NEXT_PUBLIC_CHAIN_ID || 11155111), // Default to Sepolia testnet
+  name: process.env.NEXT_PUBLIC_CHAIN_ID ? 'Configured' : 'Sepolia Testnet',
   nativeCurrency: { name: 'ETH', symbol: 'ETH', decimals: 18 },
   rpcUrls: {
-    default: { http: [process.env.NEXT_PUBLIC_RPC_URL || 'https://ethereum-hoodi-rpc.publicnode.com'] },
-    public: { http: [process.env.NEXT_PUBLIC_RPC_URL || 'https://ethereum-hoodi-rpc.publicnode.com'] },
+    default: { http: [process.env.NEXT_PUBLIC_RPC_URL || 'https://ethereum-sepolia-rpc.publicnode.com'] },
+    public: { http: [process.env.NEXT_PUBLIC_RPC_URL || 'https://ethereum-sepolia-rpc.publicnode.com'] },
   },
 };
 

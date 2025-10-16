@@ -184,7 +184,7 @@ forge test
 cd contracts
 
 # Deploy asset token contracts
-forge script script/DeployAssetToken.s.sol --rpc-url https://ethereum-hoodi-rpc.publicnode.com --broadcast --verify
+forge script script/DeployAssetToken.s.sol --rpc-url https://ethereum-sepolia-rpc.publicnode.com --broadcast --verify
 
 # Or deploy your own custom asset contract implementing IFixDescriptor
 ```
@@ -263,7 +263,7 @@ Asset contracts implementing `IFixDescriptor` provide:
 
 ### Supported Networks
 
-- **Hoodi Testnet** (Chain ID: 560048)
+- **Sepolia Testnet** (Chain ID: 11155111)
 
 ### Example Contracts
 

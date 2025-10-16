@@ -643,7 +643,7 @@ export default function Page() {
     setExpandedSection(prev => prev === section ? null : section);
   }
 
-  async function switchToHoodi() {
+  async function switchToSepolia() {
     if (!window.ethereum) {
       alert('MetaMask not detected');
       return;
@@ -652,7 +652,7 @@ export default function Page() {
     try {
       await window.ethereum.request({
         method: 'wallet_switchEthereumChain',
-        params: [{ chainId: '0x88BB0' }],
+        params: [{ chainId: '0xaa36a7' }],
       });
     } catch (switchError: unknown) {
       if (switchError && typeof switchError === 'object' && 'code' in switchError && switchError.code === 4902) {
@@ -661,23 +661,23 @@ export default function Page() {
             method: 'wallet_addEthereumChain',
             params: [
               {
-                chainId: '0x88BB0',
-                chainName: 'Hoodi Testnet',
-                rpcUrls: ['https://ethereum-hoodi-rpc.publicnode.com'],
+                chainId: '0xaa36a7',
+                chainName: 'Sepolia Testnet',
+                rpcUrls: ['https://ethereum-sepolia-rpc.publicnode.com'],
                 nativeCurrency: {
                   name: 'ETH',
                   symbol: 'ETH',
                   decimals: 18,
                 },
-                blockExplorerUrls: ['https://hoodi.ethpandaops.io'],
+                blockExplorerUrls: ['https://sepolia.etherscan.io'],
               },
             ],
           });
         } catch {
-          alert('Failed to add Hoodi testnet to wallet');
+          alert('Failed to add Sepolia testnet to wallet');
         }
       } else {
-        alert('Failed to switch to Hoodi testnet');
+        alert('Failed to switch to Sepolia testnet');
       }
     }
   }
@@ -780,8 +780,8 @@ export default function Page() {
     }
 
     try {
-      // First switch to Hoodi network
-      await switchToHoodi();
+      // First switch to Sepolia network
+      await switchToSepolia();
       
       // Then request account access
       const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' }) as string[];

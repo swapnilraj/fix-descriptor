@@ -260,7 +260,7 @@ Coordinate deployment of a token with embedded descriptor.
 
 | Network | Chain ID | RPC URL | Faucet |
 |---------|----------|---------|--------|
-| **Hoodi Testnet** | 560048 | `https://ethereum-hoodi-rpc.publicnode.com` | [Hoodi Faucet](https://faucet.hoodi.network) |
+| **Sepolia Testnet** | 11155111 | `https://ethereum-sepolia-rpc.publicnode.com` | [Sepolia Faucet](https://sepoliafaucet.com) |
 
 ## 🧪 Testing
 
@@ -306,7 +306,7 @@ See [DEPLOYMENT.md](../../DEPLOYMENT.md) in the root for detailed instructions.
 NEXT_PUBLIC_ANALYTICS_ID=your-analytics-id
 
 # Optional: Custom RPC endpoints
-NEXT_PUBLIC_HOODI_RPC=https://ethereum-hoodi-rpc.publicnode.com
+NEXT_PUBLIC_SEPOLIA_RPC=https://ethereum-sepolia-rpc.publicnode.com
 ```
 
 ## 🛠️ Development
