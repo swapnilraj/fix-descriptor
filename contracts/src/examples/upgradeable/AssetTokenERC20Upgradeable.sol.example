@@ -1,36 +1,57 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
-import "./IFixDescriptor.sol";
-import "./FixDescriptorLib.sol";
+// NOTE: This contract requires OpenZeppelin's upgradeable contracts library
+// Install via: forge install OpenZeppelin/openzeppelin-contracts-upgradeable
+// Then add to remappings: @openzeppelin/contracts-upgradeable/=lib/openzeppelin-contracts-upgradeable/contracts/
+
+import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import "../IFixDescriptor.sol";
+import "../FixDescriptorLib.sol";
 
 /**
- * @title AssetTokenERC20
- * @notice Example ERC20 token with embedded FIX descriptor
- * @dev Demonstrates how to integrate FixDescriptor into an ERC20 token using FixDescriptorLib
+ * @title AssetTokenERC20Upgradeable
+ * @notice Example upgradeable ERC20 token with embedded FIX descriptor
+ * @dev Demonstrates how to integrate FixDescriptor into an upgradeable ERC20 token using UUPS pattern
+ *      Uses FixDescriptorLib for maximum flexibility with upgradeable contracts
  */
-contract AssetTokenERC20 is ERC20, Ownable, ERC165, IFixDescriptor {
+contract AssetTokenERC20Upgradeable is 
+    Initializable,
+    ERC20Upgradeable,
+    OwnableUpgradeable,
+    UUPSUpgradeable,
+    IFixDescriptor 
+{
     using FixDescriptorLib for FixDescriptorLib.Storage;
 
     /// @notice FIX descriptor storage
     FixDescriptorLib.Storage private _fixDescriptor;
 
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
+
     /**
-     * @notice Constructor
+     * @notice Initialize the contract
      * @param name Token name
      * @param symbol Token symbol
      * @param initialSupply Initial token supply
      * @param initialOwner Address to receive initial supply and ownership
      */
-    constructor(
+    function initialize(
         string memory name,
         string memory symbol,
         uint256 initialSupply,
         address initialOwner
-    ) ERC20(name, symbol) Ownable(initialOwner) {
+    ) public initializer {
+        __ERC20_init(name, symbol);
+        __Ownable_init(initialOwner);
+        __UUPSUpgradeable_init();
+        
         _mint(initialOwner, initialSupply);
     }
 
@@ -91,16 +112,28 @@ contract AssetTokenERC20 is ERC20, Ownable, ERC165, IFixDescriptor {
     }
 
     /**
-     * @inheritdoc ERC165
+     * @dev Function that should revert when msg.sender is not authorized to upgrade the contract.
+     */
+    function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
+
+    /**
+     * @inheritdoc IERC165
      */
     function supportsInterface(bytes4 interfaceId) 
         public 
         view 
         virtual 
-        override(ERC165) 
+        override 
         returns (bool) 
     {
         return interfaceId == FixDescriptorLib.getInterfaceId() || 
+               interfaceId == type(IFixDescriptor).interfaceId ||
                super.supportsInterface(interfaceId);
     }
+
+    /**
+     * @dev Storage gap for future upgrades
+     */
+    uint256[49] private __gap;
 }
+

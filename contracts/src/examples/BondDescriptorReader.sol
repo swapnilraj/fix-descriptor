@@ -5,26 +5,21 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 import "../IFixDescriptor.sol";
+import "../FixDescriptorLib.sol";
 import "../FixCBORReader.sol";
 import "../FixValueParser.sol";
-import "../FixMerkleVerifier.sol";
 import "../SSTORE2.sol";
 
 /// @title BondDescriptorReader
 /// @notice ERC20 bond token with embedded FIX descriptor using SSTORE2 storage
 /// @dev Demonstrates practical usage of FixCBORReader and FixValueParser with IFixDescriptor
+///      Uses FixDescriptorLib for standard IFixDescriptor implementation
 contract BondDescriptorReader is ERC20, Ownable, ERC165, IFixDescriptor {
+    using FixDescriptorLib for FixDescriptorLib.Storage;
     using FixCBORReader for bytes;
 
-    /// @notice The FIX descriptor for this bond
-    FixDescriptor private _descriptor;
-
-    /// @notice Whether the descriptor has been initialized
-    bool private _descriptorInitialized;
-
-    /// @dev ERC165 interface ID for IFixDescriptor
-    bytes4 private constant IFIX_DESCRIPTOR_INTERFACE_ID =
-        type(IFixDescriptor).interfaceId;
+    /// @notice FIX descriptor storage
+    FixDescriptorLib.Storage private _fixDescriptor;
 
     // FIX tags for bond fields
     uint16 constant TAG_SYMBOL = 55;              // Security symbol
@@ -58,26 +53,34 @@ contract BondDescriptorReader is ERC20, Ownable, ERC165, IFixDescriptor {
         // Store CBOR descriptor using SSTORE2
         address cborPtr = SSTORE2.write(cborDescriptor);
 
-        // Initialize FIX descriptor
-        _descriptor = FixDescriptor({
+        // Initialize FIX descriptor using internal setter
+        _initializeDescriptor(cborPtr, uint32(cborDescriptor.length), merkleRoot, dictHash);
+    }
+
+    /**
+     * @dev Internal function to initialize descriptor (avoids calldata/memory conversion issue)
+     */
+    function _initializeDescriptor(
+        address cborPtr,
+        uint32 cborLen,
+        bytes32 merkleRoot,
+        bytes32 dictHash
+    ) private {
+        // Directly set the descriptor storage
+        _fixDescriptor.descriptor = FixDescriptor({
             fixMajor: 4,
             fixMinor: 4,
             dictHash: dictHash,
             dictionaryContract: address(0), // Not using dictionary in this example
             fixRoot: merkleRoot,
             fixCBORPtr: cborPtr,
-            fixCBORLen: uint32(cborDescriptor.length),
+            fixCBORLen: cborLen,
             fixURI: ""
         });
+        _fixDescriptor.initialized = true;
 
-        _descriptorInitialized = true;
-
-        emit FixDescriptorSet(
-            merkleRoot,
-            dictHash,
-            cborPtr,
-            uint32(cborDescriptor.length)
-        );
+        // Emit event manually
+        emit FixDescriptorSet(merkleRoot, dictHash, cborPtr, cborLen);
     }
 
     /**
@@ -85,8 +88,9 @@ contract BondDescriptorReader is ERC20, Ownable, ERC165, IFixDescriptor {
      * @return cbor The complete CBOR-encoded descriptor
      */
     function _readCBOR() private view returns (bytes memory cbor) {
-        require(_descriptorInitialized, "Descriptor not initialized");
-        return SSTORE2.read(_descriptor.fixCBORPtr);
+        require(_fixDescriptor.isInitialized(), "Descriptor not initialized");
+        FixDescriptor memory descriptor = _fixDescriptor.getDescriptor();
+        return SSTORE2.read(descriptor.fixCBORPtr);
     }
 
     /// @notice Read bond symbol from CBOR descriptor
@@ -195,16 +199,14 @@ contract BondDescriptorReader is ERC20, Ownable, ERC165, IFixDescriptor {
      * @inheritdoc IFixDescriptor
      */
     function getFixDescriptor() external view override returns (FixDescriptor memory) {
-        require(_descriptorInitialized, "Descriptor not initialized");
-        return _descriptor;
+        return _fixDescriptor.getDescriptor();
     }
 
     /**
      * @inheritdoc IFixDescriptor
      */
     function getFixRoot() external view override returns (bytes32) {
-        require(_descriptorInitialized, "Descriptor not initialized");
-        return _descriptor.fixRoot;
+        return _fixDescriptor.getRoot();
     }
 
     /**
@@ -216,12 +218,11 @@ contract BondDescriptorReader is ERC20, Ownable, ERC165, IFixDescriptor {
         bytes32[] calldata proof,
         bool[] calldata directions
     ) external view override returns (bool) {
-        require(_descriptorInitialized, "Descriptor not initialized");
-        return FixMerkleVerifier.verify(_descriptor.fixRoot, pathCBOR, value, proof, directions);
+        return _fixDescriptor.verifyFieldProof(pathCBOR, value, proof, directions);
     }
 
     /**
-     * @notice Get CBOR data chunk
+     * @notice Get CBOR data chunk using SSTORE2 (more efficient than default SSTORE2 implementation)
      * @param start Start offset (in the data, not including STOP byte)
      * @param size Number of bytes to read
      * @return chunk The requested CBOR data
@@ -231,8 +232,9 @@ contract BondDescriptorReader is ERC20, Ownable, ERC165, IFixDescriptor {
         view
         returns (bytes memory chunk)
     {
-        require(_descriptorInitialized, "Descriptor not initialized");
-        return SSTORE2.read(_descriptor.fixCBORPtr, start, size);
+        require(_fixDescriptor.isInitialized(), "Descriptor not initialized");
+        FixDescriptor memory descriptor = _fixDescriptor.getDescriptor();
+        return SSTORE2.read(descriptor.fixCBORPtr, start, size);
     }
 
     /**
@@ -253,7 +255,7 @@ contract BondDescriptorReader is ERC20, Ownable, ERC165, IFixDescriptor {
         override(ERC165)
         returns (bool)
     {
-        return interfaceId == IFIX_DESCRIPTOR_INTERFACE_ID ||
+        return interfaceId == FixDescriptorLib.getInterfaceId() ||
                super.supportsInterface(interfaceId);
     }
 }

@@ -23,14 +23,69 @@ These smart contracts implement the onchain component of the FIX Descriptor spec
 ```
 contracts/src/
 ├── IFixDescriptor.sol              # Standard interface
+├── FixDescriptorLib.sol            # Core library for easy integration
 ├── FixMerkleVerifier.sol           # Merkle proof verification library
 ├── DataContractFactory.sol         # SSTORE2 deployment utility
 ├── AssetTokenERC20.sol             # Example ERC20 with embedded descriptor
 ├── AssetTokenERC721.sol            # Example ERC721 with embedded descriptor
-└── AssetTokenFactory.sol           # Factory for deploying asset tokens
+├── AssetTokenFactory.sol           # Factory for deploying asset tokens
+└── examples/
+    ├── BondDescriptorReader.sol    # Advanced usage example
+    ├── AssetTokenERC20Upgradeable.sol   # Upgradeable ERC20 example
+    └── AssetTokenERC721Upgradeable.sol  # Upgradeable ERC721 example
 ```
 
+## ⚡ Easy Integration
+
+Adding FIX descriptor support to your token takes just **3 steps** using `FixDescriptorLib`:
+
+```solidity
+// 1. Import library
+import "./FixDescriptorLib.sol";
+import "./IFixDescriptor.sol";
+
+contract MyToken is ERC20, IFixDescriptor {
+    using FixDescriptorLib for FixDescriptorLib.Storage;
+
+    // 2. Add storage slot
+    FixDescriptorLib.Storage private _fixDescriptor;
+
+    // 3. Forward interface calls
+    function getFixDescriptor() external view returns (FixDescriptor memory) {
+        return _fixDescriptor.getDescriptor();
+    }
+    
+    function getFixRoot() external view returns (bytes32) {
+        return _fixDescriptor.getRoot();
+    }
+    
+    function verifyField(...) external view returns (bool) {
+        return _fixDescriptor.verifyFieldProof(...);
+    }
+    
+    function getHumanReadableDescriptor() external view returns (string memory) {
+        return _fixDescriptor.getHumanReadable();
+    }
+}
+```
+
+✅ Works with **any token standard** (ERC20, ERC721, ERC1155, custom)  
+✅ Works with **any upgrade pattern** (UUPS, Transparent, Beacon, or none)  
+✅ All complex logic (SSTORE2, Merkle proofs, CBOR parsing) handled by library  
+
+**📖 [Complete Integration Guide](./docs/INTEGRATION_GUIDE.md)**
+
 ## 🔑 Core Contracts
+
+### `FixDescriptorLib.sol`
+
+**The easiest way to add FIX descriptor support** - a comprehensive library that handles all the complexity:
+
+- Storage struct pattern for maximum flexibility
+- SSTORE2 reading with assembly optimization
+- Merkle proof verification
+- Human-readable CBOR parsing
+- Works with upgradeable and non-upgradeable contracts
 
 ### `IFixDescriptor.sol`
 
@@ -104,7 +159,58 @@ forge build
 forge test
 ```
 
-## 📖 Usage Example
+## 📖 Usage Examples
+
+### Basic ERC20 Token
+
+```solidity
+import "./FixDescriptorLib.sol";
+
+contract MyBondToken is ERC20, Ownable, IFixDescriptor {
+    using FixDescriptorLib for FixDescriptorLib.Storage;
+    FixDescriptorLib.Storage private _fixDescriptor;
+
+    constructor() ERC20("MyBond", "BOND") Ownable(msg.sender) {}
+
+    function setFixDescriptor(FixDescriptor calldata descriptor) external onlyOwner {
+        _fixDescriptor.setDescriptor(descriptor);
+    }
+
+    function getFixDescriptor() external view returns (FixDescriptor memory) {
+        return _fixDescriptor.getDescriptor();
+    }
+    
+    // ... other IFixDescriptor functions
+}
+```
+
+### Upgradeable ERC20 Token
+
+```solidity
+import "./FixDescriptorLib.sol";
+
+contract MyUpgradeableBond is 
+    ERC20Upgradeable, 
+    OwnableUpgradeable, 
+    UUPSUpgradeable,
+    IFixDescriptor 
+{
+    using FixDescriptorLib for FixDescriptorLib.Storage;
+    FixDescriptorLib.Storage private _fixDescriptor;
+    
+    function initialize() public initializer {
+        __ERC20_init("MyBond", "BOND");
+        __Ownable_init(msg.sender);
+        __UUPSUpgradeable_init();
+    }
+    
+    // ... same forwarding functions
+    
+    uint256[49] private __gap; // Reserve storage for upgrades
+}
+```
+
+### Factory Deployment
 
 ```solidity
 // Deploy CBOR data via SSTORE2
@@ -143,12 +249,25 @@ forge script script/DeployAssetToken.s.sol \
   --verify
 ```
 
-## 📚 Related Documentation
+## 📚 Documentation
 
+- **Integration Guide**: [INTEGRATION_GUIDE.md](./docs/INTEGRATION_GUIDE.md) - Comprehensive guide for adding FIX descriptors to your contracts
 - **Main Repository**: [FixDescriptorKit](../README.md)
 - **Technical Spec**: [SPEC.md](../SPEC.md)
 - **TypeScript Library**: [packages/fixdescriptorkit-typescript](../packages/fixdescriptorkit-typescript/README.md)
 - **Web App**: [apps/web](../apps/web/README.md)
+
+## 💡 Why Use FixDescriptorLib?
+
+| Feature | Library Pattern | Abstract Contract | Manual Implementation |
+|---------|----------------|-------------------|----------------------|
+| **Code to write** | ~10 lines | ~50 lines | ~150 lines |
+| **Upgradeable support** | ✅ Any pattern | ⚠️ Separate version | ❌ Complex |
+| **Gas efficiency** | ✅ Optimal | ⚠️ Delegatecall overhead | ✅ Optimal |
+| **Maintenance** | ✅ Single library | ⚠️ Multiple versions | ❌ Manual updates |
+| **Flexibility** | ✅ Works everywhere | ⚠️ Inheritance limits | ✅ Full control |
+
+**Recommendation**: Use `FixDescriptorLib` for the best developer experience and maximum flexibility.
 
 ## 🔧 Foundry Commands
 

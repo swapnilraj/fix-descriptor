@@ -115,24 +115,34 @@ console.log('Proof:', proof);
 
 ### Smart Contract Integration
 
-**New Embedded Architecture**: FIX descriptors are now embedded directly in asset contracts (ERC20, ERC721, etc.) rather than stored in a central registry.
+**Easy Integration with FixDescriptorLib**: Add FIX descriptor support to any token in just 3 steps using the library pattern.
 
 ```solidity
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 import "./IFixDescriptor.sol";
-import "./FixMerkleVerifier.sol";
+import "./FixDescriptorLib.sol";
 
-contract MyAssetToken is ERC20, IFixDescriptor {
-    FixDescriptor private _descriptor;
+contract MyBondToken is ERC20, Ownable, IFixDescriptor {
+    using FixDescriptorLib for FixDescriptorLib.Storage;
     
+    // Step 1: Add storage slot
+    FixDescriptorLib.Storage private _fixDescriptor;
+    
+    constructor() ERC20("MyBond", "BOND") Ownable(msg.sender) {}
+    
+    // Step 2: Add setter with your access control
     function setFixDescriptor(FixDescriptor calldata descriptor) external onlyOwner {
-        _descriptor = descriptor;
-        emit FixDescriptorSet(descriptor.fixRoot, descriptor.dictHash, 
-                              descriptor.fixCBORPtr, descriptor.fixCBORLen);
+        _fixDescriptor.setDescriptor(descriptor);
     }
     
+    // Step 3: Forward IFixDescriptor calls to library
     function getFixDescriptor() external view returns (FixDescriptor memory) {
-        return _descriptor;
+        return _fixDescriptor.getDescriptor();
+    }
+    
+    function getFixRoot() external view returns (bytes32) {
+        return _fixDescriptor.getRoot();
     }
     
     function verifyField(
@@ -141,17 +151,49 @@ contract MyAssetToken is ERC20, IFixDescriptor {
         bytes32[] calldata proof,
         bool[] calldata directions
     ) external view returns (bool) {
-        return FixMerkleVerifier.verify(_descriptor.fixRoot, pathCBOR, value, proof, directions);
+        return _fixDescriptor.verifyFieldProof(pathCBOR, value, proof, directions);
+    }
+    
+    function getHumanReadableDescriptor() external view returns (string memory) {
+        return _fixDescriptor.getHumanReadable();
     }
 }
 ```
 
-**Benefits of Embedded Architecture:**
-- ✅ No central registry - fully decentralized
-- ✅ Implicit address → descriptor mapping
-- ✅ Asset issuer maintains full control
-- ✅ No permissioning issues
-- ✅ Works with existing token standards
+**Works with Upgradeable Contracts Too!**
+
+```solidity
+import "./FixDescriptorLib.sol";
+
+contract MyUpgradeableBond is 
+    ERC20Upgradeable, 
+    OwnableUpgradeable, 
+    UUPSUpgradeable,
+    IFixDescriptor 
+{
+    using FixDescriptorLib for FixDescriptorLib.Storage;
+    FixDescriptorLib.Storage private _fixDescriptor;
+    
+    function initialize() public initializer {
+        __ERC20_init("MyBond", "BOND");
+        __Ownable_init(msg.sender);
+        __UUPSUpgradeable_init();
+    }
+    
+    // ... same forwarding functions
+    
+    uint256[49] private __gap; // Reserve storage for upgrades
+}
+```
+
+**Benefits:**
+- ✅ **Easy Integration** - Just 3 steps, ~10 lines of code
+- ✅ **Works Everywhere** - Any token standard, any upgrade pattern
+- ✅ **No Central Registry** - Fully decentralized, embedded in asset contracts
+- ✅ **All Logic Included** - SSTORE2, Merkle proofs, CBOR parsing handled by library
+- ✅ **Flexible Access Control** - Use Ownable, AccessControl, or custom logic
+
+**📖 [Complete Integration Guide](./contracts/docs/INTEGRATION_GUIDE.md)**
 
 ## 🧪 Testing
 
