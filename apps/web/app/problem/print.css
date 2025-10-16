@@ -1,0 +1,423 @@
+/* Print Stylesheet for Problem Page */
+
+@media print {
+  /* Reset and Base Styles */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+    transition: none !important;
+    animation: none !important;
+  }
+
+  /* Override the dark theme completely */
+  body,
+  body > div,
+  main,
+  div[style*="gradient"],
+  div[style*="linear-gradient"] {
+    background: white !important;
+    background-image: none !important;
+    color: #000 !important;
+  }
+
+  body {
+    font-size: 11pt;
+    line-height: 1.6;
+    margin: 0;
+    padding: 0;
+  }
+
+  /* Hide navigation and non-essential elements */
+  header,
+  nav,
+  .no-print,
+  button,
+  [role="navigation"],
+  .mobile-scroll-hint,
+  a[href] {
+    display: none !important;
+  }
+
+  /* Main content */
+  main {
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: white !important;
+  }
+
+  /* Page setup */
+  @page {
+    size: A4 portrait;
+    margin: 2cm 1.5cm;
+  }
+
+  @page :first {
+    margin-top: 1.5cm;
+  }
+
+  /* Typography - Override ALL inline styles */
+  h1 {
+    font-size: 24pt !important;
+    font-weight: 700 !important;
+    color: #000 !important;
+    margin: 0 0 8pt 0 !important;
+    page-break-after: avoid;
+    letter-spacing: -0.02em !important;
+    line-height: 1.2 !important;
+  }
+
+  h2 {
+    font-size: 16pt !important;
+    font-weight: 600 !important;
+    color: #000 !important;
+    margin: 12pt 0 8pt 0 !important;
+    page-break-after: avoid;
+    border-bottom: 1.2pt solid #d1d5db !important;
+    padding-bottom: 4pt !important;
+  }
+
+  h3 {
+    font-size: 13pt !important;
+    font-weight: 600 !important;
+    color: #1f2937 !important;
+    margin: 10pt 0 6pt 0 !important;
+    page-break-after: avoid;
+  }
+
+  p,
+  p[style] {
+    font-size: 11pt !important;
+    color: #000 !important;
+    margin: 0 0 10pt 0 !important;
+    orphans: 3;
+    widows: 3;
+    line-height: 1.6 !important;
+  }
+
+  /* Lists - Override all inline styles */
+  ul,
+  ul[style] {
+    margin: 0 0 10pt 0 !important;
+    padding-left: 20pt !important;
+    list-style: disc !important;
+  }
+
+  li,
+  li[style] {
+    margin-bottom: 6pt !important;
+    page-break-inside: avoid;
+    padding-left: 0 !important;
+    position: static !important;
+    color: #000 !important;
+    font-size: 11pt !important;
+    line-height: 1.6 !important;
+  }
+
+  /* Hide the custom bullet spans */
+  li > span[style*="position: absolute"] {
+    display: none !important;
+  }
+
+  /* Sections - Override ALL backgrounds */
+  section,
+  section[style] {
+    page-break-inside: auto !important;
+    margin-bottom: 12pt !important;
+    padding: 8pt !important;
+    border: 1pt solid #d1d5db !important;
+    border-radius: 0 !important;
+    background: white !important;
+    background-image: none !important;
+  }
+
+  /* First section (hero) - no border */
+  section:first-of-type {
+    text-align: center;
+    border: none !important;
+    background: white !important;
+    padding: 0 !important;
+    margin-bottom: 12pt !important;
+  }
+
+  /* Avoid page breaks at bad places */
+  section:nth-of-type(1) {
+    page-break-before: avoid;
+    page-break-after: auto;
+  }
+
+  /* All divs inside sections */
+  section > div,
+  section > div[style] {
+    background: white !important;
+    background-image: none !important;
+    border-color: #d1d5db !important;
+    color: #000 !important;
+  }
+
+  /* Grid layouts */
+  div[style*="display: grid"],
+  div[style*="grid-template"] {
+    display: block !important;
+  }
+
+  div[style*="display: grid"] > div,
+  div[style*="grid-template"] > div {
+    display: block !important;
+    margin-bottom: 8pt !important;
+    padding: 8pt !important;
+    background: #f9fafb !important;
+    border: 1pt solid #d1d5db !important;
+    page-break-inside: avoid;
+  }
+
+  /* Nested divs inside grid items - force black text */
+  div[style*="display: grid"] > div > div,
+  div[style*="grid-template"] > div > div,
+  div[style*="display: grid"] div[style*="color"],
+  div[style*="grid-template"] div[style*="color"] {
+    color: #000 !important;
+    font-size: 10pt !important;
+    line-height: 1.5 !important;
+    margin-bottom: 6pt !important;
+  }
+
+  /* h3 inside grid items */
+  div[style*="display: grid"] h3,
+  div[style*="grid-template"] h3 {
+    color: #1f2937 !important;
+    font-size: 12pt !important;
+    font-weight: 600 !important;
+    margin-bottom: 8pt !important;
+  }
+
+  /* p inside grid items */
+  div[style*="display: grid"] p,
+  div[style*="grid-template"] p {
+    color: #000 !important;
+    font-size: 10pt !important;
+    line-height: 1.5 !important;
+    margin: 0 !important;
+  }
+
+  /* Make sure font weights are preserved */
+  div[style*="display: grid"] div[style*="fontWeight"],
+  div[style*="grid-template"] div[style*="fontWeight"] {
+    font-weight: 600 !important;
+  }
+
+  /* Colored boxes */
+  div[style*="rgba(239, 68, 68"],
+  div[style*="rgba(59, 130, 246"],
+  div[style*="rgba(245, 158, 11"],
+  div[style*="rgba(168, 85, 247"],
+  div[style*="rgba(34, 197, 94"] {
+    background: #f3f4f6 !important;
+    border: 1pt solid #9ca3af !important;
+    padding: 10pt !important;
+    margin: 10pt 0 !important;
+  }
+
+  div[style*="rgba(239, 68, 68"] * {
+    color: #000 !important;
+  }
+
+  div[style*="rgba(59, 130, 246"] * {
+    color: #000 !important;
+  }
+
+  div[style*="rgba(245, 158, 11"] * {
+    color: #000 !important;
+  }
+
+  div[style*="rgba(168, 85, 247"] * {
+    color: #000 !important;
+  }
+
+  /* Diagram container wrappers - neutralize ALL interfering styles */
+  div[style*="overflowX"],
+  div[style*="rgba(0, 0, 0, 0.2)"] {
+    overflow: visible !important;
+    background: transparent !important;
+    padding: 0 !important;
+    margin: 10pt 0 !important;
+    border-radius: 0 !important;
+    max-width: 100% !important;
+    -webkit-overflow-scrolling: auto !important;
+    scrollbar-width: auto !important;
+    scrollbar-color: auto !important;
+    display: flex !important;             /* ensure child centers */
+    justify-content: center !important;
+    align-items: center !important;
+  }
+
+  div[style*="minWidth"] {
+    min-width: 0 !important;              /* remove min width constraints */
+    width: auto !important;               /* allow natural width */
+    max-width: 100% !important;
+  }
+
+  /* Ensure no wrapper backgrounds bleed through */
+  section div[style*="background"] {
+    background: transparent !important;
+  }
+
+  /* But keep section backgrounds for non-diagram content */
+  section > div:not([style*="overflowX"]) {
+    background: white !important;
+  }
+
+  svg {
+    width: 95% !important;                /* use 95% of page width */
+    max-width: 670pt !important;          /* cap so it never exceeds A4 content */
+    height: auto !important;
+    page-break-inside: avoid;
+    border: 1pt solid #d1d5db !important;
+    background: white !important;
+    padding: 0 !important;
+    margin: 6pt auto !important;
+    display: block !important;
+    font-size: 7pt !important;
+    color: #000 !important; /* ensure currentColor inside SVG is black */
+    overflow: visible !important;         /* avoid clipping markers */
+    shape-rendering: geometricPrecision;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Ensure diagram text is visible with proper hierarchy */
+  svg text,
+  svg text[style],
+  svg tspan {
+    fill: #000 !important;
+    opacity: 1 !important;
+    font-size: inherit !important;
+  }
+
+  /* Preserve diagram colors but ensure visibility */
+  svg rect,
+  svg path,
+  svg line,
+  svg circle,
+  svg ellipse {
+    opacity: 1 !important;
+  }
+
+  /* Ensure all lines are visible on white background */
+  svg line {
+    stroke: #4b5563 !important;        /* dark gray for print legibility */
+    stroke-width: 1.2pt !important;
+  }
+
+  /* Fix arrow markers - make them visible (MUST come after general rules) */
+  svg marker polygon,
+  svg marker path {
+    fill: #1f2937 !important;
+    opacity: 1 !important;
+  }
+
+  /* Fix arrow lines - specific targeting */
+  svg line[marker-end],
+  svg line[markerEnd] {
+    stroke: #4b5563 !important;
+    stroke-width: 1.5pt !important;
+    opacity: 1 !important;
+  }
+
+  /* Ensure markers themselves render */
+  svg marker {
+    opacity: 1 !important;
+  }
+
+  /* Do not override defs display; let browser handle it for markers/gradients */
+  svg defs {
+    display: initial !important;
+  }
+
+  /* Only override white/transparent backgrounds in diagrams */
+  svg rect[fill="white"],
+  svg rect[fill="#ffffff"],
+  svg rect[fill*="rgba(255, 255, 255"] {
+    fill: #f9fafb !important;
+  }
+
+  /* Code and monospace text */
+  code,
+  pre,
+  [style*="monospace"] {
+    font-family: "Courier New", monospace !important;
+    font-size: 9pt !important;
+    background: #f3f4f6 !important;
+    border: 1pt solid #d1d5db !important;
+    padding: 2pt 4pt !important;
+    color: #000 !important;
+  }
+
+  /* Emphasis and strong text */
+  strong,
+  strong[style] {
+    font-weight: 700 !important;
+    color: #000 !important;
+  }
+
+  em {
+    font-style: italic;
+  }
+
+  /* Footer */
+  footer,
+  footer[style] {
+    display: block !important;
+    text-align: center !important;
+    font-size: 9pt !important;
+    color: #6b7280 !important;
+    padding: 12pt 0 !important;
+    border-top: 1pt solid #d1d5db !important;
+    margin-top: 20pt !important;
+    background: white !important;
+  }
+
+  footer p {
+    color: #6b7280 !important;
+    font-size: 9pt !important;
+  }
+
+  /* Show print-only elements */
+  .print-only {
+    display: block !important;
+  }
+
+  /* Page headers and footers */
+  @page {
+    @bottom-right {
+      content: "Page " counter(page);
+      font-size: 9pt;
+      color: #6b7280;
+    }
+    @top-center {
+      content: "The Integration Problem with Tokenized Securities";
+      font-size: 9pt;
+      color: #6b7280;
+      font-style: italic;
+    }
+  }
+
+  @page :first {
+    @top-center {
+      content: "";
+    }
+  }
+
+  /* Ensure adequate spacing between sections */
+  section + section {
+    margin-top: 16pt !important;
+  }
+
+  /* Fix flex layouts */
+  div[style*="display: flex"] {
+    display: block !important;
+  }
+}
+

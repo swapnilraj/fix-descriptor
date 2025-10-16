@@ -5,6 +5,7 @@ import IncompatibilityFlow from './diagrams/IncompatibilityFlow';
 import IntegrationFlow from './diagrams/IntegrationFlow';
 import FragmentedEcosystem from './diagrams/FragmentedEcosystem';
 import BeforeAfter from './diagrams/BeforeAfter';
+import './print.css';
 
 export default function ProblemPage() {
   return (
@@ -722,12 +723,22 @@ export default function ProblemPage() {
         maxWidth: '1200px',
         margin: '0 auto',
         paddingTop: '2rem',
+        paddingBottom: '2rem',
         borderTop: '1px solid rgba(255, 255, 255, 0.1)',
         textAlign: 'center',
         color: 'rgba(255, 255, 255, 0.5)',
         fontSize: '0.9rem',
       }}>
         <p>ERC-FIX: Standardized FIX descriptors for tokenized securities</p>
+        <p className="print-only" style={{ 
+          display: 'none', 
+          marginTop: '1rem',
+          fontSize: '0.8rem',
+          color: 'rgba(255, 255, 255, 0.4)' 
+        }}
+        suppressHydrationWarning>
+          Document generated: {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+        </p>
       </footer>
     </div>
   );

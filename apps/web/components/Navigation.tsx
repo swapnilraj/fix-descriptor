@@ -67,7 +67,7 @@ export default function Navigation({ currentPage, showLogo = true }: NavigationP
               paddingBottom: currentPage === 'problem' ? '0.25rem' : '0'
             }}
           >
-            The Problem
+            Problem Statement
           </Link>
         </nav>
       </div>

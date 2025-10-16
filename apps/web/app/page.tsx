@@ -585,6 +585,27 @@ export default function Page() {
           <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
         </svg>
       )
+    },
+    { 
+      name: "Verify", 
+      description: "Merkle Proof",
+      icon: (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+          <polyline points="22 4 12 14.01 9 11.01" />
+        </svg>
+      )
+    },
+    { 
+      name: "Retrieve", 
+      description: "Offchain",
+      icon: (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+          <polyline points="7 10 12 15 17 10" />
+          <line x1="12" y1="15" x2="12" y2="3" />
+        </svg>
+      )
     }
   ];
 
@@ -1034,6 +1055,7 @@ export default function Page() {
       setDecodedFIX(decodeResult.fixMessage);           // numeric tags
       setDecodedFIXNamed(decodeResult.fixMessageNamed); // named tags
       setFetchCBORStatus('success');
+      setCurrentStep(7); // Update step indicator to show retrieval complete
 
     } catch (error) {
       console.error('Failed to fetch CBOR:', error);
@@ -1147,6 +1169,7 @@ export default function Page() {
 
       if (isValid) {
         setOnChainVerificationStatus('success');
+        setCurrentStep(6); // Update step indicator to show verification complete
         setTxInfo(
           <div>
             <div style={{ marginBottom: '1rem', fontWeight: '600' }}>✅ Onchain Verification SUCCESSFUL!</div>
@@ -1308,7 +1331,7 @@ export default function Page() {
                 onMouseEnter={(e) => e.currentTarget.style.color = 'rgba(255,255,255,0.9)'}
                 onMouseLeave={(e) => e.currentTarget.style.color = 'rgba(255,255,255,0.6)'}
                 >
-                  The Problem
+                  Problem Statement
                 </Link>
               </nav>
             </div>
@@ -3320,7 +3343,7 @@ export default function Page() {
               onMouseEnter={(e) => e.currentTarget.style.color = 'rgba(255,255,255,0.7)'}
               onMouseLeave={(e) => e.currentTarget.style.color = 'rgba(255,255,255,0.4)'}
             >
-              The Problem
+              Problem Statement
             </a>
           </div>
         </div>
