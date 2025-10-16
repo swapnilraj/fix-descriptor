@@ -1,5 +1,7 @@
 # FixDescriptorKit
 
+<img src="apps/web/public/brand/fix-evm.png" alt="FixDescriptorKit" width="96" align="right" />
+
 > **Transform FIX asset descriptors into verifiable onchain commitments**
 
 A comprehensive toolkit for converting FIX (Financial Information eXchange) protocol asset descriptors into canonical CBOR payloads and Merkle commitments for blockchain verification.
