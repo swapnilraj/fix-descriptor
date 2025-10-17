@@ -42,7 +42,7 @@ export default function ProblemPage() {
             margin: '0 auto 1.5rem',
             lineHeight: '1.6',
           }}>
-            Blockchain tokens and traditional financial infrastructure can't communicate. Every integration becomes a custom project—forcing months of adapter development, manual reconciliation, and operational risk.
+            Blockchain tokens and traditional financial infrastructure can&apos;t communicate. Every integration becomes a custom project—forcing months of adapter development, manual reconciliation, and operational risk.
           </p>
           <p style={{
             fontSize: 'clamp(0.95rem, 2.5vw, 1.05rem)',
@@ -560,7 +560,7 @@ export default function ProblemPage() {
                 color: 'rgba(255, 255, 255, 0.75)',
                 margin: 0,
               }}>
-                Multiplied by N counterparties. For 10 institutions, that's <strong style={{color: 'rgba(239, 68, 68, 0.9)'}}>40+ weeks</strong> of aggregated engineering time before full market access.
+                Multiplied by N counterparties. For 10 institutions, that&apos;s <strong style={{color: 'rgba(239, 68, 68, 0.9)'}}>40+ weeks</strong> of aggregated engineering time before full market access.
               </p>
             </div>
 
