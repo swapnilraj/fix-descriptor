@@ -3,10 +3,9 @@ import Link from 'next/link';
 
 type NavigationProps = {
   currentPage: 'problem' | 'spec' | 'explorer';
-  showLogo?: boolean;
 };
 
-export default function Navigation({ currentPage, showLogo = true }: NavigationProps) {
+export default function Navigation({ currentPage }: NavigationProps) {
   return (
     <header style={{ 
       borderBottom: '1px solid rgba(255,255,255,0.1)',
@@ -21,20 +20,18 @@ export default function Navigation({ currentPage, showLogo = true }: NavigationP
         padding: 'clamp(1rem, 3vw, 1.5rem) clamp(1rem, 3vw, 2rem)', 
         display: 'flex', 
         flexWrap: 'wrap', 
-        justifyContent: showLogo ? 'space-between' : 'flex-end', 
+        justifyContent: 'space-between', 
         alignItems: 'center', 
         gap: 'clamp(1rem, 3vw, 2rem)' 
       }}>
-        {showLogo && (
-          <Link href="/" style={{ 
+        <Link href="/" style={{ 
             fontSize: 'clamp(1rem, 3vw, 1.25rem)', 
             fontWeight: '600',
             color: 'rgba(255,255,255,0.9)',
             textDecoration: 'none'
           }}>
-            FixDescriptorKit
-          </Link>
-        )}
+            ERC-FIX
+        </Link>
         <nav style={{ display: 'flex', gap: 'clamp(1rem, 3vw, 2rem)', fontSize: 'clamp(0.8rem, 2vw, 0.9rem)' }}>
           <Link 
             href="/" 
