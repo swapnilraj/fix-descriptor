@@ -2,7 +2,7 @@
 import Link from 'next/link';
 
 type NavigationProps = {
-  currentPage: 'explorer' | 'spec' | 'problem';
+  currentPage: 'problem' | 'spec' | 'explorer';
   showLogo?: boolean;
 };
 
@@ -39,13 +39,13 @@ export default function Navigation({ currentPage, showLogo = true }: NavigationP
           <Link 
             href="/" 
             style={{ 
-              color: currentPage === 'explorer' ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.6)', 
+              color: currentPage === 'problem' ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.6)', 
               textDecoration: 'none',
-              borderBottom: currentPage === 'explorer' ? '2px solid rgba(255,255,255,0.9)' : 'none',
-              paddingBottom: currentPage === 'explorer' ? '0.25rem' : '0'
+              borderBottom: currentPage === 'problem' ? '2px solid rgba(255,255,255,0.9)' : 'none',
+              paddingBottom: currentPage === 'problem' ? '0.25rem' : '0'
             }}
           >
-            Explorer
+            Problem Statement
           </Link>
           <Link 
             href="/spec" 
@@ -59,15 +59,15 @@ export default function Navigation({ currentPage, showLogo = true }: NavigationP
             Specification
           </Link>
           <Link 
-            href="/problem" 
+            href="/explorer" 
             style={{ 
-              color: currentPage === 'problem' ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.6)', 
+              color: currentPage === 'explorer' ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.6)', 
               textDecoration: 'none',
-              borderBottom: currentPage === 'problem' ? '2px solid rgba(255,255,255,0.9)' : 'none',
-              paddingBottom: currentPage === 'problem' ? '0.25rem' : '0'
+              borderBottom: currentPage === 'explorer' ? '2px solid rgba(255,255,255,0.9)' : 'none',
+              paddingBottom: currentPage === 'explorer' ? '0.25rem' : '0'
             }}
           >
-            Problem Statement
+            Explorer
           </Link>
         </nav>
       </div>

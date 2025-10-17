@@ -725,7 +725,7 @@ export default function ProblemPage() {
             flexWrap: 'wrap',
           }}>
             <Link
-              href="/"
+              href="/explorer"
               style={{
                 padding: '1rem 2rem',
                 background: 'rgba(59, 130, 246, 0.15)',

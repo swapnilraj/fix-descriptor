@@ -419,7 +419,7 @@ export default function SpecPage() {
                 Try the interactive explorer to see each step of the transformation process in action. 
                 Visualize how FIX messages become canonical trees, CBOR bytes, and Merkle commitments.
               </p>
-              <Link href="/" style={{
+              <Link href="/explorer" style={{
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -712,7 +712,7 @@ export default function SpecPage() {
                 💡 See this in the explorer
               </div>
               <p style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.7', margin: 0, fontSize: '0.9rem' }}>
-                Visit the <Link href="/" style={{ color: 'rgba(59, 130, 246, 1)', textDecoration: 'none' }}>Interactive Explorer</Link> to 
+                Visit the <Link href="/explorer" style={{ color: 'rgba(59, 130, 246, 1)', textDecoration: 'none' }}>Interactive Explorer</Link> to 
                 see this exact transformation step-by-step with visualizations of the tree, CBOR bytes, and Merkle structure.
               </p>
             </div>
@@ -1118,7 +1118,7 @@ export default function SpecPage() {
                 💡 Visualize this pipeline
               </div>
               <p style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.7', margin: 0, fontSize: '0.9rem' }}>
-                The <Link href="/" style={{ color: 'rgba(59, 130, 246, 1)', textDecoration: 'none' }}>Interactive Explorer</Link> lets 
+                The <Link href="/explorer" style={{ color: 'rgba(59, 130, 246, 1)', textDecoration: 'none' }}>Interactive Explorer</Link> lets 
                 you step through this exact pipeline with a real Treasury bond example.
               </p>
             </div>
@@ -2315,7 +2315,7 @@ export default function SpecPage() {
                 <div>
                   <strong style={{ color: 'rgba(255,255,255,0.9)', fontSize: '0.9rem' }}>Interactive Explorer:</strong>
                   <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.9rem', marginTop: '0.25rem' }}>
-                    Try the <Link href="/" style={{ color: 'rgba(59, 130, 246, 1)', textDecoration: 'none' }}>web interface</Link> to 
+                    Try the <Link href="/explorer" style={{ color: 'rgba(59, 130, 246, 1)', textDecoration: 'none' }}>web interface</Link> to 
                     see the transformation pipeline in action with live visualizations.
                   </div>
                 </div>
@@ -2348,7 +2348,7 @@ export default function SpecPage() {
               <strong>FixDescriptorKit Specification v1.0</strong>
             </p>
             <p style={{ marginBottom: 'clamp(0.75rem, 2vw, 1rem)', display: 'flex', flexWrap: 'wrap', gap: 'clamp(1rem, 3vw, 1.5rem)', justifyContent: 'center', alignItems: 'center' }}>
-              <Link href="/" style={{ color: 'rgba(255,255,255,0.6)', textDecoration: 'none', minHeight: '44px', display: 'flex', alignItems: 'center' }}>
+              <Link href="/explorer" style={{ color: 'rgba(255,255,255,0.6)', textDecoration: 'none', minHeight: '44px', display: 'flex', alignItems: 'center' }}>
                 Try the Explorer
               </Link>
               <a href="https://github.com/swapnilraj/fix-descriptor" style={{ color: 'rgba(255,255,255,0.6)', textDecoration: 'none', minHeight: '44px', display: 'flex', alignItems: 'center' }}>
