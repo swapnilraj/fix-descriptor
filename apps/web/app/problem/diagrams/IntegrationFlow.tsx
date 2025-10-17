@@ -1,251 +1,258 @@
 export default function IntegrationFlow() {
   return (
     <svg
-      viewBox="0 0 900 600"
+      viewBox="0 0 950 620"
       className="w-full h-auto"
       style={{ 
-        maxWidth: '900px', 
+        maxWidth: '950px', 
         margin: '0 auto',
         minHeight: '500px',
         touchAction: 'pan-x pinch-zoom'
       }}
       preserveAspectRatio="xMidYMid meet"
     >
+      {/* Title */}
+      <text x="475" y="30" textAnchor="middle" fill="currentColor" fontSize="16" fontWeight="600" opacity="0.9">
+        The N×M Problem: Every Token × Every Counterparty
+      </text>
+
       {/* Bank A - Token Issuer */}
       <g>
         <rect
           x="50"
-          y="50"
-          width="180"
-          height="80"
+          y="70"
+          width="200"
+          height="90"
           rx="8"
           fill="rgba(59, 130, 246, 0.1)"
           stroke="rgba(59, 130, 246, 0.5)"
           strokeWidth="2"
         />
-        <text x="140" y="80" textAnchor="middle" fill="currentColor" fontSize="15" fontWeight="600">
-          Bank A
+        <text x="150" y="105" textAnchor="middle" fill="currentColor" fontSize="16" fontWeight="600">
+          Issuer
         </text>
-        <text x="140" y="100" textAnchor="middle" fill="currentColor" fontSize="11" opacity="0.7">
-          Token Issuer
+        <text x="150" y="125" textAnchor="middle" fill="currentColor" fontSize="11" opacity="0.75">
+          Issues token with
         </text>
-        <text x="140" y="115" textAnchor="middle" fill="currentColor" fontSize="10" opacity="0.6" fontFamily="monospace">
-          Custom contract fields
+        <text x="150" y="140" textAnchor="middle" fill="currentColor" fontSize="11" opacity="0.75" fontFamily="monospace">
+          custom contract schema
         </text>
       </g>
 
-      {/* Bank B + OMS */}
+      {/* Institution 1 + OMS */}
       <g>
         <rect
-          x="350"
-          y="50"
-          width="180"
-          height="80"
+          x="380"
+          y="70"
+          width="200"
+          height="90"
           rx="8"
-          fill="rgba(239, 68, 68, 0.1)"
-          stroke="rgba(239, 68, 68, 0.5)"
+          fill="rgba(239, 68, 68, 0.08)"
+          stroke="rgba(239, 68, 68, 0.4)"
           strokeWidth="2"
         />
-        <text x="440" y="75" textAnchor="middle" fill="currentColor" fontSize="15" fontWeight="600">
-          Bank B
+        <text x="480" y="100" textAnchor="middle" fill="currentColor" fontSize="15" fontWeight="600">
+          Institution 1
         </text>
-        <text x="440" y="95" textAnchor="middle" fill="currentColor" fontSize="11" opacity="0.7">
-          Must build custom adapter
+        <text x="480" y="120" textAnchor="middle" fill="currentColor" fontSize="11" opacity="0.75">
+          Custom adapter for OMS
         </text>
-        <text x="440" y="110" textAnchor="middle" fill="currentColor" fontSize="11" opacity="0.7">
-          → OMS Integration
-        </text>
-        <text x="440" y="125" textAnchor="middle" fill="rgba(239, 68, 68, 0.8)" fontSize="10" fontWeight="500">
-          8-12 weeks
+        <text x="480" y="148" textAnchor="middle" fill="rgba(239, 68, 68, 0.85)" fontSize="11" fontWeight="600">
+          ~3–5 weeks
         </text>
       </g>
 
-      {/* Arrow Bank A to Bank B */}
+      {/* Arrow Issuer to Institution 1 */}
+      <line
+        x1="260"
+        y1="115"
+        x2="370"
+        y2="115"
+        stroke="rgba(255, 255, 255, 0.3)"
+        strokeWidth="2"
+        markerEnd="url(#arrow)"
+      />
+
+      {/* Institution 2 + Risk System */}
+      <g>
+        <rect
+          x="380"
+          y="200"
+          width="200"
+          height="90"
+          rx="8"
+          fill="rgba(239, 68, 68, 0.08)"
+          stroke="rgba(239, 68, 68, 0.4)"
+          strokeWidth="2"
+        />
+        <text x="480" y="230" textAnchor="middle" fill="currentColor" fontSize="15" fontWeight="600">
+          Institution 2
+        </text>
+        <text x="480" y="250" textAnchor="middle" fill="currentColor" fontSize="11" opacity="0.75">
+          Custom adapter for Risk
+        </text>
+        <text x="480" y="278" textAnchor="middle" fill="rgba(239, 68, 68, 0.85)" fontSize="11" fontWeight="600">
+          ~3–5 weeks
+        </text>
+      </g>
+
+      {/* Arrow Issuer to Institution 2 */}
       <line
         x1="240"
-        y1="90"
-        x2="340"
-        y2="90"
+        y1="160"
+        x2="380"
+        y2="230"
         stroke="rgba(255, 255, 255, 0.3)"
         strokeWidth="2"
         markerEnd="url(#arrow)"
       />
 
-      {/* Bank C + Risk System */}
+      {/* Institution 3 + Custodian */}
       <g>
         <rect
-          x="350"
-          y="180"
-          width="180"
-          height="80"
+          x="380"
+          y="330"
+          width="200"
+          height="90"
           rx="8"
-          fill="rgba(239, 68, 68, 0.1)"
-          stroke="rgba(239, 68, 68, 0.5)"
+          fill="rgba(239, 68, 68, 0.08)"
+          stroke="rgba(239, 68, 68, 0.4)"
           strokeWidth="2"
         />
-        <text x="440" y="205" textAnchor="middle" fill="currentColor" fontSize="15" fontWeight="600">
-          Bank C
+        <text x="480" y="360" textAnchor="middle" fill="currentColor" fontSize="15" fontWeight="600">
+          Institution 3
         </text>
-        <text x="440" y="225" textAnchor="middle" fill="currentColor" fontSize="11" opacity="0.7">
-          Must build different adapter
+        <text x="480" y="380" textAnchor="middle" fill="currentColor" fontSize="11" opacity="0.75">
+          Custom adapter for Custody
         </text>
-        <text x="440" y="240" textAnchor="middle" fill="currentColor" fontSize="11" opacity="0.7">
-          → Risk System Integration
-        </text>
-        <text x="440" y="255" textAnchor="middle" fill="rgba(239, 68, 68, 0.8)" fontSize="10" fontWeight="500">
-          8-12 weeks
+        <text x="480" y="408" textAnchor="middle" fill="rgba(239, 68, 68, 0.85)" fontSize="11" fontWeight="600">
+          ~3–5 weeks
         </text>
       </g>
 
-      {/* Arrow Bank A to Bank C */}
+      {/* Arrow Issuer to Institution 3 */}
       <line
-        x1="230"
-        y1="130"
-        x2="350"
-        y2="200"
+        x1="240"
+        y1="160"
+        x2="380"
+        y2="360"
         stroke="rgba(255, 255, 255, 0.3)"
         strokeWidth="2"
         markerEnd="url(#arrow)"
       />
 
-      {/* Bank D + Custodian */}
-      <g>
-        <rect
-          x="350"
-          y="310"
-          width="180"
-          height="80"
-          rx="8"
-          fill="rgba(239, 68, 68, 0.1)"
-          stroke="rgba(239, 68, 68, 0.5)"
-          strokeWidth="2"
-        />
-        <text x="440" y="335" textAnchor="middle" fill="currentColor" fontSize="15" fontWeight="600">
-          Bank D
-        </text>
-        <text x="440" y="355" textAnchor="middle" fill="currentColor" fontSize="11" opacity="0.7">
-          Must build another adapter
-        </text>
-        <text x="440" y="370" textAnchor="middle" fill="currentColor" fontSize="11" opacity="0.7">
-          → Custodian Integration
-        </text>
-        <text x="440" y="385" textAnchor="middle" fill="rgba(239, 68, 68, 0.8)" fontSize="10" fontWeight="500">
-          8-12 weeks
-        </text>
-      </g>
-
-      {/* Arrow Bank A to Bank D */}
-      <line
-        x1="230"
-        y1="130"
-        x2="350"
-        y2="330"
-        stroke="rgba(255, 255, 255, 0.3)"
-        strokeWidth="2"
-        markerEnd="url(#arrow)"
-      />
+      {/* "..." to show more */}
+      <text x="480" y="455" textAnchor="middle" fill="currentColor" fontSize="24" opacity="0.4" fontWeight="300">
+        ⋮
+      </text>
 
       {/* Integration Steps Breakdown */}
       <g>
         <rect
-          x="600"
-          y="50"
-          width="250"
-          height="340"
+          x="650"
+          y="70"
+          width="260"
+          height="350"
           rx="8"
           fill="rgba(100, 100, 100, 0.05)"
-          stroke="rgba(255, 255, 255, 0.2)"
-          strokeWidth="1"
+          stroke="rgba(255, 255, 255, 0.25)"
+          strokeWidth="1.5"
         />
-        <text x="725" y="75" textAnchor="middle" fill="currentColor" fontSize="14" fontWeight="600">
-          Per-Institution Timeline
+        <text x="780" y="95" textAnchor="middle" fill="currentColor" fontSize="14" fontWeight="600" opacity="0.95">
+          Per-Institution Work
         </text>
         
-        <text x="615" y="105" fill="currentColor" fontSize="11" opacity="0.8" fontWeight="500">
-          Week 1-2:
+        <text x="665" y="125" fill="currentColor" fontSize="11" opacity="0.85" fontWeight="600">
+          Week 1:
         </text>
-        <text x="615" y="120" fill="currentColor" fontSize="10" opacity="0.7">
-          Documentation exchange
+        <text x="665" y="142" fill="currentColor" fontSize="10" opacity="0.7">
+          • Documentation exchange
         </text>
-        <text x="615" y="133" fill="currentColor" fontSize="10" opacity="0.6">
-          (term sheets, specs)
-        </text>
-
-        <text x="615" y="160" fill="currentColor" fontSize="11" opacity="0.8" fontWeight="500">
-          Week 3-6:
-        </text>
-        <text x="615" y="175" fill="currentColor" fontSize="10" opacity="0.7">
-          Custom adapter development
+        <text x="665" y="157" fill="currentColor" fontSize="10" opacity="0.65">
+          • Interface mapping
         </text>
 
-        <text x="615" y="202" fill="currentColor" fontSize="11" opacity="0.8" fontWeight="500">
-          Week 7-8:
+        <text x="665" y="185" fill="currentColor" fontSize="11" opacity="0.85" fontWeight="600">
+          Weeks 1–3:
         </text>
-        <text x="615" y="217" fill="currentColor" fontSize="10" opacity="0.7">
-          Testing and validation
+        <text x="665" y="202" fill="currentColor" fontSize="10" opacity="0.7">
+          • Build custom adapter
         </text>
-
-        <text x="615" y="244" fill="currentColor" fontSize="11" opacity="0.8" fontWeight="500">
-          Week 9-12:
-        </text>
-        <text x="615" y="259" fill="currentColor" fontSize="10" opacity="0.7">
-          Production deployment
+        <text x="665" y="217" fill="currentColor" fontSize="10" opacity="0.65">
+          • Schema parsing logic
         </text>
 
-        <text x="615" y="286" fill="currentColor" fontSize="11" opacity="0.8" fontWeight="500">
+        <text x="665" y="245" fill="currentColor" fontSize="11" opacity="0.85" fontWeight="600">
+          Week 3–4:
+        </text>
+        <text x="665" y="262" fill="currentColor" fontSize="10" opacity="0.7">
+          • Testing & validation
+        </text>
+
+        <text x="665" y="290" fill="currentColor" fontSize="11" opacity="0.85" fontWeight="600">
+          Week 4–5:
+        </text>
+        <text x="665" y="307" fill="currentColor" fontSize="10" opacity="0.7">
+          • Production deployment
+        </text>
+
+        <text x="665" y="335" fill="currentColor" fontSize="11" opacity="0.85" fontWeight="600">
           Ongoing:
         </text>
-        <text x="615" y="301" fill="currentColor" fontSize="10" opacity="0.7">
-          Maintenance when contract
-        </text>
-        <text x="615" y="314" fill="currentColor" fontSize="10" opacity="0.7">
-          structure changes
+        <text x="665" y="352" fill="currentColor" fontSize="10" opacity="0.7">
+          • Maintenance on changes
         </text>
 
         <rect
-          x="610"
-          y="335"
-          width="230"
-          height="45"
+          x="660"
+          y="375"
+          width="240"
+          height="35"
           rx="4"
           fill="rgba(239, 68, 68, 0.1)"
-          stroke="rgba(239, 68, 68, 0.3)"
-          strokeWidth="1"
+          stroke="rgba(239, 68, 68, 0.35)"
+          strokeWidth="1.5"
         />
-        <text x="725" y="355" textAnchor="middle" fill="rgba(239, 68, 68, 0.9)" fontSize="12" fontWeight="600">
-          Each new token type
-        </text>
-        <text x="725" y="370" textAnchor="middle" fill="currentColor" fontSize="10" opacity="0.7">
-          restarts this cycle
+        <text x="780" y="397" textAnchor="middle" fill="rgba(239, 68, 68, 0.9)" fontSize="11" fontWeight="600">
+          × N institutions = N×4 weeks
         </text>
       </g>
 
-      {/* Costs Summary */}
+      {/* Impact Summary */}
       <g>
         <rect
           x="50"
-          y="480"
-          width="800"
-          height="90"
-          rx="6"
-          fill="rgba(245, 158, 11, 0.05)"
-          stroke="rgba(245, 158, 11, 0.3)"
-          strokeWidth="1"
+          y="500"
+          width="860"
+          height="100"
+          rx="8"
+          fill="rgba(245, 158, 11, 0.06)"
+          stroke="rgba(245, 158, 11, 0.35)"
+          strokeWidth="1.5"
         />
-        <text x="450" y="510" textAnchor="middle" fill="currentColor" fontSize="13" fontWeight="600">
-          Real Costs
+        <text x="480" y="530" textAnchor="middle" fill="currentColor" fontSize="14" fontWeight="600" opacity="0.9">
+          Ecosystem Impact
         </text>
-        <text x="200" y="535" textAnchor="middle" fill="currentColor" fontSize="11" opacity="0.8">
-          Engineering resources
+        
+        <text x="175" y="560" textAnchor="middle" fill="currentColor" fontSize="11" opacity="0.8" fontWeight="500">
+          Delayed Time-to-Market
         </text>
-        <text x="450" y="535" textAnchor="middle" fill="currentColor" fontSize="11" opacity="0.8">
-          Delayed settlement capabilities
+        <text x="175" y="577" textAnchor="middle" fill="currentColor" fontSize="10" opacity="0.65">
+          Weeks per counterparty
         </text>
-        <text x="700" y="535" textAnchor="middle" fill="currentColor" fontSize="11" opacity="0.8">
-          Reduced liquidity
+        
+        <text x="480" y="560" textAnchor="middle" fill="currentColor" fontSize="11" opacity="0.8" fontWeight="500">
+          Ongoing Maintenance Burden
         </text>
-        <text x="450" y="555" textAnchor="middle" fill="currentColor" fontSize="11" opacity="0.7">
-          Compounding effect across all counterparties
+        <text x="480" y="577" textAnchor="middle" fill="currentColor" fontSize="10" opacity="0.65">
+          Every contract change repeats
+        </text>
+        
+        <text x="785" y="560" textAnchor="middle" fill="currentColor" fontSize="11" opacity="0.8" fontWeight="500">
+          Fragmented Liquidity
+        </text>
+        <text x="785" y="577" textAnchor="middle" fill="currentColor" fontSize="10" opacity="0.65">
+          Limited interoperability
         </text>
       </g>
 

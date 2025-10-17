@@ -50,7 +50,7 @@ export default function BeforeAfter() {
           Weeks of documentation
         </text>
         <text x="360" y="175" textAnchor="start" fill="rgba(239, 68, 68, 0.8)" fontSize="10">
-          2-4 weeks
+          ~1 week
         </text>
 
         {/* Arrow */}
@@ -71,7 +71,7 @@ export default function BeforeAfter() {
           Custom adapters per platform
         </text>
         <text x="360" y="250" textAnchor="start" fill="rgba(239, 68, 68, 0.8)" fontSize="10">
-          8-12 weeks
+          ~2–3 weeks
         </text>
 
         {/* Arrow */}

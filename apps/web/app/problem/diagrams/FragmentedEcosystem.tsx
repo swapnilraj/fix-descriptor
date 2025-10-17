@@ -27,7 +27,7 @@ export default function FragmentedEcosystem() {
           Traditional Finance
         </text>
         <text x="200" y="105" textAnchor="middle" fill="rgba(59, 130, 246, 0.8)" fontSize="12" fontWeight="500">
-          Speaking FIX Protocol
+          All speaking FIX protocol
         </text>
 
         {/* Bloomberg */}
@@ -125,50 +125,17 @@ export default function FragmentedEcosystem() {
           Smart Contracts
         </text>
 
-        {/* DEX */}
-        <rect
-          x="580"
-          y="200"
-          width="240"
-          height="50"
-          rx="6"
-          fill="rgba(168, 85, 247, 0.1)"
-          stroke="rgba(168, 85, 247, 0.5)"
-          strokeWidth="1"
-        />
-        <text x="700" y="230" textAnchor="middle" fill="currentColor" fontSize="13" fontWeight="500">
-          Decentralized Exchanges
-        </text>
+        {/* Token contracts (custom schemas) */}
+        <rect x="580" y="200" width="240" height="50" rx="6" fill="rgba(168, 85, 247, 0.1)" stroke="rgba(168, 85, 247, 0.5)" strokeWidth="1" />
+        <text x="700" y="230" textAnchor="middle" fill="currentColor" fontSize="13" fontWeight="500">Token contracts (custom schemas)</text>
 
-        {/* Wallets */}
-        <rect
-          x="580"
-          y="270"
-          width="240"
-          height="50"
-          rx="6"
-          fill="rgba(168, 85, 247, 0.1)"
-          stroke="rgba(168, 85, 247, 0.5)"
-          strokeWidth="1"
-        />
-        <text x="700" y="300" textAnchor="middle" fill="currentColor" fontSize="13" fontWeight="500">
-          Wallet Systems
-        </text>
+        {/* Issuer platforms */}
+        <rect x="580" y="270" width="240" height="50" rx="6" fill="rgba(168, 85, 247, 0.1)" stroke="rgba(168, 85, 247, 0.5)" strokeWidth="1" />
+        <text x="700" y="300" textAnchor="middle" fill="currentColor" fontSize="13" fontWeight="500">Issuer platforms (proprietary)</text>
 
-        {/* DeFi Protocols */}
-        <rect
-          x="580"
-          y="340"
-          width="240"
-          height="50"
-          rx="6"
-          fill="rgba(168, 85, 247, 0.1)"
-          stroke="rgba(168, 85, 247, 0.5)"
-          strokeWidth="1"
-        />
-        <text x="700" y="370" textAnchor="middle" fill="currentColor" fontSize="13" fontWeight="500">
-          DeFi Protocols
-        </text>
+        {/* Explorers / raw contract data */}
+        <rect x="580" y="340" width="240" height="50" rx="6" fill="rgba(168, 85, 247, 0.1)" stroke="rgba(168, 85, 247, 0.5)" strokeWidth="1" />
+        <text x="700" y="370" textAnchor="middle" fill="currentColor" fontSize="13" fontWeight="500">Explorers (raw contract data)</text>
       </g>
 
       {/* The Gap in the Middle */}
@@ -201,18 +168,11 @@ export default function FragmentedEcosystem() {
           stroke="rgba(239, 68, 68, 0.4)"
           strokeWidth="2"
         />
-        <text x="450" y="285" textAnchor="middle" fill="currentColor" fontSize="10" opacity="0.7">
-          Manual translation
-        </text>
-        <text x="450" y="300" textAnchor="middle" fill="currentColor" fontSize="10" opacity="0.7">
-          Custom adapters
-        </text>
-        <text x="450" y="315" textAnchor="middle" fill="currentColor" fontSize="10" opacity="0.7">
-          Data loss
-        </text>
-        <text x="450" y="330" textAnchor="middle" fill="currentColor" fontSize="10" opacity="0.7">
-          Integration delays
-        </text>
+        <text x="450" y="285" textAnchor="middle" fill="currentColor" fontSize="10" opacity="0.7">Manual translation</text>
+        <text x="450" y="300" textAnchor="middle" fill="currentColor" fontSize="10" opacity="0.7">Custom adapters</text>
+        <text x="450" y="315" textAnchor="middle" fill="currentColor" fontSize="10" opacity="0.7">Bloomberg cannot read token metadata</text>
+        <text x="450" y="330" textAnchor="middle" fill="currentColor" fontSize="10" opacity="0.7">OMS requires manual entry</text>
+        <text x="450" y="345" textAnchor="middle" fill="currentColor" fontSize="10" opacity="0.7">Risk systems need custom parsers</text>
       </g>
 
       {/* Broken connection lines */}

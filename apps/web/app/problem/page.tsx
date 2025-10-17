@@ -33,7 +33,7 @@ export default function ProblemPage() {
             letterSpacing: '-0.02em',
             lineHeight: '1.1',
           }}>
-            The Integration Problem with Tokenized Securities
+            Each new token requires 3–5 weeks of custom integration per platform
           </h1>
           <p style={{
             fontSize: 'clamp(1.1rem, 3vw, 1.3rem)',
@@ -42,15 +42,15 @@ export default function ProblemPage() {
             margin: '0 auto 1.5rem',
             lineHeight: '1.6',
           }}>
-            Blockchain tokens and traditional financial infrastructure cannot communicate without extensive custom development.
+            Blockchain tokens and traditional financial infrastructure can't communicate. Every integration becomes a custom project—forcing months of adapter development, manual reconciliation, and operational risk.
           </p>
           <p style={{
-            fontSize: 'clamp(1rem, 2.5vw, 1.1rem)',
-            color: 'rgba(255, 255, 255, 0.6)',
-            maxWidth: '700px',
+            fontSize: 'clamp(0.95rem, 2.5vw, 1.05rem)',
+            color: 'rgba(255, 255, 255, 0.55)',
+            maxWidth: '750px',
             margin: '0 auto',
           }}>
-            Each new token requires 2-4 months of custom integration work per platform
+            ERC-FIX changes this by embedding standardized FIX descriptors directly in token contracts.
           </p>
         </section>
 
@@ -172,11 +172,11 @@ export default function ProblemPage() {
           </h2>
           <p style={{
             fontSize: 'clamp(1rem, 2.5vw, 1.1rem)',
-            color: 'rgba(255, 255, 255, 0.7)',
-            marginBottom: '2rem',
+            color: 'rgba(255, 255, 255, 0.75)',
+            marginBottom: '1.5rem',
             lineHeight: '1.6',
           }}>
-            Each token implementation requires platform-specific adapters
+            Every new token still requires bespoke work per counterparty. Even in the best case, this consumes weeks and repeats whenever schemas change.
           </p>
 
           <div style={{
@@ -204,13 +204,13 @@ export default function ProblemPage() {
                 border: '1px solid rgba(255, 255, 255, 0.15)',
               }}>
                 <div style={{ fontSize: '0.9rem', color: 'rgba(255, 255, 255, 0.6)', marginBottom: '0.5rem' }}>
-                  Week 1-2
+                  Week 1
                 </div>
                 <div style={{ fontSize: '1rem', color: 'rgba(255, 255, 255, 0.85)', fontWeight: '500' }}>
                   Documentation exchange
                 </div>
                 <div style={{ fontSize: '0.85rem', color: 'rgba(255, 255, 255, 0.6)', marginTop: '0.25rem' }}>
-                  Term sheets, contract specifications
+                  Term sheets, contract specs, interface mapping
                 </div>
               </div>
 
@@ -221,10 +221,10 @@ export default function ProblemPage() {
                 border: '1px solid rgba(255, 255, 255, 0.15)',
               }}>
                 <div style={{ fontSize: '0.9rem', color: 'rgba(255, 255, 255, 0.6)', marginBottom: '0.5rem' }}>
-                  Week 3-6
+                  Weeks 1–3
                 </div>
                 <div style={{ fontSize: '1rem', color: 'rgba(255, 255, 255, 0.85)', fontWeight: '500' }}>
-                  Custom adapter development
+                  Build custom adapter
                 </div>
                 <div style={{ fontSize: '0.85rem', color: 'rgba(255, 255, 255, 0.6)', marginTop: '0.25rem' }}>
                   Per receiving institution
@@ -238,7 +238,7 @@ export default function ProblemPage() {
                 border: '1px solid rgba(255, 255, 255, 0.15)',
               }}>
                 <div style={{ fontSize: '0.9rem', color: 'rgba(255, 255, 255, 0.6)', marginBottom: '0.5rem' }}>
-                  Week 7-8
+                  Week 3–4
                 </div>
                 <div style={{ fontSize: '1rem', color: 'rgba(255, 255, 255, 0.85)', fontWeight: '500' }}>
                   Testing and validation
@@ -255,7 +255,7 @@ export default function ProblemPage() {
                 border: '1px solid rgba(255, 255, 255, 0.15)',
               }}>
                 <div style={{ fontSize: '0.9rem', color: 'rgba(255, 255, 255, 0.6)', marginBottom: '0.5rem' }}>
-                  Week 9-12
+                  Week 4–5
                 </div>
                 <div style={{ fontSize: '1rem', color: 'rgba(255, 255, 255, 0.85)', fontWeight: '500' }}>
                   Production deployment
@@ -289,22 +289,13 @@ export default function ProblemPage() {
               border: '1px solid rgba(245, 158, 11, 0.3)',
               borderRadius: '8px',
               marginBottom: '2rem',
+              textAlign: 'center'
             }}>
-              <p style={{
-                fontSize: '1rem',
-                color: 'rgba(255, 255, 255, 0.85)',
-                margin: 0,
-                textAlign: 'center',
-              }}>
-                <strong>Real costs:</strong> Engineering resources, delayed settlement capabilities, reduced liquidity
+              <p style={{ fontSize: '1rem', color: 'rgba(255, 255, 255, 0.85)', margin: 0 }}>
+                <strong>Pain multiplier:</strong> N institutions × ~4 weeks ≈ <strong>N×4 weeks</strong> of engineering time
               </p>
-              <p style={{
-                fontSize: '0.95rem',
-                color: 'rgba(255, 255, 255, 0.7)',
-                margin: '0.5rem 0 0',
-                textAlign: 'center',
-              }}>
-                Compounding effect: Each new token type restarts this cycle
+              <p style={{ fontSize: '0.95rem', color: 'rgba(255, 255, 255, 0.7)', margin: '0.5rem 0 0' }}>
+                Ongoing maintenance repeats with every contract change
               </p>
             </div>
           </div>
@@ -320,7 +311,7 @@ export default function ProblemPage() {
               scrollbarWidth: 'thin',
               scrollbarColor: 'rgba(255, 255, 255, 0.3) rgba(0, 0, 0, 0.2)',
             }}>
-              <div style={{ minWidth: '700px' }}>
+              <div style={{ minWidth: '750px' }}>
                 <IntegrationFlow />
               </div>
             </div>
@@ -520,12 +511,21 @@ export default function ProblemPage() {
           <h2 style={{
             fontSize: 'clamp(1.5rem, 4vw, 2rem)',
             fontWeight: '600',
-            marginBottom: 'clamp(1.5rem, 4vw, 2rem)',
+            marginBottom: '0.75rem',
             color: 'rgba(255, 255, 255, 0.95)',
             textAlign: 'center',
           }}>
-            Business Impact
+            Real-World Impact
           </h2>
+          <p style={{
+            fontSize: 'clamp(0.95rem, 2.5vw, 1.05rem)',
+            color: 'rgba(255, 255, 255, 0.7)',
+            marginBottom: '2.5rem',
+            lineHeight: '1.6',
+            textAlign: 'center',
+          }}>
+            These delays compound across the ecosystem, blocking capital flows and institutional adoption
+          </p>
 
           <div style={{
             display: 'grid',
@@ -538,13 +538,21 @@ export default function ProblemPage() {
               borderRadius: '8px',
               border: '1px solid rgba(59, 130, 246, 0.3)',
             }}>
+              <div style={{
+                fontSize: '2rem',
+                fontWeight: '700',
+                marginBottom: '0.5rem',
+                color: 'rgba(59, 130, 246, 0.95)',
+              }}>
+                3–5 weeks
+              </div>
               <h3 style={{
-                fontSize: '1.2rem',
+                fontSize: '1.15rem',
                 fontWeight: '600',
                 marginBottom: '0.75rem',
-                color: 'rgba(59, 130, 246, 0.9)',
+                color: 'rgba(255, 255, 255, 0.9)',
               }}>
-                Speed to Market
+                Per Integration
               </h3>
               <p style={{
                 fontSize: '0.95rem',
@@ -552,7 +560,7 @@ export default function ProblemPage() {
                 color: 'rgba(255, 255, 255, 0.75)',
                 margin: 0,
               }}>
-                Launch in days, not months. Deploy once and integrate with every FIX-compatible platform instantly.
+                Multiplied by N counterparties. For 10 institutions, that's <strong style={{color: 'rgba(239, 68, 68, 0.9)'}}>40+ weeks</strong> of aggregated engineering time before full market access.
               </p>
             </div>
 
@@ -562,13 +570,21 @@ export default function ProblemPage() {
               borderRadius: '8px',
               border: '1px solid rgba(59, 130, 246, 0.3)',
             }}>
+              <div style={{
+                fontSize: '2rem',
+                fontWeight: '700',
+                marginBottom: '0.5rem',
+                color: 'rgba(59, 130, 246, 0.95)',
+              }}>
+                $200K–500K
+              </div>
               <h3 style={{
-                fontSize: '1.2rem',
+                fontSize: '1.15rem',
                 fontWeight: '600',
                 marginBottom: '0.75rem',
-                color: 'rgba(59, 130, 246, 0.9)',
+                color: 'rgba(255, 255, 255, 0.9)',
               }}>
-                Network Effects
+                Engineering Cost
               </h3>
               <p style={{
                 fontSize: '0.95rem',
@@ -576,7 +592,7 @@ export default function ProblemPage() {
                 color: 'rgba(255, 255, 255, 0.75)',
                 margin: 0,
               }}>
-                Each integration makes the next easier. Build on a foundation that every counterparty understands.
+                Per receiving institution for a single token. Senior developers building, testing, and maintaining custom adapters—before any revenue is generated.
               </p>
             </div>
 
@@ -586,13 +602,21 @@ export default function ProblemPage() {
               borderRadius: '8px',
               border: '1px solid rgba(59, 130, 246, 0.3)',
             }}>
+              <div style={{
+                fontSize: '2rem',
+                fontWeight: '700',
+                marginBottom: '0.5rem',
+                color: 'rgba(59, 130, 246, 0.95)',
+              }}>
+                Manual Process
+              </div>
               <h3 style={{
-                fontSize: '1.2rem',
+                fontSize: '1.15rem',
                 fontWeight: '600',
                 marginBottom: '0.75rem',
-                color: 'rgba(59, 130, 246, 0.9)',
+                color: 'rgba(255, 255, 255, 0.9)',
               }}>
-                Institutional Readiness
+                Operational Risk
               </h3>
               <p style={{
                 fontSize: '0.95rem',
@@ -600,7 +624,7 @@ export default function ProblemPage() {
                 color: 'rgba(255, 255, 255, 0.75)',
                 margin: 0,
               }}>
-                Speak the language financial institutions already use. No learning curve, no adaptation required.
+                Every contract change requires coordination across all counterparties. Settlement errors, reconciliation failures, and audit trails become manual operations.
               </p>
             </div>
 
@@ -610,13 +634,21 @@ export default function ProblemPage() {
               borderRadius: '8px',
               border: '1px solid rgba(59, 130, 246, 0.3)',
             }}>
+              <div style={{
+                fontSize: '2rem',
+                fontWeight: '700',
+                marginBottom: '0.5rem',
+                color: 'rgba(59, 130, 246, 0.95)',
+              }}>
+                Zero Liquidity
+              </div>
               <h3 style={{
-                fontSize: '1.2rem',
+                fontSize: '1.15rem',
                 fontWeight: '600',
                 marginBottom: '0.75rem',
-                color: 'rgba(59, 130, 246, 0.9)',
+                color: 'rgba(255, 255, 255, 0.9)',
               }}>
-                Real Capital Unlock
+                Until Integration
               </h3>
               <p style={{
                 fontSize: '0.95rem',
@@ -624,7 +656,7 @@ export default function ProblemPage() {
                 color: 'rgba(255, 255, 255, 0.75)',
                 margin: 0,
               }}>
-                Enable seamless cross-platform settlement. Unlock liquidity when systems can communicate natively.
+                Tokens remain siloed until each institution completes their custom work. No cross-platform trading, no secondary markets, no capital efficiency.
               </p>
             </div>
           </div>
@@ -655,8 +687,36 @@ export default function ProblemPage() {
             maxWidth: '700px',
             margin: '0 auto 2rem',
           }}>
-            ERC-FIX embeds standardized FIX descriptors directly in token contracts, enabling native integration 
-            with existing financial infrastructure—no adapters, no waiting, no gatekeepers.
+            The solution is ERC-FIX: embed standardized FIX descriptors directly in your token contracts so existing 
+            systems can read them natively.
+          </p>
+
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+            gap: '1rem',
+            marginBottom: '1.5rem'
+          }}>
+            <div style={{ background: 'rgba(0,0,0,0.25)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '8px', padding: '1rem' }}>
+              <h3 style={{ margin: 0, fontWeight: 600, color: 'rgba(255,255,255,0.9)' }}>Zero custom adapters</h3>
+              <p style={{ margin: '0.5rem 0 0', color: 'rgba(255,255,255,0.75)' }}>Read natively across 300+ FIX-compatible platforms.</p>
+            </div>
+            <div style={{ background: 'rgba(0,0,0,0.25)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '8px', padding: '1rem' }}>
+              <h3 style={{ margin: 0, fontWeight: 600, color: 'rgba(255,255,255,0.9)' }}>Fast time-to-market</h3>
+              <p style={{ margin: '0.5rem 0 0', color: 'rgba(255,255,255,0.75)' }}>From 2–4 months to ~1 day per platform.</p>
+            </div>
+            <div style={{ background: 'rgba(0,0,0,0.25)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '8px', padding: '1rem' }}>
+              <h3 style={{ margin: 0, fontWeight: 600, color: 'rgba(255,255,255,0.9)' }}>Cryptographic assurance</h3>
+              <p style={{ margin: '0.5rem 0 0', color: 'rgba(255,255,255,0.75)' }}>Versioned descriptors with verifiable fields.</p>
+            </div>
+            <div style={{ background: 'rgba(0,0,0,0.25)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '8px', padding: '1rem' }}>
+              <h3 style={{ margin: 0, fontWeight: 600, color: 'rgba(255,255,255,0.9)' }}>Scales with network</h3>
+              <p style={{ margin: '0.5rem 0 0', color: 'rgba(255,255,255,0.75)' }}>Integrations go from N×M to N+M when everyone speaks FIX.</p>
+            </div>
+          </div>
+
+          <p style={{ color: 'rgba(255,255,255,0.85)', margin: '0 0 1.5rem' }}>
+            Time savings: <strong>3–5 weeks → 1 day</strong> per platform.
           </p>
           <div style={{
             display: 'flex',

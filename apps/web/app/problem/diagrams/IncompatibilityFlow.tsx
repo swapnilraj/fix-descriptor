@@ -26,7 +26,7 @@ export default function IncompatibilityFlow() {
 
   return (
     <svg
-      viewBox="0 0 900 450"
+      viewBox="0 0 1000 520"
       className="w-full h-auto"
       style={{ 
         maxWidth: '900px', 
@@ -62,7 +62,7 @@ export default function IncompatibilityFlow() {
         </text>
       </g>
       
-      {/* Contract Fields Box */}
+      {/* Contract Fields Box (increase text size for legibility) */}
       <g>
         <rect
           x="80"
@@ -74,13 +74,13 @@ export default function IncompatibilityFlow() {
           stroke="rgba(59, 130, 246, 0.25)"
           strokeWidth="1"
         />
-        <text x="95" y="232" fill="currentColor" fontSize="10" opacity="0.7" fontFamily="monospace">
+        <text x="95" y="232" fill="currentColor" fontSize="12" opacity="0.85" fontFamily="monospace">
           customCouponRate
         </text>
-        <text x="95" y="250" fill="currentColor" fontSize="10" opacity="0.7" fontFamily="monospace">
+        <text x="95" y="250" fill="currentColor" fontSize="12" opacity="0.85" fontFamily="monospace">
           customMaturityDate
         </text>
-        <text x="95" y="268" fill="currentColor" fontSize="10" opacity="0.7" fontFamily="monospace">
+        <text x="95" y="268" fill="currentColor" fontSize="12" opacity="0.85" fontFamily="monospace">
           customISIN
         </text>
       </g>
@@ -90,14 +90,14 @@ export default function IncompatibilityFlow() {
         <line
           x1="330"
           y1="120"
-          x2="540"
+          x2="560"
           y2="120"
-          stroke="rgba(255, 255, 255, 0.4)"
-          strokeWidth="2"
+          stroke="#9ca3af"
+          strokeWidth="3"
           markerEnd="url(#arrowhead)"
         />
-        <text x="435" y="108" textAnchor="middle" fill="currentColor" fontSize="12" opacity="0.7">
-          Transfer Token
+        <text x="445" y="104" textAnchor="middle" fill="rgba(255,255,255,0.85)" fontSize="12">
+          Transfer Token — receiving systems cannot parse
         </text>
       </g>
 
@@ -124,6 +124,9 @@ export default function IncompatibilityFlow() {
         </text>
         <text x="670" y="182" textAnchor="middle" fill="currentColor" fontSize="11" opacity="0.7">
           Off-chain Systems
+        </text>
+        <text x="670" y="198" textAnchor="middle" fill="rgba(239, 68, 68, 0.85)" fontSize="11" fontWeight="600">
+          Cannot parse custom schema
         </text>
       </g>
       
@@ -193,6 +196,8 @@ export default function IncompatibilityFlow() {
         </text>
       </g>
 
+      {/* (Simplified) removed additional receivers to reduce visual noise */}
+
       {/* Problem Highlight */}
       <g>
         <rect
@@ -223,7 +228,7 @@ export default function IncompatibilityFlow() {
           refY="3"
           orient="auto"
         >
-          <polygon points="0 0, 10 3, 0 6" fill="rgba(255, 255, 255, 0.4)" />
+          <polygon points="0 0, 10 3, 0 6" fill="#9ca3af" />
         </marker>
         <marker
           id="arrowhead-alt"
@@ -233,7 +238,7 @@ export default function IncompatibilityFlow() {
           refY="3"
           orient="auto"
         >
-          <polygon points="0 0, 10 3, 0 6" fill="rgba(255, 255, 255, 0.3)" />
+          <polygon points="0 0, 10 3, 0 6" fill="#9ca3af" />
         </marker>
       </defs>
     </svg>
