@@ -1,13 +1,11 @@
 "use client";
-import { useState, useEffect, useLayoutEffect, useRef } from 'react';
-import Link from 'next/link';
+import { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
 import Navigation from '@/components/Navigation';
 import { abi as TokenFactoryAbi } from '@/lib/abis/AssetTokenFactory';
 import { abi as AssetTokenAbi } from '@/lib/abis/AssetTokenERC20';
 import { chainFromEnv, getDictionaryAddressOptional } from '@/lib/viemClient';
 import { createWalletClient, custom, type Address, createPublicClient, http, decodeEventLog } from 'viem';
 import { AddressLink, TransactionLink } from '@/components/BlockExplorerLink';
-import { shortenAddress } from '@/lib/blockExplorer';
 
 // Extend Window interface for MetaMask
 declare global {
@@ -90,6 +88,120 @@ const FIX_TAGS: Record<string, { name: string; description: string }> = {
   "541": { name: "MaturityDate", description: "Maturity date (YYYYMMDD)" },
   "802": { name: "NoPartySubIDs", description: "Number of party sub-identifiers" }
 };
+
+// Educational Components
+function Tooltip({ children, content }: { children: React.ReactNode; content: string }) {
+  const [show, setShow] = useState(false);
+  
+  return (
+    <span style={{ position: 'relative', display: 'inline-block' }}>
+      <span
+        onMouseEnter={() => setShow(true)}
+        onMouseLeave={() => setShow(false)}
+        style={{
+          borderBottom: '1px dotted rgba(255,255,255,0.5)',
+          cursor: 'help',
+          color: 'rgba(96, 165, 250, 0.9)'
+        }}
+      >
+        {children}
+      </span>
+      {show && (
+        <span style={{
+          position: 'absolute',
+          bottom: '100%',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          marginBottom: '0.5rem',
+          padding: '0.75rem 1rem',
+          background: 'rgba(20, 20, 20, 0.98)',
+          border: '1px solid rgba(255,255,255,0.2)',
+          borderRadius: '8px',
+          fontSize: '0.875rem',
+          lineHeight: '1.5',
+          color: 'rgba(255,255,255,0.9)',
+          whiteSpace: 'normal',
+          width: 'max-content',
+          maxWidth: '300px',
+          zIndex: 1000,
+          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2)',
+          pointerEvents: 'none'
+        }}>
+          {content}
+          <span style={{
+            position: 'absolute',
+            top: '100%',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            width: 0,
+            height: 0,
+            borderLeft: '6px solid transparent',
+            borderRight: '6px solid transparent',
+            borderTop: '6px solid rgba(20, 20, 20, 0.98)'
+          }} />
+        </span>
+      )}
+    </span>
+  );
+}
+
+function LearnMore({ title, children }: { title: string; children: React.ReactNode }) {
+  const [expanded, setExpanded] = useState(false);
+  
+  return (
+    <div style={{
+      marginBottom: '1.5rem',
+      border: '1px solid rgba(59, 130, 246, 0.2)',
+      borderRadius: '8px',
+      background: 'rgba(59, 130, 246, 0.03)',
+      overflow: 'hidden'
+    }}>
+      <button
+        onClick={() => setExpanded(!expanded)}
+        style={{
+          width: '100%',
+          padding: '1rem 1.25rem',
+          background: 'none',
+          border: 'none',
+          color: 'inherit',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.75rem',
+          fontSize: '0.95rem',
+          fontWeight: '500',
+          textAlign: 'left'
+        }}
+      >
+        <svg 
+          width="20" 
+          height="20" 
+          viewBox="0 0 24 24" 
+          fill="none" 
+          stroke="rgba(96, 165, 250, 0.8)" 
+          strokeWidth="2"
+          style={{
+            transition: 'transform 0.2s',
+            transform: expanded ? 'rotate(90deg)' : 'rotate(0deg)'
+          }}
+        >
+          <polyline points="9 18 15 12 9 6" />
+        </svg>
+        <span style={{ color: 'rgba(96, 165, 250, 0.9)' }}>Learn More: {title}</span>
+      </button>
+      {expanded && (
+        <div style={{
+          padding: '0 1.25rem 1.25rem 1.25rem',
+          fontSize: '0.9rem',
+          lineHeight: '1.7',
+          color: 'rgba(255,255,255,0.75)'
+        }}>
+          {children}
+        </div>
+      )}
+    </div>
+  );
+}
 
 // Tree Node Component
 function TreeNode({ 
@@ -460,13 +572,26 @@ export default function Page() {
   const [proof, setProof] = useState<ProofResult>(null);
   const [txInfo, setTxInfo] = useState<React.ReactNode>('');
   const [currentStep, setCurrentStep] = useState<number>(0);
-  const [expandedSection, setExpandedSection] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState<string>('');
   const [treeData, setTreeData] = useState<TreeNodeData | null>(null);
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
   const [viewMode, setViewMode] = useState<'hex' | 'tree' | 'merkle'>('hex');
   const [walletConnected, setWalletConnected] = useState(false);
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
+  const [isSticky, setIsSticky] = useState(false);
+  const [showHowItWorks, setShowHowItWorks] = useState(false);
+  
+  // Refs for sections
+  const introRef = useRef<HTMLDivElement>(null);
+  const examplesRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLDivElement>(null);
+  const resultsRef = useRef<HTMLDivElement>(null);
+  const deployRef = useRef<HTMLDivElement>(null);
+  const proofRef = useRef<HTMLDivElement>(null);
+  const proofResultsRef = useRef<HTMLDivElement>(null);
+  const retrieveRef = useRef<HTMLDivElement>(null);
+  const progressIndicatorRef = useRef<HTMLDivElement>(null);
   
   // Token deployment state
   const [showTokenDeploy, setShowTokenDeploy] = useState(false);
@@ -518,10 +643,51 @@ export default function Page() {
     }
   }, []);
 
+  // Sticky progress indicator
+  const [progressOriginalTop, setProgressOriginalTop] = useState<number>(0);
+  
+  useEffect(() => {
+    if (progressIndicatorRef.current && progressOriginalTop === 0) {
+      setProgressOriginalTop(progressIndicatorRef.current.offsetTop);
+    }
+  }, [progressOriginalTop]);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      if (progressOriginalTop > 0) {
+        setIsSticky(window.scrollY > progressOriginalTop - 20);
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    handleScroll(); // Check initial position
+
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [progressOriginalTop]);
+
+  // Get sticky header offset dynamically
+  const getStickyHeaderOffset = useCallback(() => {
+    if (progressIndicatorRef.current) {
+      // Get the actual height of the sticky header and add a small buffer
+      return -(progressIndicatorRef.current.offsetHeight * 1.3);
+    }
+    return -180; // Fallback value
+  }, []);
+
+  // Auto-scroll helper
+  const scrollToSection = useCallback((ref: React.RefObject<HTMLDivElement | null>, offset?: number) => {
+    if (ref.current) {
+      const actualOffset = offset ?? getStickyHeaderOffset();
+      const top = ref.current.getBoundingClientRect().top + window.scrollY + actualOffset;
+      window.scrollTo({ top, behavior: 'smooth' });
+    }
+  }, [getStickyHeaderOffset]);
+
   const steps = [
     { 
       name: "Input", 
       description: "FIX Message",
+      phase: "offchain",
       icon: (
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
@@ -532,6 +698,7 @@ export default function Page() {
     { 
       name: "Parse", 
       description: "Extract Fields",
+      phase: "offchain",
       icon: (
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <polyline points="16 18 22 12 16 6" />
@@ -542,6 +709,7 @@ export default function Page() {
     { 
       name: "Canonicalize", 
       description: "Build Tree",
+      phase: "offchain",
       icon: (
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <line x1="8" y1="6" x2="21" y2="6" />
@@ -556,6 +724,7 @@ export default function Page() {
     { 
       name: "Encode", 
       description: "CBOR Binary",
+      phase: "offchain",
       icon: (
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
@@ -567,6 +736,7 @@ export default function Page() {
     { 
       name: "Merkle", 
       description: "Generate Root",
+      phase: "offchain",
       icon: (
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <circle cx="12" cy="8" r="2" />
@@ -581,6 +751,7 @@ export default function Page() {
     { 
       name: "Deploy", 
       description: "Onchain",
+      phase: "onchain",
       icon: (
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
@@ -590,6 +761,7 @@ export default function Page() {
     { 
       name: "Verify", 
       description: "Merkle Proof",
+      phase: "verification",
       icon: (
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
@@ -600,6 +772,7 @@ export default function Page() {
     { 
       name: "Retrieve", 
       description: "Offchain",
+      phase: "verification",
       icon: (
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
@@ -608,6 +781,12 @@ export default function Page() {
         </svg>
       )
     }
+  ];
+
+  const phases = [
+    { id: "offchain", label: "Off-chain Processing", color: "rgba(168, 85, 247, 0.6)" },
+    { id: "onchain", label: "On-chain", color: "rgba(59, 130, 246, 0.6)" },
+    { id: "verification", label: "Verification", color: "rgba(34, 197, 94, 0.6)" }
   ];
 
   const stepsContainerRef = useRef<HTMLDivElement | null>(null);
@@ -663,10 +842,6 @@ export default function Page() {
     setCurrentStep(0);
   }
 
-  function toggleSection(section: string) {
-    setExpandedSection(prev => prev === section ? null : section);
-  }
-
   async function switchToSepolia() {
     if (!window.ethereum) {
       alert('MetaMask not detected');
@@ -710,9 +885,15 @@ export default function Page() {
     setProof(null);
     setOnChainVerificationStatus(null); // Reset verification status when preview changes
     setLoading(true);
+    setLoadingMessage('Parsing FIX message...');
     setCurrentStep(1);
     
     try {
+      // Simulate step-by-step feedback
+      setTimeout(() => setLoadingMessage('Building canonical tree...'), 300);
+      setTimeout(() => setLoadingMessage('Encoding to CBOR...'), 600);
+      setTimeout(() => setLoadingMessage('Generating Merkle tree...'), 900);
+      
       const res = await fetch('/api/preview', { 
         method: 'POST', 
         headers: { 'content-type': 'application/json' }, 
@@ -723,20 +904,28 @@ export default function Page() {
       const text = await res.text();
       alert(`Preview failed: ${text}`);
         setCurrentStep(0);
+        setLoadingMessage('');
       return;
     }
       
     const json = await res.json();
     setPreview(json);
       setCurrentStep(4);
+      setLoadingMessage('');
       
       // Use tree data from backend
       if (json.treeData) {
         setTreeData(json.treeData);
         setExpandedNodes(new Set(['[]'])); // Expand root by default
       }
+      
+      // Auto-scroll to results
+      setTimeout(() => {
+        scrollToSection(resultsRef);
+      }, 100);
     } finally {
       setLoading(false);
+      setLoadingMessage('');
     }
   }
 
@@ -754,6 +943,11 @@ export default function Page() {
       });
     const json: ProofResult = await res.json();
     setProof(json);
+    
+    // Auto-scroll to proof results
+    setTimeout(() => {
+      scrollToSection(proofResultsRef);
+    }, 100);
     } finally {
       setLoading(false);
     }
@@ -1388,200 +1582,583 @@ export default function Page() {
     <div style={{ minHeight: '100vh', background: '#0a0a0a', color: '#ffffff' }}>
       <Navigation currentPage="explorer" />
       
-      {/* Hero Section */}
-      <div style={{ 
-        borderBottom: '1px solid rgba(255,255,255,0.1)',
-        background: '#0a0a0a'
-      }}>
-        <div style={{ maxWidth: '1400px', margin: '0 auto', padding: 'clamp(2rem, 5vw, 3rem) clamp(1rem, 3vw, 2rem)' }}>
-          <div style={{ display: 'flex', flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '1.5rem' }}>
-            <div>
-              <h1 style={{ 
-                fontSize: 'clamp(2rem, 5vw, 3.5rem)', 
-                marginBottom: '0.5rem', 
+      {/* Introduction Section */}
+      <div style={{ maxWidth: '1400px', margin: '0 auto', padding: 'clamp(2rem, 4vw, 3rem) clamp(1rem, 3vw, 2rem)' }}>
+        <section ref={introRef} style={{ marginBottom: '4rem' }}>
+          <div style={{
+            padding: '2rem clamp(1.5rem, 4vw, 2.5rem)',
+            background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.08) 0%, rgba(168, 85, 247, 0.08) 100%)',
+            border: '1px solid rgba(59, 130, 246, 0.2)',
+            borderRadius: '12px'
+          }}>
+            <div style={{ display: 'flex', flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1.5rem', marginBottom: '1rem' }}>
+              <h1 style={{
+                fontSize: 'clamp(1.75rem, 4vw, 2.25rem)',
                 fontWeight: '600',
-                letterSpacing: '-0.02em',
-                lineHeight: '1.1'
+                margin: 0,
+                color: 'rgba(255,255,255,0.95)',
+                letterSpacing: '-0.02em'
               }}>
-                FixDescriptorKit Explorer
+                FIX Descriptor Explorer
               </h1>
-              <p style={{ 
-                fontSize: 'clamp(1rem, 2.5vw, 1.25rem)', 
-                color: 'rgba(255,255,255,0.6)',
-                fontWeight: '400',
-                maxWidth: '600px',
-                lineHeight: '1.6',
-                margin: 0
+              
+              {/* Wallet Status */}
+              <div style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '0.75rem',
+                padding: '0.75rem 1rem',
+                background: walletConnected ? 'rgba(34, 197, 94, 0.1)' : 'rgba(255,255,255,0.05)',
+                border: walletConnected ? '1px solid rgba(34, 197, 94, 0.3)' : '1px solid rgba(255,255,255,0.1)',
+                borderRadius: '8px',
+                fontSize: 'clamp(0.8rem, 2vw, 0.9rem)',
+                minHeight: '44px'
               }}>
-                Transform FIX asset descriptors into verifiable onchain commitments
-              </p>
+                <div style={{
+                  width: '8px',
+                  height: '8px',
+                  borderRadius: '50%',
+                  background: walletConnected ? '#22c55e' : '#ef4444'
+                }} />
+                <span style={{ color: walletConnected ? '#22c55e' : 'rgba(255,255,255,0.6)' }}>
+                  {walletConnected ? (
+                    walletAddress ? (
+                      <AddressLink 
+                        address={walletAddress} 
+                        chainId={chainFromEnv.id} 
+                        truncate={true}
+                        style={{ color: '#22c55e' }}
+                      />
+                    ) : 'Connected'
+                  ) : (
+                    'Not Connected'
+                  )}
+                </span>
+              </div>
             </div>
+            <p style={{
+              fontSize: 'clamp(1rem, 2.5vw, 1.125rem)',
+              lineHeight: '1.7',
+              color: 'rgba(255,255,255,0.75)',
+              marginBottom: '1.5rem'
+            }}>
+              This interactive tool demonstrates how <Tooltip content="Financial Information eXchange - a standard messaging protocol used by the financial industry for real-time electronic communication">FIX</Tooltip> descriptors are transformed into verifiable on-chain commitments. Follow along as we parse a FIX message, encode it to <Tooltip content="Concise Binary Object Representation - a compact binary format similar to JSON but smaller and deterministic">CBOR</Tooltip>, generate a <Tooltip content="A cryptographic tree structure that allows you to prove specific data is part of a larger dataset without revealing the entire dataset">Merkle tree</Tooltip>, and deploy it to the blockchain.
+            </p>
             
-            {/* Wallet Status */}
-            <div style={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: '0.75rem',
-              padding: '0.75rem 1rem',
-              background: walletConnected ? 'rgba(34, 197, 94, 0.1)' : 'rgba(255,255,255,0.05)',
-              border: walletConnected ? '1px solid rgba(34, 197, 94, 0.3)' : '1px solid rgba(255,255,255,0.1)',
-              borderRadius: '8px',
-              fontSize: 'clamp(0.8rem, 2vw, 0.9rem)',
-              minHeight: '44px'
+            <LearnMore title="What is this tool for?">
+              <p style={{ marginBottom: '1rem' }}>
+                <strong>The Challenge:</strong> Traditional finance systems speak FIX, while blockchain tokens use custom contract fields. This creates integration headaches and prevents seamless cross-platform settlement.
+              </p>
+              <p style={{ marginBottom: '1rem' }}>
+                <strong>The Solution:</strong> Embed standardized FIX descriptors directly in token contracts. This explorer shows you exactly how that works, step by step.
+              </p>
+              <p>
+                <strong>What you&apos;ll see:</strong> Input a FIX message → Parse and canonicalize → Encode to CBOR → Generate Merkle root → Deploy to blockchain → Verify proofs → Retrieve data. Each step is explained as you go.
+              </p>
+            </LearnMore>
+
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+              gap: '1rem',
+              marginTop: '1.5rem'
             }}>
               <div style={{
-                width: '8px',
-                height: '8px',
-                borderRadius: '50%',
-                background: walletConnected ? '#22c55e' : '#ef4444'
-              }} />
-              <span style={{ color: walletConnected ? '#22c55e' : 'rgba(255,255,255,0.6)' }}>
-                {walletConnected ? (
-                  walletAddress ? (
-                    <AddressLink 
-                      address={walletAddress} 
-                      chainId={chainFromEnv.id} 
-                      truncate={true}
-                      style={{ color: '#22c55e' }}
-                    />
-                  ) : 'Connected'
-                ) : (
-                  'Not Connected'
-                )}
-              </span>
+                padding: '1rem',
+                background: 'rgba(0, 0, 0, 0.2)',
+                borderRadius: '8px',
+                border: '1px solid rgba(255,255,255,0.1)'
+              }}>
+                <div style={{ fontSize: '0.875rem', color: 'rgba(255,255,255,0.6)', marginBottom: '0.25rem' }}>
+                  Network
+                </div>
+                <div style={{ fontSize: '1rem', fontWeight: '500', color: 'rgba(255,255,255,0.9)' }}>
+                  Sepolia Testnet
+                </div>
+              </div>
+              <div style={{
+                padding: '1rem',
+                background: 'rgba(0, 0, 0, 0.2)',
+                borderRadius: '8px',
+                border: '1px solid rgba(255,255,255,0.1)'
+              }}>
+                <div style={{ fontSize: '0.875rem', color: 'rgba(255,255,255,0.6)', marginBottom: '0.25rem' }}>
+                  No Cost
+                </div>
+                <div style={{ fontSize: '1rem', fontWeight: '500', color: 'rgba(255,255,255,0.9)' }}>
+                  Free Testnet ETH
+                </div>
+              </div>
+              <button 
+                onClick={() => scrollToSection(examplesRef)}
+                style={{
+                  padding: '1rem',
+                  background: 'rgba(59, 130, 246, 0.1)',
+                  borderRadius: '8px',
+                  border: '1px solid rgba(59, 130, 246, 0.3)',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  width: '100%',
+                  textAlign: 'left'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'rgba(59, 130, 246, 0.2)';
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'rgba(59, 130, 246, 0.1)';
+                  e.currentTarget.style.transform = 'translateY(0)';
+                }}
+              >
+                <div style={{ fontSize: '0.875rem', color: 'rgba(96, 165, 250, 0.8)', marginBottom: '0.25rem' }}>
+                  Interactive
+                </div>
+                <div style={{ fontSize: '1rem', fontWeight: '500', color: 'rgba(255,255,255,0.95)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  Try Examples
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <polyline points="6 9 12 15 18 9" />
+                  </svg>
+                </div>
+              </button>
             </div>
           </div>
-        </div>
+        </section>
       </div>
-
+      
       {/* Process Flow */}
-      <div style={{ 
-        borderBottom: '1px solid rgba(255,255,255,0.1)',
-        background: '#0a0a0a',
-        padding: '3rem 0'
-      }}>
-        <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '0 clamp(1rem, 3vw, 2rem)', position: 'relative', display: 'flex', justifyContent: 'center' }}>
+      <div 
+        ref={progressIndicatorRef}
+        style={{ 
+          borderBottom: '1px solid rgba(255,255,255,0.1)',
+          background: isSticky ? 'rgba(10, 10, 10, 0.98)' : '#0a0a0a',
+          backdropFilter: isSticky ? 'blur(8px)' : 'none',
+          padding: '1rem 0',
+          position: isSticky ? 'fixed' : 'relative',
+          top: isSticky ? 0 : 'auto',
+          left: isSticky ? 0 : 'auto',
+          right: isSticky ? 0 : 'auto',
+          zIndex: isSticky ? 100 : 'auto',
+          transition: 'all 0.3s',
+          boxShadow: isSticky ? '0 4px 6px -1px rgba(0, 0, 0, 0.5)' : 'none'
+        }}
+      >
+        <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '0 clamp(1rem, 3vw, 2rem)' }}>
+          {/* Phase Labels */}
+          <div style={{
+            display: 'flex',
+            justifyContent: 'center',
+            gap: '2rem',
+            marginBottom: '0.75rem',
+            flexWrap: 'wrap'
+          }}>
+            {phases.map((phase) => {
+              const firstStepIdx = steps.findIndex(s => s.phase === phase.id);
+              const lastStepIdx = steps.map(s => s.phase).lastIndexOf(phase.id);
+              const isActive = currentStep >= firstStepIdx && currentStep <= lastStepIdx;
+              const isCompleted = currentStep > lastStepIdx;
+              
+              return (
+                <div key={phase.id} style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.4rem',
+                  opacity: isActive || isCompleted ? 1 : 0.4,
+                  transition: 'opacity 0.3s'
+                }}>
+                  <div style={{
+                    width: '6px',
+                    height: '6px',
+                    borderRadius: '50%',
+                    background: isCompleted ? 'rgba(34, 197, 94, 0.8)' : isActive ? phase.color : 'rgba(255,255,255,0.2)',
+                    transition: 'background 0.3s'
+                  }} />
+                  <span style={{
+                    fontSize: '0.75rem',
+                    fontWeight: '500',
+                    color: isCompleted ? 'rgba(34, 197, 94, 0.9)' : isActive ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.5)',
+                    transition: 'color 0.3s',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.05em'
+                  }}>
+                    {phase.label}
+                  </span>
+                  {isCompleted && (
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(34, 197, 94, 0.9)" strokeWidth="2.5">
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Steps */}
           <div style={{
             overflowX: 'auto',
             overflowY: 'hidden',
             WebkitOverflowScrolling: 'touch',
             scrollbarWidth: 'thin',
             scrollbarColor: 'rgba(255,255,255,0.2) transparent',
-            paddingBottom: '1rem',
-            maskImage: 'linear-gradient(to right, transparent, black 2rem, black calc(100% - 2rem), transparent)',
-            WebkitMaskImage: 'linear-gradient(to right, transparent, black 2rem, black calc(100% - 2rem), transparent)',
-            maxWidth: '100%'
+            paddingBottom: '0.75rem'
           }}>
             <div
               ref={stepsContainerRef}
               style={{ 
-              display: 'flex', 
-              justifyContent: 'center',
-              alignItems: 'flex-start',
-              gap: 'clamp(0.75rem, 2vw, 1rem)',
-              position: 'relative',
-              minWidth: 'min-content'
-            }}
+                display: 'flex', 
+                justifyContent: 'center',
+                alignItems: 'flex-start',
+                gap: 'clamp(0.75rem, 2vw, 1rem)',
+                position: 'relative',
+                minWidth: 'min-content'
+              }}
             >
-            {stepGeometry.edges.length > 1 && stepGeometry.width > 0 && (
-              <svg
-                style={{
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  width: stepGeometry.width,
-                  height: 40,
-                  pointerEvents: 'none',
-                  zIndex: 0
-                }}
-                viewBox={`0 0 ${stepGeometry.width} 40`}
-                preserveAspectRatio="none"
-              >
-                {stepGeometry.edges.slice(0, -1).map((edge, idx) => {
-                  const nextEdge = stepGeometry.edges[idx + 1];
-                  const active = idx < currentStep;
-                  return (
-                    <line
-                      key={`connector-${idx}`}
-                      x1={edge.right}
-                      y1={20}
-                      x2={nextEdge.left}
-                      y2={20}
-                      stroke={active ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.1)'}
-                      strokeWidth={active ? 2 : 1}
-                    />
-                  );
-                })}
-              </svg>
-            )}
-            {steps.map((step, idx) => (
-              <div key={idx} style={{ 
-                flex: '0 0 auto',
-                minWidth: 'clamp(100px, 15vw, 140px)',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                position: 'relative'
-              }}>
-                <div style={{
-                  position: 'relative',
-                  zIndex: 1,
-                  width: '100%',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center'
-                }}>
-                  <div style={{ 
-                    width: 'clamp(32px, 8vw, 40px)', 
-                    height: 'clamp(32px, 8vw, 40px)', 
-                    borderRadius: '8px',
-                    border: `1px solid ${idx <= currentStep ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.1)'}`,
-                    background: idx <= currentStep ? 'rgba(255,255,255,0.05)' : 'transparent',
+              {phases.map((phase, phaseIdx) => {
+                const phaseSteps = steps.filter(s => s.phase === phase.id);
+                const firstStepIdx = steps.findIndex(s => s.phase === phase.id);
+                const isPhaseActive = phaseSteps.some((_, i) => firstStepIdx + i === currentStep);
+                const isPhaseCompleted = phaseSteps.every((_, i) => firstStepIdx + i < currentStep);
+                
+                return (
+                  <div key={phase.id} style={{
                     display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: idx <= currentStep ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.3)',
-                    transition: 'all 0.3s',
-                    marginBottom: '1rem',
-                    position: 'relative'
-                  }}
-                  ref={(el) => { stepIconRefs.current[idx] = el; }}
-                  >
-                    {step.icon}
-                  </div>
-                  <div style={{ 
-                    fontSize: 'clamp(0.75rem, 2vw, 0.875rem)',
-                    fontWeight: '500',
-                    color: idx <= currentStep ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.4)',
-                    marginBottom: '0.25rem',
-                    transition: 'color 0.3s',
-                    textAlign: 'center',
-                    whiteSpace: 'nowrap'
+                    gap: 'clamp(0.5rem, 1.5vw, 0.75rem)',
+                    padding: '0.5rem',
+                    borderRadius: '8px',
+                    background: isPhaseActive ? `${phase.color.replace('0.6', '0.05')}` :
+                                isPhaseCompleted ? 'rgba(34, 197, 94, 0.03)' :
+                                'rgba(255,255,255,0.02)',
+                    border: `1px solid ${isPhaseActive ? phase.color.replace('0.6', '0.15') :
+                            isPhaseCompleted ? 'rgba(34, 197, 94, 0.1)' :
+                            'rgba(255,255,255,0.05)'}`,
+                    transition: 'all 0.3s'
                   }}>
-                    {step.name}
+                    {phaseSteps.map((step, i) => {
+                      const idx = firstStepIdx + i;
+                      return (
+                        <div key={idx} style={{ 
+                          flex: '0 0 auto',
+                          minWidth: 'clamp(80px, 12vw, 110px)',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          position: 'relative'
+                        }}>
+                          <div style={{
+                            position: 'relative',
+                            zIndex: 1,
+                            width: '100%',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center'
+                          }}>
+                            <div style={{ 
+                              width: 'clamp(30px, 7vw, 36px)', 
+                              height: 'clamp(30px, 7vw, 36px)', 
+                              borderRadius: '8px',
+                              border: `2px solid ${idx < currentStep ? 'rgba(34, 197, 94, 0.6)' : idx === currentStep ? 'rgba(59, 130, 246, 0.8)' : 'rgba(255,255,255,0.1)'}`,
+                              background: idx < currentStep ? 'rgba(34, 197, 94, 0.1)' : idx === currentStep ? 'rgba(59, 130, 246, 0.15)' : 'transparent',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              color: idx < currentStep ? 'rgba(34, 197, 94, 0.9)' : idx === currentStep ? 'rgba(59, 130, 246, 0.9)' : 'rgba(255,255,255,0.3)',
+                              transition: 'all 0.3s',
+                              marginBottom: '0.5rem',
+                              position: 'relative',
+                              transform: idx === currentStep ? 'scale(1.1)' : 'scale(1)'
+                            }}
+                            ref={(el) => { stepIconRefs.current[idx] = el; }}
+                            >
+                              {idx < currentStep ? (
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                  <polyline points="20 6 9 17 4 12" />
+                                </svg>
+                              ) : step.icon}
+                            </div>
+                            <div style={{ 
+                              fontSize: 'clamp(0.65rem, 1.7vw, 0.75rem)',
+                              fontWeight: '500',
+                              color: idx < currentStep ? 'rgba(34, 197, 94, 0.9)' : idx === currentStep ? 'rgba(59, 130, 246, 0.9)' : 'rgba(255,255,255,0.4)',
+                              marginBottom: '0.15rem',
+                              transition: 'color 0.3s',
+                              textAlign: 'center',
+                              whiteSpace: 'nowrap'
+                            }}>
+                              {step.name}
+                            </div>
+                            <div style={{ 
+                              fontSize: 'clamp(0.55rem, 1.3vw, 0.65rem)', 
+                              color: 'rgba(255,255,255,0.4)',
+                              fontWeight: '400',
+                              textAlign: 'center',
+                              whiteSpace: 'nowrap'
+                            }}>
+                              {step.description}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
-                  <div style={{ 
-                    fontSize: 'clamp(0.65rem, 1.5vw, 0.75rem)', 
-                    color: 'rgba(255,255,255,0.4)',
-                    fontWeight: '400',
-                    textAlign: 'center',
-                    whiteSpace: 'nowrap'
-                  }}>
-                    {step.description}
-                  </div>
+                );
+              })}
+            </div>
+          </div>
+          
+          {/* How It Works - Expandable */}
+          <div style={{ maxWidth: '1400px', margin: '0.5rem auto 0', padding: '0 clamp(1rem, 3vw, 2rem)' }}>
+            <button
+              onClick={() => setShowHowItWorks(!showHowItWorks)}
+              style={{
+                background: 'rgba(59, 130, 246, 0.05)',
+                border: '1px solid rgba(59, 130, 246, 0.15)',
+                borderRadius: '6px',
+                padding: '0.4rem 0.75rem',
+                width: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '0.4rem',
+                cursor: 'pointer',
+                color: 'rgba(59, 130, 246, 0.8)',
+                fontSize: '0.75rem',
+                fontWeight: '500',
+                transition: 'all 0.2s'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgba(59, 130, 246, 0.1)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'rgba(59, 130, 246, 0.05)';
+              }}
+            >
+              <svg 
+                width="14" 
+                height="14" 
+                viewBox="0 0 24 24" 
+                fill="none" 
+                stroke="currentColor" 
+                strokeWidth="2"
+                style={{
+                  transition: 'transform 0.2s',
+                  transform: showHowItWorks ? 'rotate(180deg)' : 'rotate(0deg)'
+                }}
+              >
+                <polyline points="6 9 12 15 18 9" />
+              </svg>
+              {showHowItWorks ? 'Hide' : 'Show'} How Each Step Works
+            </button>
+            
+            {showHowItWorks && (
+              <div style={{
+                marginTop: '1rem',
+                padding: '1.5rem',
+                background: 'rgba(255,255,255,0.02)',
+                border: '1px solid rgba(255,255,255,0.1)',
+                borderRadius: '8px',
+                animation: 'slideDown 0.3s ease-out'
+              }}>
+                <style dangerouslySetInnerHTML={{ __html: `
+                  @keyframes slideDown {
+                    from { opacity: 0; transform: translateY(-10px); }
+                    to { opacity: 1; transform: translateY(0); }
+                  }
+                `}} />
+                <div style={{ 
+                  display: 'grid', 
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))', 
+                  gap: 'clamp(1.5rem, 3vw, 2rem)' 
+                }}>
+                  {[
+                    {
+                      step: '01',
+                      title: 'Parse FIX',
+                      description: 'Extract business fields from the FIX message. Session fields are excluded as they\'re not part of the instrument definition.',
+                      icon: (
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                          <polyline points="14 2 14 8 20 8" />
+                          <line x1="16" y1="13" x2="8" y2="13" />
+                          <line x1="16" y1="17" x2="8" y2="17" />
+                          <polyline points="10 9 9 9 8 9" />
+                        </svg>
+                      )
+                    },
+                    {
+                      step: '02',
+                      title: 'Canonicalize',
+                      description: 'Build a hierarchical tree structure with sorted keys, ensuring deterministic ordering.',
+                      icon: (
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                          <path d="M12 2v20" />
+                          <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+                        </svg>
+                      )
+                    },
+                    {
+                      step: '03',
+                      title: 'CBOR Encode',
+                      description: 'Convert to Concise Binary Object Representation using canonical form for compact, deterministic storage.',
+                      icon: (
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                          <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                          <line x1="9" y1="9" x2="15" y2="9" />
+                          <line x1="9" y1="15" x2="15" y2="15" />
+                        </svg>
+                      )
+                    },
+                    {
+                      step: '04',
+                      title: 'Merkle Tree',
+                      description: 'Generate a Merkle tree from all fields. The root provides a cryptographic commitment to the entire descriptor.',
+                      icon: (
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                          <circle cx="12" cy="8" r="2" />
+                          <path d="M12 10v4" />
+                          <circle cx="8" cy="16" r="2" />
+                          <circle cx="16" cy="16" r="2" />
+                          <path d="M12 14l-2 2" />
+                          <path d="M12 14l2 2" />
+                          <path d="M8 18v2" />
+                          <path d="M16 18v2" />
+                        </svg>
+                      )
+                    },
+                    {
+                      step: '05',
+                      title: 'Deploy Token',
+                      description: 'Deploy an ERC20 or ERC721 token contract with the FIX descriptor and CBOR data embedded onchain using SSTORE2, creating a self-contained asset.',
+                      icon: (
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                          <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+                          <polyline points="7.5 4.21 12 6.81 16.5 4.21" />
+                          <polyline points="7.5 19.79 7.5 14.6 3 12" />
+                          <polyline points="21 12 16.5 14.6 16.5 19.79" />
+                          <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+                          <line x1="12" y1="22.08" x2="12" y2="12" />
+                        </svg>
+                      )
+                    },
+                    {
+                      step: '06',
+                      title: 'Verify Proofs',
+                      description: 'The token contract can verify specific fields using Merkle proofs against its embedded descriptor, without parsing the entire FIX message.',
+                      icon: (
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                          <polyline points="22 4 12 14.01 9 11.01" />
+                        </svg>
+                      )
+                    },
+                    {
+                      step: '07',
+                      title: 'Retrieve Offchain',
+                      description: 'Read the CBOR data directly from the contract using SSTORE2 and decode it back to the original FIX message for full transparency and auditability.',
+                      icon: (
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                          <polyline points="7 10 12 15 17 10" />
+                          <line x1="12" y1="15" x2="12" y2="3" />
+                        </svg>
+                      )
+                    }
+                  ].map((item, idx) => (
+                    <div key={idx}>
+                      <div style={{ 
+                        marginBottom: '1.5rem',
+                        color: 'rgba(255,255,255,0.6)'
+                      }}>
+                        {item.icon}
+                      </div>
+                      <div style={{ 
+                        fontSize: '0.75rem',
+                        color: 'rgba(255,255,255,0.3)',
+                        marginBottom: '0.75rem',
+                        fontWeight: '500',
+                        letterSpacing: '0.1em'
+                      }}>
+                        {item.step}
+                      </div>
+                      <h3 style={{ 
+                        fontSize: 'clamp(1rem, 2.5vw, 1.125rem)',
+                        fontWeight: '500',
+                        marginBottom: '0.75rem',
+                        color: 'rgba(255,255,255,0.9)'
+                      }}>
+                        {item.title}
+                      </h3>
+                      <p style={{ 
+                        fontSize: 'clamp(0.85rem, 2vw, 0.9rem)', 
+                        color: 'rgba(255,255,255,0.5)', 
+                        lineHeight: '1.7' 
+                      }}>
+                        {item.description}
+                      </p>
+                    </div>
+                  ))}
                 </div>
               </div>
-            ))}
-            </div>
+            )}
           </div>
         </div>
       </div>
+      
+      {/* Spacer when sticky */}
+      {isSticky && <div style={{ height: '160px' }} />}
+
+      {/* Loading Overlay */}
+      {loading && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0, 0, 0, 0.7)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000
+        }}>
+          <div style={{
+            background: 'rgba(20, 20, 20, 0.98)',
+            border: '1px solid rgba(255,255,255,0.2)',
+            borderRadius: '12px',
+            padding: '2rem 3rem',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: '1.5rem'
+          }}>
+            <div style={{
+              width: '48px',
+              height: '48px',
+              border: '4px solid rgba(255,255,255,0.1)',
+              borderTop: '4px solid rgba(59, 130, 246, 0.8)',
+              borderRadius: '50%',
+              animation: 'spin 1s linear infinite'
+            }} />
+            <div style={{
+              fontSize: '1.1rem',
+              fontWeight: '500',
+              color: 'rgba(255,255,255,0.9)'
+            }}>
+              {loadingMessage || 'Processing...'}
+            </div>
+          </div>
+          <style jsx>{`
+            @keyframes spin {
+              0% { transform: rotate(0deg); }
+              100% { transform: rotate(360deg); }
+            }
+          `}</style>
+        </div>
+      )}
 
       {/* Main Content */}
       <div style={{ maxWidth: '1400px', margin: '0 auto', padding: 'clamp(2rem, 4vw, 3rem) clamp(1rem, 3vw, 2rem)' }}>
         
         {/* Examples Section */}
-        <section style={{ marginBottom: '4rem' }}>
+        <section ref={examplesRef} style={{ marginBottom: '4rem' }}>
           <div style={{ marginBottom: '2rem' }}>
             <h2 style={{ 
               fontSize: 'clamp(1.25rem, 3vw, 1.5rem)', 
@@ -1636,74 +2213,39 @@ export default function Page() {
         </section>
 
         {/* Input Section */}
-        <section style={{ marginBottom: '4rem' }}>
+        <section ref={inputRef} style={{ marginBottom: '4rem' }}>
           <div style={{ marginBottom: '2rem' }}>
-            <button
-              onClick={() => toggleSection('input')}
-              style={{
-                background: 'none',
-                border: 'none',
-                padding: 0,
-                cursor: 'pointer',
-                width: '100%',
-                textAlign: 'left',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                color: 'inherit'
-              }}
-            >
-      <div>
-                <h2 style={{ 
-                  fontSize: 'clamp(1.25rem, 3vw, 1.5rem)', 
-                  fontWeight: '500',
-                  marginBottom: '0.5rem',
-                  letterSpacing: '-0.01em'
-                }}>
-                  Input FIX Message
-                </h2>
-                <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 'clamp(0.875rem, 2vw, 0.95rem)' }}>
-                  Paste or edit your FIX descriptor
-                </p>
-      </div>
-              <span style={{ 
-                fontSize: '1.5rem', 
-                color: 'rgba(255,255,255,0.5)',
-                transition: 'transform 0.2s',
-                transform: expandedSection === 'input' ? 'rotate(45deg)' : 'none'
-              }}>
-                +
-              </span>
-          </button>
-        </div>
-
-          {expandedSection === 'input' && (
-            <div style={{ 
-              padding: '1.5rem',
-              background: 'rgba(255,255,255,0.03)',
-              border: '1px solid rgba(255,255,255,0.1)',
-              borderRadius: '8px',
-              marginBottom: '2rem',
-              fontSize: '0.9rem',
-              lineHeight: '1.7',
-              color: 'rgba(255,255,255,0.7)'
+            <h2 style={{ 
+              fontSize: 'clamp(1.25rem, 3vw, 1.5rem)', 
+              fontWeight: '500',
+              marginBottom: '0.5rem',
+              letterSpacing: '-0.01em'
             }}>
-              <p style={{ marginBottom: '1rem' }}>
-                <strong style={{ color: 'rgba(255,255,255,0.9)' }}>What is FIX?</strong><br/>
-                FIX (Financial Information eXchange) is a standard protocol for real-time electronic exchange 
-                of securities transaction information.
-              </p>
-              <p style={{ marginBottom: '1rem' }}>
-                <strong style={{ color: 'rgba(255,255,255,0.9)' }}>Format:</strong><br/>
-                FIX messages use tag=value pairs separated by | (or SOH characters). Each tag is a number 
-                identifying a field (e.g., 55=Symbol, 48=SecurityID).
-              </p>
-              <p>
-                <strong style={{ color: 'rgba(255,255,255,0.9)' }}>Note:</strong><br/>
-                Session fields (8, 9, 10) are excluded from the commitment. Only business/instrument fields are encoded.
-              </p>
-      </div>
-          )}
+              1. Input FIX Message
+            </h2>
+            <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 'clamp(0.875rem, 2vw, 0.95rem)' }}>
+              Start by entering a <Tooltip content="A tag-value message format used globally by banks, brokers, and exchanges to communicate trade information">FIX Security Definition message</Tooltip>
+            </p>
+          </div>
+
+          <LearnMore title="Understanding FIX Messages">
+            <p style={{ marginBottom: '1rem' }}>
+              <strong>What is FIX?</strong><br/>
+              FIX (Financial Information eXchange) is the messaging standard that powers modern financial markets. Banks, brokers, exchanges, and asset managers use it to communicate trade details, security information, and market data in real-time.
+            </p>
+            <p style={{ marginBottom: '1rem' }}>
+              <strong>Message Format:</strong><br/>
+              FIX messages use a simple tag=value format. Each tag is a number representing a specific field:<br/>
+              • Tag 55 = Symbol (e.g., &ldquo;AAPL&rdquo;)<br/>
+              • Tag 48 = SecurityID (e.g., a CUSIP or ISIN)<br/>
+              • Tag 167 = SecurityType (e.g., &ldquo;TBOND&rdquo; for Treasury Bond)<br/>
+              Tags are separated by the | character (representing SOH - Start of Header in the actual protocol).
+            </p>
+            <p>
+              <strong>What gets encoded?</strong><br/>
+              Only business/instrument fields are encoded into the on-chain commitment. Session fields (tags 8, 9, 10, 35) are excluded because they&apos;re for message transport, not instrument definition.
+            </p>
+          </LearnMore>
 
           <textarea 
             value={fixRaw} 
@@ -1877,70 +2419,55 @@ export default function Page() {
         {/* Results Section */}
         {preview && (
           <>
-            <section style={{ marginBottom: '4rem' }}>
+            <section ref={resultsRef} style={{ 
+              marginBottom: '4rem',
+              padding: '2rem',
+              background: 'rgba(34, 197, 94, 0.03)',
+              border: '2px solid rgba(34, 197, 94, 0.2)',
+              borderRadius: '12px',
+              animation: 'fadeIn 0.5s ease-in'
+            }}>
+              <style jsx>{`
+                @keyframes fadeIn {
+                  from { opacity: 0; transform: translateY(10px); }
+                  to { opacity: 1; transform: translateY(0); }
+                }
+              `}</style>
+              
               <div style={{ marginBottom: '2rem' }}>
-                <button
-                  onClick={() => toggleSection('results')}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    padding: 0,
-                    cursor: 'pointer',
-                    width: '100%',
-                    textAlign: 'left',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    color: 'inherit'
-                  }}
-                >
-      <div>
-                    <h2 style={{ 
-                      fontSize: 'clamp(1.25rem, 3vw, 1.5rem)', 
-                      fontWeight: '500',
-                      marginBottom: '0.5rem',
-                      letterSpacing: '-0.01em'
-                    }}>
-                      Results
-                    </h2>
-                    <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 'clamp(0.875rem, 2vw, 0.95rem)' }}>
-                      CBOR encoding and Merkle commitment
-                    </p>
-            </div>
-                  <span style={{ 
-                    fontSize: '1.5rem', 
-                    color: 'rgba(255,255,255,0.5)',
-                    transition: 'transform 0.2s',
-                    transform: expandedSection === 'results' ? 'rotate(45deg)' : 'none'
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="rgba(34, 197, 94, 0.9)" strokeWidth="2.5">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                  <h2 style={{ 
+                    fontSize: 'clamp(1.25rem, 3vw, 1.5rem)', 
+                    fontWeight: '500',
+                    letterSpacing: '-0.01em',
+                    margin: 0,
+                    color: 'rgba(255,255,255,0.95)'
                   }}>
-                    +
-                  </span>
-                </button>
-          </div>
-
-              {expandedSection === 'results' && (
-                <div style={{ 
-                  padding: '1.5rem',
-                  background: 'rgba(255,255,255,0.03)',
-                  border: '1px solid rgba(255,255,255,0.1)',
-                  borderRadius: '8px',
-                  marginBottom: '2rem',
-                  fontSize: '0.9rem',
-                  lineHeight: '1.7',
-                  color: 'rgba(255,255,255,0.7)'
-                }}>
-                  <p style={{ marginBottom: '1rem' }}>
-                    <strong style={{ color: 'rgba(255,255,255,0.9)' }}>CBOR Encoding:</strong><br/>
-                    The parsed FIX fields are converted to Concise Binary Object Representation, 
-                    ensuring deterministic encoding.
-                  </p>
-                  <p>
-                    <strong style={{ color: 'rgba(255,255,255,0.9)' }}>Merkle Root:</strong><br/>
-                    Each field becomes a leaf in a Merkle tree. The root provides a cryptographic 
-                    commitment to all fields.
-                  </p>
+                    2. Processing Complete
+                  </h2>
                 </div>
-              )}
+                <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: 'clamp(0.875rem, 2vw, 0.95rem)', marginLeft: '2.25rem' }}>
+                  Your FIX message has been parsed, encoded to <Tooltip content="A space-efficient binary format that's deterministic - the same data always produces the same bytes">CBOR</Tooltip>, and a <Tooltip content="A hash-based tree where each leaf is a field, allowing you to cryptographically prove any field's value">Merkle root</Tooltip> has been generated
+                </p>
+              </div>
+
+              <LearnMore title="Understanding CBOR and Merkle Trees">
+                <p style={{ marginBottom: '1rem' }}>
+                  <strong>Why CBOR?</strong><br/>
+                  CBOR (Concise Binary Object Representation) is like JSON but binary and smaller. More importantly, it&apos;s <em>deterministic</em> - the same data always encodes to the exact same bytes. This is critical for blockchain because we need everyone to agree on the exact commitment.
+                </p>
+                <p style={{ marginBottom: '1rem' }}>
+                  <strong>What&apos;s a Merkle Tree?</strong><br/>
+                  Think of it like a receipt system. Each FIX field becomes a &ldquo;leaf&rdquo; in the tree. These leaves are hashed and combined pairwise up to a single &ldquo;root&rdquo; hash. The root is like a fingerprint of all your data - change one field, and the root changes completely.
+                </p>
+                <p>
+                  <strong>Why is this useful?</strong><br/>
+                  You can prove any specific field&apos;s value (like &ldquo;this bond has a 4.25% coupon&rdquo;) by showing just that field plus a few hashes (the &ldquo;proof path&rdquo;). You don&apos;t need to reveal all the other fields, and the verifier can check it mathematically against the root stored on-chain.
+                </p>
+              </LearnMore>
 
               <div style={{ 
                 display: 'grid', 
@@ -2164,17 +2691,71 @@ export default function Page() {
                 )}
               </div>
 
-      <div>
-                <div style={{ 
-                  fontSize: '0.8rem',
-                  color: 'rgba(255,255,255,0.5)',
-                  marginBottom: '1rem',
-                  fontWeight: '500',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.05em'
+      <div ref={deployRef}>
+                <div style={{ marginBottom: '1.5rem' }}>
+                  <h3 style={{ 
+                    fontSize: 'clamp(1.1rem, 2.5vw, 1.25rem)',
+                    fontWeight: '500',
+                    marginBottom: '0.5rem',
+                    letterSpacing: '-0.01em',
+                    color: 'rgba(255,255,255,0.95)'
+                  }}>
+                    3. Deploy to Blockchain (Optional)
+                  </h3>
+                  <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: 'clamp(0.875rem, 2vw, 0.95rem)' }}>
+                    Store your <Tooltip content="The cryptographic hash that represents your entire FIX descriptor">Merkle root</Tooltip> and <Tooltip content="The encoded binary data of your FIX message">CBOR data</Tooltip> on the <Tooltip content="Sepolia is a test network - no real money is used. Get free testnet ETH from faucets.">Sepolia testnet</Tooltip>
+                  </p>
+                </div>
+
+                <LearnMore title="About Blockchain Deployment">
+                  <p style={{ marginBottom: '1rem' }}>
+                    <strong>What happens when you deploy?</strong><br/>
+                    Deployment creates a new ERC20 token contract on the Sepolia testnet with your FIX descriptor embedded. The CBOR data is stored using SSTORE2 (an efficient storage technique), and the Merkle root is saved in the contract.
+                  </p>
+                  <p style={{ marginBottom: '1rem' }}>
+                    <strong>Is this free?</strong><br/>
+                    Yes! Sepolia is a test network. You&apos;ll need testnet ETH (not real money) to pay for gas fees. Get free testnet ETH from:
+                    • <a href="https://sepoliafaucet.com" target="_blank" rel="noopener noreferrer" style={{ color: 'rgba(96, 165, 250, 0.9)', textDecoration: 'underline' }}>Sepolia Faucet</a><br/>
+                    • <a href="https://www.alchemy.com/faucets/ethereum-sepolia" target="_blank" rel="noopener noreferrer" style={{ color: 'rgba(96, 165, 250, 0.9)', textDecoration: 'underline' }}>Alchemy Sepolia Faucet</a>
+                  </p>
+                  <p>
+                    <strong>What can I do with a deployed token?</strong><br/>
+                    Once deployed, anyone can read the CBOR data from the contract, verify Merkle proofs against the root, and decode the full FIX message. This demonstrates how real tokenized securities could work - with verifiable, standardized descriptors.
+                  </p>
+                </LearnMore>
+
+                {/* Network Badge */}
+                <div style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  padding: '0.5rem 1rem',
+                  background: 'rgba(245, 158, 11, 0.1)',
+                  border: '1px solid rgba(245, 158, 11, 0.3)',
+                  borderRadius: '6px',
+                  marginBottom: '1rem'
                 }}>
-                  Deploy
-            </div>
+                  <div style={{
+                    width: '8px',
+                    height: '8px',
+                    borderRadius: '50%',
+                    background: 'rgba(245, 158, 11, 0.8)',
+                    animation: 'pulse-testnet 2s infinite'
+                  }} />
+                  <span style={{ fontSize: '0.875rem', fontWeight: '500', color: 'rgba(245, 158, 11, 0.9)' }}>
+                    Sepolia Testnet
+                  </span>
+                  <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)' }}>
+                    (No Real Money)
+                  </span>
+                </div>
+                <style dangerouslySetInnerHTML={{ __html: `
+                  @keyframes pulse-testnet {
+                    0%, 100% { opacity: 1; }
+                    50% { opacity: 0.5; }
+                  }
+                `}} />
+
                 <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
                   <button 
                     onClick={() => setShowTokenDeploy(!showTokenDeploy)}
@@ -2196,7 +2777,7 @@ export default function Page() {
                       e.currentTarget.style.background = showTokenDeploy ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.1)';
                     }}
                   >
-                    {showTokenDeploy ? '− Hide' : '🚀 Quick Deploy Token'}
+                    {showTokenDeploy ? '− Hide Deployment Form' : '🚀 Deploy to Testnet'}
                   </button>
           </div>
                 {txInfo && (
@@ -2353,85 +2934,53 @@ export default function Page() {
             </section>
 
             {/* Proof Section */}
-            <section style={{ marginBottom: '4rem' }}>
+            <section ref={proofRef} style={{ marginBottom: '4rem' }}>
               <div style={{ marginBottom: '2rem' }}>
-                <button
-                  onClick={() => toggleSection('proof')}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    padding: 0,
-                    cursor: 'pointer',
-                    width: '100%',
-                    textAlign: 'left',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    color: 'inherit'
-                  }}
-                >
-      <div>
-                    <h2 style={{ 
-                      fontSize: 'clamp(1.25rem, 3vw, 1.5rem)', 
-                      fontWeight: '500',
-                      marginBottom: '0.5rem',
-                      letterSpacing: '-0.01em'
-                    }}>
-                      Generate Proof
-                    </h2>
-                    <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 'clamp(0.875rem, 2vw, 0.95rem)' }}>
-                      Create a Merkle proof for a specific field
-                    </p>
-                  </div>
-                  <span style={{ 
-                    fontSize: '1.5rem', 
-                    color: 'rgba(255,255,255,0.5)',
-                    transition: 'transform 0.2s',
-                    transform: expandedSection === 'proof' ? 'rotate(45deg)' : 'none'
-                  }}>
-                    +
-                  </span>
-                </button>
+                <h2 style={{ 
+                  fontSize: 'clamp(1.25rem, 3vw, 1.5rem)', 
+                  fontWeight: '500',
+                  marginBottom: '0.5rem',
+                  letterSpacing: '-0.01em'
+                }}>
+                  4. Generate Merkle Proof
+                </h2>
+                <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 'clamp(0.875rem, 2vw, 0.95rem)' }}>
+                  Prove a specific field&apos;s value without revealing other fields
+                </p>
               </div>
 
-              {expandedSection === 'proof' && (
-                <div style={{ 
-                  padding: '1.5rem',
-                  background: 'rgba(255,255,255,0.03)',
-                  border: '1px solid rgba(255,255,255,0.1)',
-                  borderRadius: '8px',
-                  marginBottom: '2rem',
-                  fontSize: '0.9rem',
-                  lineHeight: '1.7',
-                  color: 'rgba(255,255,255,0.7)'
-                }}>
-                  <p style={{ marginBottom: '1rem' }}>
-                    <strong style={{ color: 'rgba(255,255,255,0.9)' }}>Merkle Proof:</strong><br/>
-                    A proof that a specific field exists in the committed data without revealing all other fields.
-                  </p>
-                  <p style={{ marginBottom: '1rem' }}>
-                    <strong style={{ color: 'rgba(255,255,255,0.9)' }}>Path Examples:</strong><br/>
-                    <code style={{ 
-                      background: 'rgba(255,255,255,0.05)', 
-                      padding: '0.2rem 0.4rem', 
-                      borderRadius: '3px',
-                      fontFamily: 'ui-monospace, monospace',
-                      fontSize: '0.85rem'
-                    }}>[15]</code> - Currency field<br/>
-                    <code style={{ 
-                      background: 'rgba(255,255,255,0.05)', 
-                      padding: '0.2rem 0.4rem', 
-                      borderRadius: '3px',
-                      fontFamily: 'ui-monospace, monospace',
-                      fontSize: '0.85rem'
-                    }}>[454, 0, 456]</code> - SecurityAltID group, first entry
-                  </p>
-                  <p>
-                    <strong style={{ color: 'rgba(255,255,255,0.9)' }}>Onchain Use:</strong><br/>
-                    Submit the proof to smart contracts to verify specific fields.
-                  </p>
-                </div>
-              )}
+              <LearnMore title="How Merkle Proofs Work">
+                <p style={{ marginBottom: '1rem' }}>
+                  <strong>The Problem:</strong><br/>
+                  You want to prove &ldquo;this bond has a 4.25% coupon rate&rdquo; without showing the entire descriptor (which might contain sensitive information like owner details).
+                </p>
+                <p style={{ marginBottom: '1rem' }}>
+                  <strong>The Solution:</strong><br/>
+                  A Merkle proof is like a receipt. You show:
+                  • The specific field you&apos;re proving (e.g., coupon rate = 4.25%)<br/>
+                  • A few &ldquo;sibling hashes&rdquo; (cryptographic fingerprints of other parts of the tree)<br/>
+                  • The verifier combines these to recompute the Merkle root
+                </p>
+                <p style={{ marginBottom: '1rem' }}>
+                  If the recomputed root matches the one stored on-chain, the proof is valid! This works mathematically - you can&apos;t fake it without knowing the private data.
+                </p>
+                <p>
+                  <strong>What&apos;s a &ldquo;path&rdquo;?</strong><br/>
+                  The path is how we navigate the CBOR tree to find a field. For example, [15] means &ldquo;the field at index 15 in the top-level array.&rdquo; You can click any field in the Tree View above to automatically select its path.
+                </p>
+              </LearnMore>
+
+              <div style={{
+                padding: '1rem',
+                background: 'rgba(168, 85, 247, 0.05)',
+                border: '1px solid rgba(168, 85, 247, 0.2)',
+                borderRadius: '8px',
+                marginBottom: '1.5rem',
+                fontSize: '0.9rem',
+                color: 'rgba(255,255,255,0.75)'
+              }}>
+                <strong style={{ color: 'rgba(168, 85, 247, 0.9)' }}>💡 Tip:</strong> Click any field in the &ldquo;Tree View&rdquo; tab above to automatically fill in its path here!
+              </div>
 
               {preview.paths && preview.paths.length > 0 && (
                 <div style={{ marginBottom: '1.5rem' }}>
@@ -2536,7 +3085,9 @@ export default function Page() {
               </button>
 
         {proof && (
-                <div style={{ 
+                <div 
+                  ref={proofResultsRef}
+                  style={{ 
                   display: 'grid', 
                   gap: '1.5rem',
                   padding: '2rem',
@@ -2594,8 +3145,9 @@ export default function Page() {
                            'Checking proof against deployed contract...'}
                         </div>
                       </div>
-          </div>
-        )}
+                    </div>
+                  )}
+                  
                   <div>
                     <div style={{ 
                       fontSize: 'clamp(0.75rem, 1.5vw, 0.8rem)',
@@ -2727,38 +3279,55 @@ export default function Page() {
                     </div>
                   </div>
 
-                  {/* Onchain Verification Button - Only show if token is deployed */}
+                  {/* 5. Verify On-chain */}
                   {deployedTokenAddress && (
                     <div style={{ 
-                      marginTop: '1.5rem',
-                      padding: '1.5rem',
-                      background: onChainVerificationStatus === null ? 'rgba(255, 255, 255, 0.03)' :
-                                  onChainVerificationStatus === 'success' ? 'rgba(34, 197, 94, 0.05)' :
-                                  onChainVerificationStatus === 'failed' ? 'rgba(239, 68, 68, 0.05)' :
-                                  'rgba(59, 130, 246, 0.05)',
-                      border: onChainVerificationStatus === null ? '1px solid rgba(255, 255, 255, 0.1)' :
-                              onChainVerificationStatus === 'success' ? '1px solid rgba(34, 197, 94, 0.2)' :
-                              onChainVerificationStatus === 'failed' ? '1px solid rgba(239, 68, 68, 0.2)' :
-                              '1px solid rgba(59, 130, 246, 0.2)',
-                      borderRadius: '8px',
-                      transition: 'all 0.3s ease'
+                      marginTop: '2rem'
                     }}>
-                      <div style={{
-                        fontSize: 'clamp(0.8rem, 2vw, 0.875rem)',
-                        color: 'rgba(255,255,255,0.8)',
-                        marginBottom: '1rem'
-                      }}>
-                        <strong style={{ 
-                          color: onChainVerificationStatus === null ? 'rgba(255,255,255,0.7)' :
-                                 onChainVerificationStatus === 'success' ? 'rgba(34, 197, 94, 0.9)' :
-                                 onChainVerificationStatus === 'failed' ? 'rgba(239, 68, 68, 0.9)' :
-                                 'rgba(59, 130, 246, 0.9)'
+                      <div style={{ marginBottom: '1rem' }}>
+                        <h3 style={{ 
+                          fontSize: 'clamp(1.1rem, 2.5vw, 1.25rem)',
+                          fontWeight: '500',
+                          marginBottom: '0.5rem',
+                          letterSpacing: '-0.01em',
+                          color: 'rgba(255,255,255,0.95)'
                         }}>
-                          {onChainVerificationStatus === null ? '🔗 Ready for Onchain Verification' :
-                           onChainVerificationStatus === 'success' ? '✅ Verified Onchain' :
-                           onChainVerificationStatus === 'failed' ? '❌ Verification Failed' :
-                           '⏳ Verifying...'}
-                        </strong>
+                          5. Verify Proof On-chain
+                        </h3>
+                        <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: 'clamp(0.875rem, 2vw, 0.95rem)' }}>
+                          Call the deployed contract to cryptographically verify this <Tooltip content="A Merkle proof shows that a specific field is part of the committed descriptor">proof on the blockchain</Tooltip>
+                        </p>
+                      </div>
+                      
+                      <div style={{ 
+                        padding: '1.5rem',
+                        background: onChainVerificationStatus === null ? 'rgba(255, 255, 255, 0.03)' :
+                                    onChainVerificationStatus === 'success' ? 'rgba(34, 197, 94, 0.05)' :
+                                    onChainVerificationStatus === 'failed' ? 'rgba(239, 68, 68, 0.05)' :
+                                    'rgba(59, 130, 246, 0.05)',
+                        border: onChainVerificationStatus === null ? '1px solid rgba(255, 255, 255, 0.1)' :
+                                onChainVerificationStatus === 'success' ? '1px solid rgba(34, 197, 94, 0.2)' :
+                                onChainVerificationStatus === 'failed' ? '1px solid rgba(239, 68, 68, 0.2)' :
+                                '1px solid rgba(59, 130, 246, 0.2)',
+                        borderRadius: '8px',
+                        transition: 'all 0.3s ease'
+                      }}>
+                        <div style={{
+                          fontSize: 'clamp(0.8rem, 2vw, 0.875rem)',
+                          color: 'rgba(255,255,255,0.8)',
+                          marginBottom: '1rem'
+                        }}>
+                          <strong style={{ 
+                            color: onChainVerificationStatus === null ? 'rgba(255,255,255,0.7)' :
+                                   onChainVerificationStatus === 'success' ? 'rgba(34, 197, 94, 0.9)' :
+                                   onChainVerificationStatus === 'failed' ? 'rgba(239, 68, 68, 0.9)' :
+                                   'rgba(59, 130, 246, 0.9)'
+                          }}>
+                            {onChainVerificationStatus === null ? '🔗 Ready for Onchain Verification' :
+                             onChainVerificationStatus === 'success' ? '✅ Verified Onchain' :
+                             onChainVerificationStatus === 'failed' ? '❌ Verification Failed' :
+                             '⏳ Verifying...'}
+                          </strong>
                         <div style={{ 
                           fontSize: 'clamp(0.7rem, 1.5vw, 0.75rem)', 
                           color: 'rgba(255,255,255,0.6)',
@@ -2838,25 +3407,26 @@ export default function Page() {
                         }}>verifyField()</code> function on your deployed token contract to verify the proof cryptographically onchain.
                       </div>
                     </div>
-                  )}
-          </div>
-        )}
+                  </div>
+                )}
+                </div>
+              )}
             </section>
 
             {/* Fetch FIX Message from Contract */}
             {deployedTokenAddress && (
-              <section style={{ marginBottom: '4rem' }}>
+              <section ref={retrieveRef} style={{ marginBottom: '4rem' }}>
                 <div style={{ marginBottom: '2rem' }}>
-                  <h2 style={{
-                    fontSize: 'clamp(1.25rem, 3vw, 1.5rem)',
+                <h2 style={{  
+                    fontSize: 'clamp(1.25rem, 3vw, 1.5rem)', 
                     fontWeight: '500',
                     marginBottom: '0.5rem',
                     letterSpacing: '-0.01em'
                   }}>
-                    Fetch FIX Message from Contract
+                    6. Retrieve & Decode Data
                   </h2>
                   <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 'clamp(0.875rem, 2vw, 0.95rem)' }}>
-                    Retrieve the CBOR-encoded FIX descriptor stored onchain and decode it
+                    Fetch the <Tooltip content="The binary-encoded FIX message stored using SSTORE2">CBOR data</Tooltip> from the deployed contract and decode it back to the original FIX message
                   </p>
                   <div style={{
                     marginTop: '0.75rem',
@@ -3224,156 +3794,6 @@ export default function Page() {
           </>
         )}
 
-        {/* How It Works */}
-        <section style={{ marginBottom: '4rem' }}>
-          <div style={{ marginBottom: '3rem' }}>
-            <h2 style={{ 
-              fontSize: 'clamp(1.25rem, 3vw, 1.5rem)', 
-              fontWeight: '500',
-              marginBottom: '0.5rem',
-              letterSpacing: '-0.01em'
-            }}>
-              How It Works
-            </h2>
-            <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 'clamp(0.875rem, 2vw, 0.95rem)' }}>
-              Understanding the encoding process
-            </p>
-      </div>
-          
-          <div style={{ 
-            display: 'grid', 
-            gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))', 
-            gap: 'clamp(1.5rem, 3vw, 2rem)' 
-          }}>
-            {[
-              {
-                step: '01',
-                title: 'Parse FIX',
-                description: 'Extract business fields from the FIX message. Session fields are excluded as they\'re not part of the instrument definition.',
-                icon: (
-                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                    <polyline points="14 2 14 8 20 8" />
-                    <line x1="16" y1="13" x2="8" y2="13" />
-                    <line x1="16" y1="17" x2="8" y2="17" />
-                    <polyline points="10 9 9 9 8 9" />
-                  </svg>
-                )
-              },
-              {
-                step: '02',
-                title: 'Canonicalize',
-                description: 'Build a hierarchical tree structure with sorted keys, ensuring deterministic ordering.',
-                icon: (
-                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                    <path d="M12 2v20" />
-                    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
-                  </svg>
-                )
-              },
-              {
-                step: '03',
-                title: 'CBOR Encode',
-                description: 'Convert to Concise Binary Object Representation using canonical form for compact, deterministic storage.',
-                icon: (
-                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                    <line x1="9" y1="9" x2="15" y2="9" />
-                    <line x1="9" y1="15" x2="15" y2="15" />
-                  </svg>
-                )
-              },
-              {
-                step: '04',
-                title: 'Merkle Tree',
-                description: 'Generate a Merkle tree from all fields. The root provides a cryptographic commitment to the entire descriptor.',
-                icon: (
-                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                    <circle cx="12" cy="8" r="2" />
-                    <path d="M12 10v4" />
-                    <circle cx="8" cy="16" r="2" />
-                    <circle cx="16" cy="16" r="2" />
-                    <path d="M12 14l-2 2" />
-                    <path d="M12 14l2 2" />
-                    <path d="M8 18v2" />
-                    <path d="M16 18v2" />
-                  </svg>
-                )
-              },
-              {
-                step: '05',
-                title: 'Deploy Token',
-                description: 'Deploy an ERC20 or ERC721 token contract with the FIX descriptor and CBOR data embedded onchain using SSTORE2, creating a self-contained asset.',
-                icon: (
-                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
-                    <polyline points="7.5 4.21 12 6.81 16.5 4.21" />
-                    <polyline points="7.5 19.79 7.5 14.6 3 12" />
-                    <polyline points="21 12 16.5 14.6 16.5 19.79" />
-                    <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
-                    <line x1="12" y1="22.08" x2="12" y2="12" />
-                  </svg>
-                )
-              },
-              {
-                step: '06',
-                title: 'Verify Proofs',
-                description: 'The token contract can verify specific fields using Merkle proofs against its embedded descriptor, without parsing the entire FIX message.',
-                icon: (
-                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-                    <polyline points="22 4 12 14.01 9 11.01" />
-                  </svg>
-                )
-              },
-              {
-                step: '07',
-                title: 'Retrieve Offchain',
-                description: 'Read the CBOR data directly from the contract using SSTORE2 and decode it back to the original FIX message for full transparency and auditability.',
-                icon: (
-                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                    <polyline points="7 10 12 15 17 10" />
-                    <line x1="12" y1="15" x2="12" y2="3" />
-                  </svg>
-                )
-              }
-            ].map((item, idx) => (
-              <div key={idx}>
-                <div style={{ 
-                  marginBottom: '1.5rem',
-                  color: 'rgba(255,255,255,0.6)'
-                }}>
-                  {item.icon}
-                </div>
-                <div style={{ 
-                  fontSize: '0.75rem',
-                  color: 'rgba(255,255,255,0.3)',
-                  marginBottom: '0.75rem',
-                  fontWeight: '500',
-                  letterSpacing: '0.1em'
-                }}>
-                  {item.step}
-                </div>
-                <h3 style={{ 
-                  fontSize: 'clamp(1rem, 2.5vw, 1.125rem)',
-                  fontWeight: '500',
-                  marginBottom: '0.75rem',
-                  color: 'rgba(255,255,255,0.9)'
-                }}>
-                  {item.title}
-                </h3>
-                <p style={{ 
-                  fontSize: 'clamp(0.85rem, 2vw, 0.9rem)', 
-                  color: 'rgba(255,255,255,0.5)', 
-                  lineHeight: '1.7' 
-                }}>
-                  {item.description}
-                </p>
-              </div>
-            ))}
-          </div>
-        </section>
       </div>
 
       {/* Footer */}
