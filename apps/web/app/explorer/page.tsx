@@ -934,6 +934,7 @@ export default function Page() {
         }
       }
 
+      // Show initial success message
       setTxInfo(
         <div>
           <div style={{ marginBottom: '1rem', fontWeight: '600' }}>✅ Token deployed successfully!</div>
@@ -949,11 +950,108 @@ export default function Page() {
             <span style={{ color: 'rgba(255,255,255,0.7)' }}>Transaction: </span>
             <TransactionLink hash={hash} chainId={chainFromEnv.id} />
           </div>
-          <div style={{ marginTop: '1rem', color: 'rgba(255,255,255,0.8)' }}>
-            You can now verify proofs onchain using this token!
+          <div style={{ marginTop: '1rem', color: 'rgba(251, 191, 36, 0.9)' }}>
+            ⏳ Verifying contract on block explorer...
           </div>
         </div>
       );
+
+      // Attempt to verify the contract on Etherscan
+      try {
+        const verifyResponse = await fetch('/api/verify-contract', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            contractAddress: tokenAddress,
+            tokenName,
+            tokenSymbol,
+            initialSupply: supplyInWei.toString(),
+            initialOwner: factoryAddress, // Factory was the initial owner
+            chainId: chainFromEnv.id,
+          }),
+        });
+
+        const verifyResult = await verifyResponse.json();
+
+        if (verifyResult.success) {
+          // Update with verification success
+          setTxInfo(
+            <div>
+              <div style={{ marginBottom: '1rem', fontWeight: '600' }}>✅ Token deployed successfully!</div>
+              <div style={{ marginBottom: '0.5rem' }}>
+                <span style={{ color: 'rgba(255,255,255,0.7)' }}>Token Address: </span>
+                <AddressLink address={tokenAddress} chainId={chainFromEnv.id} />
+              </div>
+              <div style={{ marginBottom: '0.5rem', color: 'rgba(34, 197, 94, 0.9)' }}>
+                ✓ CBOR Deployed<br />
+                ✓ Descriptor Set<br />
+                ✓ Contract Verified
+              </div>
+              <div style={{ marginTop: '0.5rem' }}>
+                <span style={{ color: 'rgba(255,255,255,0.7)' }}>Transaction: </span>
+                <TransactionLink hash={hash} chainId={chainFromEnv.id} />
+              </div>
+              <div style={{ marginTop: '1rem', color: 'rgba(255,255,255,0.8)' }}>
+                You can now view the contract source code and verify proofs onchain!
+              </div>
+            </div>
+          );
+        } else {
+          // Update with verification warning (deployment still successful)
+          setTxInfo(
+            <div>
+              <div style={{ marginBottom: '1rem', fontWeight: '600' }}>✅ Token deployed successfully!</div>
+              <div style={{ marginBottom: '0.5rem' }}>
+                <span style={{ color: 'rgba(255,255,255,0.7)' }}>Token Address: </span>
+                <AddressLink address={tokenAddress} chainId={chainFromEnv.id} />
+              </div>
+              <div style={{ marginBottom: '0.5rem', color: 'rgba(34, 197, 94, 0.9)' }}>
+                ✓ CBOR Deployed<br />
+                ✓ Descriptor Set
+              </div>
+              <div style={{ marginBottom: '0.5rem', color: 'rgba(251, 191, 36, 0.9)' }}>
+                ⚠ Verification pending or failed
+              </div>
+              <div style={{ marginTop: '0.5rem' }}>
+                <span style={{ color: 'rgba(255,255,255,0.7)' }}>Transaction: </span>
+                <TransactionLink hash={hash} chainId={chainFromEnv.id} />
+              </div>
+              <div style={{ marginTop: '1rem', fontSize: '0.9rem', color: 'rgba(255,255,255,0.6)' }}>
+                {verifyResult.message || verifyResult.error || 'Verification failed - you can verify manually on the block explorer'}
+              </div>
+            </div>
+          );
+        }
+      } catch (verifyError) {
+        console.error('Verification error:', verifyError);
+        // Still show success for deployment, just note verification issue
+        setTxInfo(
+          <div>
+            <div style={{ marginBottom: '1rem', fontWeight: '600' }}>✅ Token deployed successfully!</div>
+            <div style={{ marginBottom: '0.5rem' }}>
+              <span style={{ color: 'rgba(255,255,255,0.7)' }}>Token Address: </span>
+              <AddressLink address={tokenAddress} chainId={chainFromEnv.id} />
+            </div>
+            <div style={{ marginBottom: '0.5rem', color: 'rgba(34, 197, 94, 0.9)' }}>
+              ✓ CBOR Deployed<br />
+              ✓ Descriptor Set
+            </div>
+            <div style={{ marginBottom: '0.5rem', color: 'rgba(251, 191, 36, 0.9)' }}>
+              ⚠ Verification failed
+            </div>
+            <div style={{ marginTop: '0.5rem' }}>
+              <span style={{ color: 'rgba(255,255,255,0.7)' }}>Transaction: </span>
+              <TransactionLink hash={hash} chainId={chainFromEnv.id} />
+            </div>
+            <div style={{ marginTop: '1rem', fontSize: '0.9rem', color: 'rgba(255,255,255,0.6)' }}>
+              Contract verification failed. You can verify manually on the block explorer.
+            </div>
+          </div>
+        );
+      }
+
       setShowTokenDeploy(false);
       setCurrentStep(5); // Update step indicator to show deployment complete
       

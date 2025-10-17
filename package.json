@@ -7,9 +7,11 @@
     "test": "npm -ws run test",
     "dev": "npm --workspace apps/web run dev",
     "lint": "eslint .",
-    "vercel-build": "npm run generate-abis-if-possible && npm -w fixdescriptorkit-typescript run build && npm -w apps/web run build",
+    "vercel-build": "npm run generate-abis-if-possible && npm run generate-verification-json-if-possible && npm -w fixdescriptorkit-typescript run build && npm -w apps/web run build",
     "generate-abis": "cd contracts && forge build && cd .. && node scripts/generate-abis.js",
-    "generate-abis-if-possible": "npm run generate-abis || echo '⚠️ Foundry not available, using committed ABI files'"
+    "generate-abis-if-possible": "npm run generate-abis || echo '⚠️ Foundry not available, using committed ABI files'",
+    "generate-verification-json": "bash scripts/generate-verification-json.sh",
+    "generate-verification-json-if-possible": "npm run generate-verification-json || echo '⚠️ Foundry not available, using committed verification JSON'"
   },
   "keywords": [],
   "author": "",

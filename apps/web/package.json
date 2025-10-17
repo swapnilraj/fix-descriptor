@@ -3,12 +3,13 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "predev": "npm -w fixdescriptorkit-typescript run build",
-    "prebuild": "npm -w fixdescriptorkit-typescript run build",
+    "predev": "npm -w fixdescriptorkit-typescript run build && cd ../.. && npm run generate-verification-json-if-possible",
+    "prebuild": "npm -w fixdescriptorkit-typescript run build && cd ../.. && npm run generate-verification-json-if-possible",
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "generate-verification-json": "cd ../.. && npm run generate-verification-json"
   },
   "dependencies": {
     "fixdescriptorkit-typescript": "file:../../packages/fixdescriptorkit-typescript",

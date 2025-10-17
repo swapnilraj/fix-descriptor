@@ -111,11 +111,18 @@ npm install
 # Build the TypeScript library (required dependency)
 npm run predev
 
+# Configure environment (optional - for contract verification)
+cp .env.example .env.local
+# Edit .env.local and add your Etherscan API key:
+# NEXT_PUBLIC_ETHERSCAN_API_KEY=your_api_key_here
+
 # Start development server
 npm run dev
 ```
 
 Visit [http://localhost:3000](http://localhost:3000)
+
+**Note:** Contract verification requires an Etherscan API key. Get one at [etherscan.io/myapikey](https://etherscan.io/myapikey) (free tier is sufficient).
 
 ### Build for Production
 
@@ -152,7 +159,8 @@ npm start
 2. **Review Descriptor** - Verify CBOR size, Merkle root, gas estimates
 3. **Configure Token** - Set name, symbol, initial supply
 4. **Deploy** - Sign transaction in MetaMask
-8. **Monitor Deployment** - View transaction hash and contract address
+5. **Monitor Deployment** - View transaction hash and contract address
+6. **Automatic Verification** - Contract is automatically verified on Etherscan
 
 ### 4. Reading the Specification
 
@@ -233,6 +241,42 @@ Coordinate deployment of a token with embedded descriptor.
   "contractAddress": "0xabc..."
 }
 ```
+
+### `POST /api/verify-contract`
+
+Automatically verify a deployed contract on Etherscan.
+
+**Request:**
+```json
+{
+  "contractAddress": "0xabc...",
+  "tokenName": "My Token",
+  "tokenSymbol": "MTK",
+  "initialSupply": "1000000000000000000000000",
+  "initialOwner": "0xdef...",
+  "chainId": 11155111
+}
+```
+
+**Response (Success):**
+```json
+{
+  "success": true,
+  "message": "Contract verified successfully",
+  "guid": "..."
+}
+```
+
+**Response (Failure):**
+```json
+{
+  "success": false,
+  "message": "Verification failed or timed out",
+  "error": "..."
+}
+```
+
+**Note:** Requires `NEXT_PUBLIC_ETHERSCAN_API_KEY` environment variable. See [CONTRACT_VERIFICATION.md](../../CONTRACT_VERIFICATION.md) for details.
 
 ## 🎨 UI Components
 
