@@ -683,6 +683,21 @@ export default function Page() {
     }
   }, [getStickyHeaderOffset]);
 
+  // Map step index to section ref
+  const getStepSectionRef = useCallback((stepIndex: number) => {
+    switch (stepIndex) {
+      case 0: return inputRef; // Input
+      case 1: 
+      case 2:
+      case 3:
+      case 4: return resultsRef; // Parse, Canonicalize, Encode, Merkle
+      case 5: return deployRef; // Deploy
+      case 6: return proofRef; // Verify
+      case 7: return retrieveRef; // Retrieve
+      default: return null;
+    }
+  }, [inputRef, resultsRef, deployRef, proofRef, retrieveRef]);
+
   const steps = [
     { 
       name: "Input", 
@@ -1714,7 +1729,7 @@ export default function Page() {
                   Interactive
                 </div>
                 <div style={{ fontSize: '1rem', fontWeight: '500', color: 'rgba(255,255,255,0.95)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  Try Examples
+                  Jump to Examples
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <polyline points="6 9 12 15 18 9" />
                   </svg>
@@ -1841,8 +1856,34 @@ export default function Page() {
                           display: 'flex',
                           flexDirection: 'column',
                           alignItems: 'center',
-                          position: 'relative'
-                        }}>
+                          position: 'relative',
+                          cursor: 'pointer',
+                          padding: '0.5rem',
+                          margin: '-0.5rem',
+                          borderRadius: '8px',
+                          transition: 'all 0.2s'
+                        }}
+                        onClick={() => {
+                          const sectionRef = getStepSectionRef(idx);
+                          if (sectionRef) {
+                            scrollToSection(sectionRef);
+                          }
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
+                          const icon = stepIconRefs.current[idx];
+                          if (icon) {
+                            icon.style.transform = idx === currentStep ? 'scale(1.15)' : 'scale(1.05)';
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.background = 'transparent';
+                          const icon = stepIconRefs.current[idx];
+                          if (icon) {
+                            icon.style.transform = idx === currentStep ? 'scale(1.1)' : 'scale(1)';
+                          }
+                        }}
+                        >
                           <div style={{
                             position: 'relative',
                             zIndex: 1,
@@ -1851,7 +1892,8 @@ export default function Page() {
                             flexDirection: 'column',
                             alignItems: 'center'
                           }}>
-                            <div style={{ 
+                            <div 
+                              style={{ 
                               width: 'clamp(30px, 7vw, 36px)', 
                               height: 'clamp(30px, 7vw, 36px)', 
                               borderRadius: '8px',
