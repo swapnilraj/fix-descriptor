@@ -56,19 +56,30 @@ git commit -m "Update contract verification JSON"
 
 **Automatic Generation:**
 
-The verification JSON is automatically regenerated during the build process if Foundry is available:
+The verification JSON is **automatically regenerated** before every build and dev run if Foundry is available:
 
 ```bash
+# Development (runs automatically)
+npm run dev
+# → prebuild: Generates verification JSON (if forge available)
+# → Falls back silently if forge not available
+
+# Production build (runs automatically)  
+npm run build
+# → prebuild: Generates verification JSON (if forge available)
+# → Falls back silently if forge not available
+
 # Vercel build (runs automatically)
 npm run vercel-build
-# → Generates verification JSON (if forge available)
-# → Falls back to committed file (on Vercel)
+# → Tries to generate (fails on Vercel - no forge)
+# → Uses committed file ✅
 ```
 
 **Important:** 
-- The generated file MUST be committed to git for Vercel deployments
-- Vercel doesn't have Foundry, so it uses the committed file
-- Regenerate locally after modifying contracts, then commit
+- ✅ JSON regenerates automatically on every `npm run dev` or `npm run build`
+- ✅ The generated file MUST be committed to git for Vercel deployments
+- ✅ Vercel doesn't have Foundry, so it uses the committed file
+- ⚠️ After modifying contracts, run `npm run dev` (or `build`) to regenerate, then commit
 
 ## How It Works
 

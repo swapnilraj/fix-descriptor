@@ -479,7 +479,7 @@ Output: `dist/` directory with compiled JavaScript and TypeScript declarations.
 ## 📄 Related Documentation
 
 - **Main Repository**: [FixDescriptorKit](../../README.md)
-- **Technical Spec**: [SPEC.md](../../SPEC.md)
+- **Technical Spec**: [Web Specification](https://fixdescriptor.vercel.app/spec)
 - **Web App**: [apps/web](../../apps/web/README.md)
 - **Smart Contracts**: [contracts](../../contracts/README.md)
 

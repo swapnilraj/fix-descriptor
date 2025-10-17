@@ -1,6 +1,6 @@
 # FIX CBOR Parser Implementation
 
-This implementation provides gas-efficient onchain libraries for reading FIX tag values from canonical CBOR-encoded descriptors, following the specification in `SPEC.md`.
+This implementation provides gas-efficient onchain libraries for reading FIX tag values from canonical CBOR-encoded descriptors, following the [web specification](https://fixdescriptor.vercel.app/spec).
 
 ## Components
 
@@ -173,7 +173,7 @@ The reader returns raw CBOR bytes; parsing is delegated to type-specific parsers
 4. **Early termination** - stop once tag is found or proven absent
 
 ### Canonical CBOR Assumptions
-**MUST** assume input is canonical per [SPEC.md Section 7](../SPEC.md#7-canonical-cbor-requirements):
+**MUST** assume input is canonical per the [web specification Section 7](https://fixdescriptor.vercel.app/spec#cbor-encoding):
 - Map keys are unsigned integers, sorted ascending
 - Definite lengths only (no indefinite encoding)
 - No semantic tags
@@ -225,4 +225,4 @@ This CBOR parser integrates with the FIX Descriptor system:
 - [CBOR Specification (RFC 8949)](https://www.rfc-editor.org/rfc/rfc8949.html)
 - [Canonical CBOR (RFC 8949 Section 4.2)](https://www.rfc-editor.org/rfc/rfc8949.html#section-4.2)
 - [FIX Protocol Dictionary](https://www.fixtrading.org/standards/)
-- [Main Specification](../SPEC.md)
+- [Web Specification](https://fixdescriptor.vercel.app/spec)

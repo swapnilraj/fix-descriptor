@@ -258,8 +258,7 @@ const proof = generateProof(leaves, [55]); // Symbol field
 
 ### Specifications
 
-- [SPEC.md](../../SPEC.md) - FIX Descriptor specification
-- [ERC-FIX-DESCRIPTOR.md](../../ERC-FIX-DESCRIPTOR.md) - Token standard proposal
+- [Web Specification](https://fixdescriptor.vercel.app/spec) - Complete FIX Descriptor specification (interactive)
 
 ### External Resources
 

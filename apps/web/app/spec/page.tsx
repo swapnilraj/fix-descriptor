@@ -1511,13 +1511,14 @@ export default function SpecPage() {
               overflowX: 'auto'
             }}>
               <pre style={{ margin: 0, color: 'rgba(255,255,255,0.9)', lineHeight: '1.6' }}>{`struct FixDescriptor {
-  uint16  fixMajor;       // e.g., 4
-  uint16  fixMinor;       // e.g., 4
-  bytes32 dictHash;       // FIX dictionary hash
-  bytes32 fixRoot;        // Merkle root
-  address fixCBORPtr;     // SSTORE2 data address
-  uint32  fixCBORLen;     // CBOR length
-  string  fixURI;         // optional mirror
+  uint16  fixMajor;           // e.g., 4
+  uint16  fixMinor;           // e.g., 4
+  bytes32 dictHash;           // FIX dictionary hash
+  address dictionaryContract; // FixDictionary for tag lookups
+  bytes32 fixRoot;            // Merkle root
+  address fixCBORPtr;         // SSTORE2 data address
+  uint32  fixCBORLen;         // CBOR length
+  string  fixURI;             // optional mirror
 }`}</pre>
             </div>
 
@@ -1543,6 +1544,7 @@ export default function SpecPage() {
     bytes32[] calldata proof,
     bool[] calldata directions
   ) external view returns (bool valid);
+  function getHumanReadableDescriptor() external view returns (string memory);
 }`}</pre>
             </div>
 

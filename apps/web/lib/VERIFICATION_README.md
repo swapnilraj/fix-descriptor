@@ -60,10 +60,17 @@ git commit -m "Update contract verification JSON"
 
 **Automatic Regeneration:**
 
-The file is automatically regenerated during build if Foundry is available:
-- ✅ Local builds: `npm run build` → regenerates JSON
+The file is **automatically regenerated** before every build and dev run:
+- ✅ `npm run dev` → Regenerates JSON (if forge available)
+- ✅ `npm run build` → Regenerates JSON (if forge available)  
 - ✅ Vercel builds: Uses committed file (Foundry not available)
 - ⚠️ Always commit the file after contract changes!
+
+**Workflow:**
+1. Modify `AssetTokenERC20.sol`
+2. Run `npm run dev` (JSON regenerates automatically)
+3. Commit the updated JSON file
+4. Push to Vercel (uses your committed file)
 
 ## Vercel Deployment
 

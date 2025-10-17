@@ -29,7 +29,6 @@ fixdescriptorkit-evm/
 ├── apps/
 │   └── web/                            # Next.js web application
 ├── contracts/                          # Solidity smart contracts
-├── SPEC.md                            # Technical specification
 └── DEPLOYMENT.md                      # Deployment guide
 ```
 
@@ -355,8 +354,7 @@ Comprehensive documentation for smart contracts is available in [contracts/docs/
 
 ### Specifications
 
-- **[SPEC.md](./SPEC.md)** - Technical specification
-- **[ERC-FIX-DESCRIPTOR.md](./ERC-FIX-DESCRIPTOR.md)** - Token standard proposal
+- **[Web Specification](/spec)** - Complete technical specification (interactive)
 - **[DEPLOYMENT.md](./DEPLOYMENT.md)** - Deployment guide
 
 ## 🔗 Links

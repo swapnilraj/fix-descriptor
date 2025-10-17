@@ -476,7 +476,7 @@ forge script script/DeployFixDescriptorKit.s.sol --rpc-url $RPC_URL --broadcast
 **Built with ❤️ for the financial technology community**
 
 For more information, see:
-- [Technical Specification](./SPEC.md)
+- [Technical Specification](https://fixdescriptor.vercel.app/spec)
 - [Deployment Guide](./DEPLOYMENT.md)
 - [GitHub Repository](https://github.com/swapnilraj/fix-descriptor)
 - [Live Demo](https://fixdescriptor.vercel.app)

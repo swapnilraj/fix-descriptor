@@ -493,7 +493,7 @@ Full working examples are available in the repository:
 ## Need Help?
 
 - **Documentation**: [Main README](../../README.md)
-- **Technical Spec**: [SPEC.md](../../SPEC.md)
+- **Technical Spec**: [Web Specification](https://fixdescriptor.vercel.app/spec)
 - **API Reference**: [IFixDescriptor.sol](../src/IFixDescriptor.sol)
 - **Library Source**: [FixDescriptorLib.sol](../src/FixDescriptorLib.sol)
 

@@ -426,7 +426,7 @@ export async function POST(request: NextRequest) {
 ## 📚 Learn More
 
 - **Main Repository**: [FixDescriptorKit](../../README.md)
-- **Technical Specification**: `/spec` page or [SPEC.md](../../SPEC.md)
+- **Technical Specification**: `/spec` page (interactive web specification)
 - **Deployment Guide**: [DEPLOYMENT.md](../../DEPLOYMENT.md)
 - **TypeScript Library**: [fixdescriptorkit-typescript](../../packages/fixdescriptorkit-typescript/README.md)
 - **Smart Contracts**: [contracts](../../contracts/README.md)

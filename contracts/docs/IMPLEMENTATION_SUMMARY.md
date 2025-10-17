@@ -2,7 +2,7 @@
 
 ## Overview
 
-Successfully implemented a complete, gas-efficient onchain CBOR parser for FIX descriptors following the specification in [SPEC.md](../SPEC.md). The implementation provides binary search-based field lookup, path-based group navigation, and type-specific value parsing.
+Successfully implemented a complete, gas-efficient onchain CBOR parser for FIX descriptors following the [web specification](https://fixdescriptor.vercel.app/spec). The implementation provides binary search-based field lookup, path-based group navigation, and type-specific value parsing.
 
 ## Delivered Components
 

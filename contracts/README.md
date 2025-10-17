@@ -253,7 +253,7 @@ forge script script/DeployAssetToken.s.sol \
 
 - **Integration Guide**: [INTEGRATION_GUIDE.md](./docs/INTEGRATION_GUIDE.md) - Comprehensive guide for adding FIX descriptors to your contracts
 - **Main Repository**: [FixDescriptorKit](../README.md)
-- **Technical Spec**: [SPEC.md](../SPEC.md)
+- **Technical Spec**: [Web Specification](https://fixdescriptor.vercel.app/spec)
 - **TypeScript Library**: [packages/fixdescriptorkit-typescript](../packages/fixdescriptorkit-typescript/README.md)
 - **Web App**: [apps/web](../apps/web/README.md)
 
