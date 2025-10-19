@@ -112,7 +112,7 @@ export default function ProblemPage() {
               </li>
               <li style={{ marginBottom: '0.75rem', paddingLeft: '1.5rem', position: 'relative' }}>
                 <span style={{ position: 'absolute', left: 0, color: 'rgba(245, 158, 11, 0.7)' }}>•</span>
-                <strong>Outcome:</strong> Settlement delays, manual reconciliation, capital inefficiency and operational risk
+                <strong>Consequence:</strong> Settlement delays, manual reconciliation, capital inefficiency and operational risk
               </li>
             </ul>
           </div>
@@ -298,6 +298,44 @@ export default function ProblemPage() {
                 Ongoing maintenance repeats with every contract change
               </p>
             </div>
+
+            <div style={{
+              padding: '1.5rem',
+              background: 'rgba(239, 68, 68, 0.05)',
+              border: '1px solid rgba(239, 68, 68, 0.3)',
+              borderRadius: '8px',
+              marginBottom: '2rem',
+            }}>
+              <h4 style={{
+                fontSize: '1rem',
+                color: 'rgba(255, 255, 255, 0.9)',
+                marginBottom: '1rem',
+                fontWeight: '600'
+              }}>
+                Operational Consequences
+              </h4>
+              <ul style={{
+                listStyle: 'none',
+                padding: 0,
+                margin: 0,
+                fontSize: '0.95rem',
+                color: 'rgba(255, 255, 255, 0.75)',
+                lineHeight: '1.8',
+              }}>
+                <li style={{ marginBottom: '0.5rem', paddingLeft: '1.5rem', position: 'relative' }}>
+                  <span style={{ position: 'absolute', left: 0, color: 'rgba(239, 68, 68, 0.7)' }}>•</span>
+                  Inaccurate records
+                </li>
+                <li style={{ marginBottom: '0.5rem', paddingLeft: '1.5rem', position: 'relative' }}>
+                  <span style={{ position: 'absolute', left: 0, color: 'rgba(239, 68, 68, 0.7)' }}>•</span>
+                  Complex account reconciliation
+                </li>
+                <li style={{ paddingLeft: '1.5rem', position: 'relative' }}>
+                  <span style={{ position: 'absolute', left: 0, color: 'rgba(239, 68, 68, 0.7)' }}>•</span>
+                  Lack of standardized reporting
+                </li>
+              </ul>
+            </div>
           </div>
 
           <div>
@@ -390,8 +428,8 @@ export default function ProblemPage() {
                 color: 'rgba(255, 255, 255, 0.85)',
                 margin: 0,
               }}>
-                <strong>Example:</strong> A tokenized Treasury bond trading between a DeFi protocol and a traditional custodian 
-                requires manual reconciliation at every step. The DeFi contract has no concept of FIX tags. The custodian&apos;s 
+                <strong>Example:</strong> A tokenized Treasury bond trading between a DeFi protocol and a traditional broker, investment bank, or investment fund
+                requires manual reconciliation at every step. The DeFi contract has no concept of FIX tags. The traditional institution&apos;s
                 OMS cannot parse blockchain metadata. Settlement that should take minutes takes days.
               </p>
             </div>
@@ -687,9 +725,35 @@ export default function ProblemPage() {
             maxWidth: '700px',
             margin: '0 auto 2rem',
           }}>
-            The solution is ERC-FIX: embed standardized FIX descriptors directly in your token contracts so existing 
+            The solution is ERC-FIX: embed standardized FIX descriptors directly in your token contracts so existing
             systems can read them natively.
           </p>
+
+          <div style={{
+            marginBottom: '2rem',
+            padding: '1.5rem',
+            background: 'rgba(255, 255, 255, 0.03)',
+            borderRadius: '8px',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            textAlign: 'left',
+          }}>
+            <h3 style={{
+              fontSize: 'clamp(1rem, 2.5vw, 1.15rem)',
+              fontWeight: '600',
+              marginBottom: '0.75rem',
+              color: 'rgba(255, 255, 255, 0.9)',
+            }}>
+              Standardization: The Foundation of Modern Finance
+            </h3>
+            <p style={{
+              fontSize: 'clamp(0.95rem, 2.5vw, 1.05rem)',
+              color: 'rgba(255, 255, 255, 0.75)',
+              lineHeight: '1.7',
+              margin: 0,
+            }}>
+              Traditional finance has thrived on standards like SWIFT MT, FpML, and ISO 20022; enabling instant trade execution, automated reconciliation, and seamless settlement across thousands of institutions. ERC-FIX brings this proven approach to blockchain.
+            </p>
+          </div>
 
           <div style={{
             display: 'grid',

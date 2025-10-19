@@ -1,12 +1,12 @@
 export default function FragmentedEcosystem() {
   return (
     <svg
-      viewBox="0 0 900 500"
+      viewBox="0 0 900 560"
       className="w-full h-auto"
-      style={{ 
-        maxWidth: '900px', 
+      style={{
+        maxWidth: '900px',
         margin: '0 auto',
-        minHeight: '450px',
+        minHeight: '500px',
         touchAction: 'pan-x pinch-zoom'
       }}
       preserveAspectRatio="xMidYMid meet"
@@ -17,7 +17,7 @@ export default function FragmentedEcosystem() {
           x="50"
           y="50"
           width="300"
-          height="350"
+          height="380"
           rx="8"
           fill="rgba(59, 130, 246, 0.08)"
           stroke="rgba(59, 130, 246, 0.4)"
@@ -50,44 +50,53 @@ export default function FragmentedEcosystem() {
           x="80"
           y="200"
           width="240"
-          height="50"
+          height="60"
           rx="6"
           fill="rgba(59, 130, 246, 0.1)"
           stroke="rgba(59, 130, 246, 0.5)"
           strokeWidth="1"
         />
-        <text x="200" y="230" textAnchor="middle" fill="currentColor" fontSize="13" fontWeight="500">
-          Buy-Side (Asset Managers & Hedge Funds)
+        <text x="200" y="223" textAnchor="middle" fill="currentColor" fontSize="12" fontWeight="500">
+          Buy-Side
+        </text>
+        <text x="200" y="239" textAnchor="middle" fill="currentColor" fontSize="11" fontWeight="500" opacity="0.85">
+          (Asset Managers &amp; Hedge Funds)
         </text>
 
-        {/* Sell-Side (Brokers & Investment Banks) */}
+        {/* Sell-Side (Investment Banks, Brokers/Dealers) */}
         <rect
           x="80"
-          y="270"
+          y="280"
           width="240"
-          height="50"
+          height="60"
           rx="6"
           fill="rgba(59, 130, 246, 0.1)"
           stroke="rgba(59, 130, 246, 0.5)"
           strokeWidth="1"
         />
-        <text x="200" y="300" textAnchor="middle" fill="currentColor" fontSize="13" fontWeight="500">
-          Sell-Side (Brokers & Investment Banks)
+        <text x="200" y="303" textAnchor="middle" fill="currentColor" fontSize="12" fontWeight="500">
+          Sell-Side
+        </text>
+        <text x="200" y="319" textAnchor="middle" fill="currentColor" fontSize="11" fontWeight="500" opacity="0.85">
+          (Investment Banks, Brokers/Dealers)
         </text>
 
-        {/* Trading Venues (Fund Admins, Exchanges) */}
+        {/* Trading Venues & Market Infra (Custodians, Fund Admins, Exchanges) */}
         <rect
           x="80"
-          y="340"
+          y="360"
           width="240"
-          height="50"
+          height="60"
           rx="6"
           fill="rgba(59, 130, 246, 0.1)"
           stroke="rgba(59, 130, 246, 0.5)"
           strokeWidth="1"
         />
-        <text x="200" y="370" textAnchor="middle" fill="currentColor" fontSize="13" fontWeight="500">
-          Trading Venues (Fund Admins, Exchanges)
+        <text x="200" y="383" textAnchor="middle" fill="currentColor" fontSize="12" fontWeight="500">
+          Trading Venues &amp; Market Infra
+        </text>
+        <text x="200" y="399" textAnchor="middle" fill="currentColor" fontSize="11" fontWeight="500" opacity="0.85">
+          (Custodians, Fund Admins, Exchanges)
         </text>
       </g>
 
@@ -97,7 +106,7 @@ export default function FragmentedEcosystem() {
           x="550"
           y="50"
           width="300"
-          height="350"
+          height="380"
           rx="8"
           fill="rgba(168, 85, 247, 0.08)"
           stroke="rgba(168, 85, 247, 0.4)"
@@ -198,7 +207,7 @@ export default function FragmentedEcosystem() {
       <g>
         <rect
           x="100"
-          y="430"
+          y="460"
           width="700"
           height="50"
           rx="6"
@@ -206,10 +215,10 @@ export default function FragmentedEcosystem() {
           stroke="rgba(239, 68, 68, 0.3)"
           strokeWidth="1"
         />
-        <text x="450" y="455" textAnchor="middle" fill="currentColor" fontSize="13" fontWeight="600">
+        <text x="450" y="485" textAnchor="middle" fill="currentColor" fontSize="13" fontWeight="600">
           Result: Prevents institutional adoption and cross-platform settlement
         </text>
-        <text x="450" y="472" textAnchor="middle" fill="currentColor" fontSize="11" opacity="0.7">
+        <text x="450" y="502" textAnchor="middle" fill="currentColor" fontSize="11" opacity="0.7">
           Each transaction requires manual reconciliation between systems
         </text>
       </g>
