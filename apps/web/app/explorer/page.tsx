@@ -2401,60 +2401,6 @@ export default function Page() {
             >
               {loading ? 'Processing...' : 'Process'}
             </button>
-            
-            <button 
-              onClick={walletConnected ? undefined : connectWallet}
-              style={{
-                background: walletConnected ? 'rgba(34, 197, 94, 0.1)' : 'rgba(255,255,255,0.05)',
-                color: walletConnected ? '#22c55e' : '#ffffff',
-                border: walletConnected ? '1px solid rgba(34, 197, 94, 0.3)' : '1px solid rgba(255,255,255,0.2)',
-                borderRadius: '6px',
-                padding: '0.875rem 1.5rem',
-                fontSize: 'clamp(0.85rem, 2vw, 0.9rem)',
-                fontWeight: '500',
-                cursor: walletConnected ? 'default' : 'pointer',
-                transition: 'all 0.2s',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-                minHeight: '44px'
-              }}
-              onMouseEnter={(e) => {
-                if (!walletConnected) {
-                  e.currentTarget.style.background = 'rgba(255,255,255,0.08)';
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (!walletConnected) {
-                  e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
-                }
-              }}
-            >
-              {walletConnected ? (
-                <>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M9 12l2 2 4-4" />
-                    <circle cx="12" cy="12" r="10" />
-                  </svg>
-                  {walletAddress ? (
-                    <AddressLink 
-                      address={walletAddress} 
-                      chainId={chainFromEnv.id} 
-                      truncate={true}
-                      style={{ color: '#22c55e' }}
-                    />
-                  ) : 'Connected'}
-                </>
-              ) : (
-                <>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3 4-3 9-3 9 1.34 9 3z" />
-                    <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5c0-1.66-4-3-9-3S3 3.34 3 5z" />
-                  </svg>
-                  Connect Wallet
-                </>
-              )}
-            </button>
           </div>
         </section>
 
@@ -2948,27 +2894,85 @@ export default function Page() {
                         </div>
                       </div>
 
-                      <button
-                        onClick={deployWithFactory}
-                        disabled={!walletConnected || !tokenName || !tokenSymbol || !tokenSupply || loading}
-                        style={{
-                          background: walletConnected && tokenName && tokenSymbol && tokenSupply && !loading
-                            ? 'linear-gradient(135deg, rgba(59, 130, 246, 0.3) 0%, rgba(37, 99, 235, 0.3) 100%)'
-                            : 'rgba(255,255,255,0.05)',
-                          color: walletConnected && tokenName && tokenSymbol && tokenSupply && !loading ? '#60a5fa' : 'rgba(255,255,255,0.3)',
-                          border: '1px solid rgba(59, 130, 246, 0.3)',
-                          borderRadius: '6px',
-                          padding: '1rem',
-                          fontSize: 'clamp(0.85rem, 2vw, 0.9rem)',
-                          fontWeight: '600',
-                          cursor: walletConnected && tokenName && tokenSymbol && tokenSupply && !loading ? 'pointer' : 'not-allowed',
-                          transition: 'all 0.2s',
-                          opacity: walletConnected && tokenName && tokenSymbol && tokenSupply && !loading ? 1 : 0.5,
-                          minHeight: '44px'
-                        }}
-                      >
-                        {loading ? '⏳ Deploying...' : '🚀 Deploy Token with Descriptor'}
-                      </button>
+                      <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                        <button
+                          onClick={walletConnected ? undefined : connectWallet}
+                          style={{
+                            background: walletConnected ? 'rgba(34, 197, 94, 0.1)' : 'rgba(255,255,255,0.05)',
+                            color: walletConnected ? '#22c55e' : '#ffffff',
+                            border: walletConnected ? '1px solid rgba(34, 197, 94, 0.3)' : '1px solid rgba(255,255,255,0.2)',
+                            borderRadius: '6px',
+                            padding: '1rem 1.5rem',
+                            fontSize: 'clamp(0.85rem, 2vw, 0.9rem)',
+                            fontWeight: '500',
+                            cursor: walletConnected ? 'default' : 'pointer',
+                            transition: 'all 0.2s',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.5rem',
+                            minHeight: '44px',
+                            flex: '0 0 auto'
+                          }}
+                          onMouseEnter={(e) => {
+                            if (!walletConnected) {
+                              e.currentTarget.style.background = 'rgba(255,255,255,0.08)';
+                            }
+                          }}
+                          onMouseLeave={(e) => {
+                            if (!walletConnected) {
+                              e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                            }
+                          }}
+                        >
+                          {walletConnected ? (
+                            <>
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M9 12l2 2 4-4" />
+                                <circle cx="12" cy="12" r="10" />
+                              </svg>
+                              {walletAddress ? (
+                                <AddressLink
+                                  address={walletAddress}
+                                  chainId={chainFromEnv.id}
+                                  truncate={true}
+                                  style={{ color: '#22c55e' }}
+                                />
+                              ) : 'Connected'}
+                            </>
+                          ) : (
+                            <>
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3 4-3 9-3 9 1.34 9 3z" />
+                                <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5c0-1.66-4-3-9-3S3 3.34 3 5z" />
+                              </svg>
+                              Connect Wallet
+                            </>
+                          )}
+                        </button>
+
+                        <button
+                          onClick={deployWithFactory}
+                          disabled={!walletConnected || !tokenName || !tokenSymbol || !tokenSupply || loading}
+                          style={{
+                            background: walletConnected && tokenName && tokenSymbol && tokenSupply && !loading
+                              ? 'linear-gradient(135deg, rgba(59, 130, 246, 0.3) 0%, rgba(37, 99, 235, 0.3) 100%)'
+                              : 'rgba(255,255,255,0.05)',
+                            color: walletConnected && tokenName && tokenSymbol && tokenSupply && !loading ? '#60a5fa' : 'rgba(255,255,255,0.3)',
+                            border: '1px solid rgba(59, 130, 246, 0.3)',
+                            borderRadius: '6px',
+                            padding: '1rem',
+                            fontSize: 'clamp(0.85rem, 2vw, 0.9rem)',
+                            fontWeight: '600',
+                            cursor: walletConnected && tokenName && tokenSymbol && tokenSupply && !loading ? 'pointer' : 'not-allowed',
+                            transition: 'all 0.2s',
+                            opacity: walletConnected && tokenName && tokenSymbol && tokenSupply && !loading ? 1 : 0.5,
+                            minHeight: '44px',
+                            flex: '1 1 auto'
+                          }}
+                        >
+                          {loading ? '⏳ Deploying...' : '🚀 Deploy Token with Descriptor'}
+                        </button>
+                      </div>
                     </div>
                   </div>
                 )}

@@ -334,16 +334,22 @@ export default function SpecPage() {
         }
       `}</style>
 
-      <div style={{ display: 'flex', maxWidth: '1400px', margin: '0 auto' }}>
+      <div style={{ display: 'flex', maxWidth: '1400px', margin: '0 auto', position: 'relative' }}>
         {/* Table of Contents - Sidebar (Desktop) */}
-        <aside className="desktop-sidebar" style={{ 
-          width: '280px', 
-          padding: 'clamp(2rem, 4vw, 3rem) clamp(1rem, 3vw, 2rem)',
+        <aside className="desktop-sidebar" style={{
+          position: 'fixed',
+          top: '0',
+          left: 'max(0px, calc((100vw - 1400px) / 2))',
+          width: '280px',
+          height: '100vh',
+          paddingTop: 'calc(80px + clamp(2rem, 4vw, 3rem))',
+          paddingBottom: 'clamp(2rem, 4vw, 3rem)',
+          paddingLeft: 'clamp(1.5rem, 3vw, 2rem)',
+          paddingRight: 'clamp(1rem, 3vw, 2rem)',
           borderRight: '1px solid rgba(255,255,255,0.1)',
-          position: 'sticky',
-          top: '80px',
-          height: 'calc(100vh - 80px)',
-          overflowY: 'auto'
+          overflowY: 'auto',
+          background: '#0a0a0a',
+          zIndex: 50
         }}>
           <div style={{ fontSize: 'clamp(0.7rem, 1.5vw, 0.75rem)', color: 'rgba(255,255,255,0.4)', marginBottom: 'clamp(0.75rem, 2vw, 1rem)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
             Contents
@@ -371,6 +377,9 @@ export default function SpecPage() {
             </a>
           ))}
         </aside>
+
+        {/* Spacer for fixed sidebar */}
+        <div className="desktop-sidebar" style={{ width: '280px', flexShrink: 0 }}></div>
 
         {/* Main Content */}
         <main style={{ flex: 1, padding: 'clamp(1.5rem, 4vw, 3rem) clamp(1rem, 3vw, 4rem)', maxWidth: 'min(900px, 100%)', width: '100%' }}>
