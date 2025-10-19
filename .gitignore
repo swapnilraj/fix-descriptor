@@ -244,6 +244,9 @@ Icon?
 *.tmp
 *.temp
 
+# Build cache files
+.verification-json-cache
+
 # Build artifacts
 build/
 dist/

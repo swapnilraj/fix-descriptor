@@ -1,18 +1,18 @@
 "use client";
 import Link from 'next/link';
 import Navigation from '@/components/Navigation';
-import IncompatibilityFlow from './problem/diagrams/IncompatibilityFlow';
-import IntegrationFlow from './problem/diagrams/IntegrationFlow';
-import FragmentedEcosystem from './problem/diagrams/FragmentedEcosystem';
-import BeforeAfter from './problem/diagrams/BeforeAfter';
-import './problem/print.css';
+import IncompatibilityFlow from './diagrams/IncompatibilityFlow';
+import IntegrationFlow from './diagrams/IntegrationFlow';
+import FragmentedEcosystem from './diagrams/FragmentedEcosystem';
+import BeforeAfter from './diagrams/BeforeAfter';
+import './print.css';
 
-export default function HomePage() {
+export default function ProblemPage() {
   return (
     <div style={{
       minHeight: '100vh',
       background: 'linear-gradient(to bottom, #0a0a0a 0%, #1a1a1a 100%)',
-      color: '#ffffff',
+      color: 'rgba(255, 255, 255, 1)',
     }}>
       <Navigation currentPage="problem" />
 
@@ -112,7 +112,7 @@ export default function HomePage() {
               </li>
               <li style={{ marginBottom: '0.75rem', paddingLeft: '1.5rem', position: 'relative' }}>
                 <span style={{ position: 'absolute', left: 0, color: 'rgba(245, 158, 11, 0.7)' }}>•</span>
-                <strong>Result:</strong> Settlement delays, manual reconciliation, and operational risk
+                <strong>Outcome:</strong> Settlement delays, manual reconciliation, capital inefficiency and operational risk
               </li>
             </ul>
           </div>
@@ -372,7 +372,7 @@ export default function HomePage() {
               color: 'rgba(255, 255, 255, 0.75)',
               marginBottom: '1.5rem',
             }}>
-              Traditional finance systems (Bloomberg, custodians, OMS platforms) have standardized on the FIX protocol for decades. 
+              Traditional finance systems (traditional brokers, investment banks, investment funds) have standardized on the FIX protocol for decades. 
               Blockchain-based securities speak an entirely different language—custom JSON schemas, proprietary contract fields, 
               and fragmented metadata standards. This fundamental incompatibility prevents seamless cross-platform settlement 
               and forces institutions to build translation layers that introduce risk, delay, and operational overhead.
@@ -703,7 +703,7 @@ export default function HomePage() {
             </div>
             <div style={{ background: 'rgba(0,0,0,0.25)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '8px', padding: '1rem' }}>
               <h3 style={{ margin: 0, fontWeight: 600, color: 'rgba(255,255,255,0.9)' }}>Fast time-to-market</h3>
-              <p style={{ margin: '0.5rem 0 0', color: 'rgba(255,255,255,0.75)' }}>From 3-5 weeks to ~1 day per platform.</p>
+              <p style={{ margin: '0.5rem 0 0', color: 'rgba(255,255,255,0.75)' }}>From 3–5 weeks to ~1 day per platform.</p>
             </div>
             <div style={{ background: 'rgba(0,0,0,0.25)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '8px', padding: '1rem' }}>
               <h3 style={{ margin: 0, fontWeight: 600, color: 'rgba(255,255,255,0.9)' }}>Cryptographic assurance</h3>

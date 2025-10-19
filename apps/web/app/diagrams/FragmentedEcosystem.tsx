@@ -30,7 +30,7 @@ export default function FragmentedEcosystem() {
           All speaking FIX protocol
         </text>
 
-        {/* Bloomberg */}
+        {/* OMS/EMS Platforms */}
         <rect
           x="80"
           y="130"
@@ -42,10 +42,10 @@ export default function FragmentedEcosystem() {
           strokeWidth="1"
         />
         <text x="200" y="160" textAnchor="middle" fill="currentColor" fontSize="13" fontWeight="500">
-          Bloomberg Terminal
+          OMS/EMS Platforms
         </text>
 
-        {/* Custodians */}
+        {/* Buy-Side (Asset Managers & Hedge Funds) */}
         <rect
           x="80"
           y="200"
@@ -57,10 +57,10 @@ export default function FragmentedEcosystem() {
           strokeWidth="1"
         />
         <text x="200" y="230" textAnchor="middle" fill="currentColor" fontSize="13" fontWeight="500">
-          Custodian Systems
+          Buy-Side (Asset Managers & Hedge Funds)
         </text>
 
-        {/* OMS */}
+        {/* Sell-Side (Brokers & Investment Banks) */}
         <rect
           x="80"
           y="270"
@@ -72,10 +72,10 @@ export default function FragmentedEcosystem() {
           strokeWidth="1"
         />
         <text x="200" y="300" textAnchor="middle" fill="currentColor" fontSize="13" fontWeight="500">
-          OMS / EMS Platforms
+          Sell-Side (Brokers & Investment Banks)
         </text>
 
-        {/* Risk Systems */}
+        {/* Trading Venues (Fund Admins, Exchanges) */}
         <rect
           x="80"
           y="340"
@@ -87,7 +87,7 @@ export default function FragmentedEcosystem() {
           strokeWidth="1"
         />
         <text x="200" y="370" textAnchor="middle" fill="currentColor" fontSize="13" fontWeight="500">
-          Risk Management
+          Trading Venues (Fund Admins, Exchanges)
         </text>
       </g>
 
@@ -170,9 +170,8 @@ export default function FragmentedEcosystem() {
         />
         <text x="450" y="285" textAnchor="middle" fill="currentColor" fontSize="10" opacity="0.7">Manual translation</text>
         <text x="450" y="300" textAnchor="middle" fill="currentColor" fontSize="10" opacity="0.7">Custom adapters</text>
-        <text x="450" y="315" textAnchor="middle" fill="currentColor" fontSize="10" opacity="0.7">Bloomberg cannot read token metadata</text>
-        <text x="450" y="330" textAnchor="middle" fill="currentColor" fontSize="10" opacity="0.7">OMS requires manual entry</text>
-        <text x="450" y="345" textAnchor="middle" fill="currentColor" fontSize="10" opacity="0.7">Risk systems need custom parsers</text>
+        <text x="450" y="315" textAnchor="middle" fill="currentColor" fontSize="10" opacity="0.7">OMS requires manual entry</text>
+        <text x="450" y="330" textAnchor="middle" fill="currentColor" fontSize="10" opacity="0.7">Risk systems need custom parsers</text>
       </g>
 
       {/* Broken connection lines */}

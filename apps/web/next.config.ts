@@ -9,7 +9,14 @@ const nextConfig: NextConfig = {
   // External packages for server components
   serverExternalPackages: ['fixdescriptorkit-typescript'],
   
-  // Webpack configuration for monorepo
+  // Turbopack configuration
+  turbopack: {
+    resolveAlias: {
+      '@': path.resolve(__dirname),
+    },
+  },
+  
+  // Webpack configuration (fallback for production builds)
   webpack: (config) => {
     // Handle local packages
     config.resolve.symlinks = false;
