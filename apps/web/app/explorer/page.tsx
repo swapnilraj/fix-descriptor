@@ -4,7 +4,7 @@ import Navigation from '@/components/Navigation';
 import { abi as TokenFactoryAbi } from '@/lib/abis/AssetTokenFactory';
 import { abi as AssetTokenAbi } from '@/lib/abis/AssetTokenERC20';
 import { chainFromEnv, getDictionaryAddressOptional } from '@/lib/viemClient';
-import { createWalletClient, custom, type Address, createPublicClient, http, decodeEventLog } from 'viem';
+import { createPublicClient, http, decodeEventLog } from 'viem';
 import { AddressLink, TransactionLink } from '@/components/BlockExplorerLink';
 
 // Extend Window interface for MetaMask
@@ -577,8 +577,6 @@ export default function Page() {
   const [treeData, setTreeData] = useState<TreeNodeData | null>(null);
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
   const [viewMode, setViewMode] = useState<'hex' | 'tree' | 'merkle'>('hex');
-  const [walletConnected, setWalletConnected] = useState(false);
-  const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [isSticky, setIsSticky] = useState(false);
   const [showHowItWorks, setShowHowItWorks] = useState(false);
   
@@ -615,33 +613,6 @@ export default function Page() {
   const [onchainReadableStatus, setOnchainReadableStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [onchainReadableError, setOnchainReadableError] = useState<string | null>(null);
 
-  // Check wallet connection on mount and listen for account changes
-  useEffect(() => {
-    checkWalletConnection();
-
-    // Listen for account changes
-    if (window.ethereum) {
-      const handleAccountsChanged = (accounts: unknown) => {
-        const accountsArray = accounts as string[];
-        if (accountsArray.length > 0) {
-          setWalletConnected(true);
-          setWalletAddress(accountsArray[0]);
-        } else {
-          setWalletConnected(false);
-          setWalletAddress(null);
-        }
-      };
-
-      window.ethereum.on?.('accountsChanged', handleAccountsChanged);
-
-      // Cleanup listener on unmount
-      return () => {
-        if (window.ethereum?.removeListener) {
-          window.ethereum.removeListener('accountsChanged', handleAccountsChanged);
-        }
-      };
-    }
-  }, []);
 
   // Sticky progress indicator
   const [progressOriginalTop, setProgressOriginalTop] = useState<number>(0);
@@ -857,44 +828,6 @@ export default function Page() {
     setCurrentStep(0);
   }
 
-  async function switchToSepolia() {
-    if (!window.ethereum) {
-      alert('MetaMask not detected');
-      return;
-    }
-
-    try {
-      await window.ethereum.request({
-        method: 'wallet_switchEthereumChain',
-        params: [{ chainId: '0xaa36a7' }],
-      });
-    } catch (switchError: unknown) {
-      if (switchError && typeof switchError === 'object' && 'code' in switchError && switchError.code === 4902) {
-        try {
-          await window.ethereum.request({
-            method: 'wallet_addEthereumChain',
-            params: [
-              {
-                chainId: '0xaa36a7',
-                chainName: 'Sepolia Testnet',
-                rpcUrls: ['https://ethereum-sepolia-rpc.publicnode.com'],
-                nativeCurrency: {
-                  name: 'ETH',
-                  symbol: 'ETH',
-                  decimals: 18,
-                },
-                blockExplorerUrls: ['https://sepolia.etherscan.io'],
-              },
-            ],
-          });
-        } catch {
-          alert('Failed to add Sepolia testnet to wallet');
-        }
-      } else {
-        alert('Failed to switch to Sepolia testnet');
-      }
-    }
-  }
 
   async function doPreview() {
     setProof(null);
@@ -968,69 +901,10 @@ export default function Page() {
     }
   }
 
-  interface Eip1193Provider {
-    request(args: { method: string; params?: unknown[] }): Promise<unknown>;
-  }
-
-  function getProvider(): Eip1193Provider {
-    const eth = (window as unknown as { ethereum?: unknown }).ethereum as unknown;
-    return eth as Eip1193Provider;
-  }
-
-  async function getAccount(): Promise<Address> {
-    const provider = getProvider();
-    const accounts = (await provider.request({ method: 'eth_requestAccounts' })) as string[];
-    return accounts[0] as Address;
-  }
-
-  async function checkWalletConnection() {
-    if (!window.ethereum) {
-      setWalletConnected(false);
-      setWalletAddress(null);
-      return;
-    }
-
-    try {
-      const accounts = await window.ethereum.request({ method: 'eth_accounts' }) as string[];
-      if (accounts.length > 0) {
-        setWalletConnected(true);
-        setWalletAddress(accounts[0]);
-      } else {
-        setWalletConnected(false);
-        setWalletAddress(null);
-      }
-    } catch (error) {
-      console.error('Error checking wallet connection:', error);
-      setWalletConnected(false);
-      setWalletAddress(null);
-    }
-  }
-
-  async function connectWallet() {
-    if (!window.ethereum) {
-      alert('MetaMask not detected. Please install MetaMask to continue.');
-      return;
-    }
-
-    try {
-      // First switch to Sepolia network
-      await switchToSepolia();
-      
-      // Then request account access
-      const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' }) as string[];
-      if (accounts.length > 0) {
-        setWalletConnected(true);
-        setWalletAddress(accounts[0]);
-      }
-    } catch (error) {
-      console.error('Error connecting wallet:', error);
-      alert('Failed to connect wallet. Please try again.');
-    }
-  }
 
   async function deployWithFactory() {
-    if (!preview || !walletConnected) {
-      alert('Please connect wallet and generate preview first');
+    if (!preview) {
+      alert('Please generate preview first');
       return;
     }
 
@@ -1039,109 +913,34 @@ export default function Page() {
       return;
     }
 
-    const factoryAddress = process.env.NEXT_PUBLIC_TOKEN_FACTORY_ADDRESS;
-    if (!factoryAddress) {
-      alert('Token factory not configured. Please set NEXT_PUBLIC_TOKEN_FACTORY_ADDRESS in your environment.');
-      return;
-    }
-
     try {
       setLoading(true);
-      
-    const account = await getAccount();
-    const provider = getProvider();
-    const wallet = createWalletClient({ account, chain: chainFromEnv, transport: custom(provider as never) });
-      
-      // Dictionary hash for DEMO_FIX_SCHEMA
-      const dictHash = '0xb24215c985384ddaa6767272d452780aa4352201a1df669564cde3905cb6a215' as `0x${string}`;
-      
-      // Get dictionary address from environment (optional, warn if not set)
-      const dictionaryAddress = getDictionaryAddressOptional();
-      if (!dictionaryAddress) {
-        console.warn('NEXT_PUBLIC_DICTIONARY_ADDRESS not set. Token will be deployed without human-readable descriptor support.');
-      }
-      
-      // Prepare descriptor (factory will set fixCBORPtr and fixCBORLen)
-      const descriptor = {
-        fixMajor: 4,
-        fixMinor: 4,
-        dictHash: dictHash,
-        fixRoot: preview.root as `0x${string}`,
-        fixCBORPtr: '0x0000000000000000000000000000000000000000' as `0x${string}`,
-        fixCBORLen: 0,
-        fixURI: '',
-        dictionaryContract: dictionaryAddress || '0x0000000000000000000000000000000000000000' as `0x${string}`
-      };
+      setTxInfo('Submitting deployment to backend...');
 
-      // Convert supply to wei (18 decimals)
-      const supplyInWei = BigInt(tokenSupply) * BigInt(10 ** 18);
-    
-    type Abi = readonly unknown[];
-      const factoryAbi: Abi = TokenFactoryAbi;
-      
-      // Ensure CBOR hex has 0x prefix
-      const cborHexData = preview.cborHex.startsWith('0x') 
-        ? preview.cborHex as `0x${string}`
-        : `0x${preview.cborHex}` as `0x${string}`;
-      
-      // Call deployWithDescriptor
-      const hash = await wallet.writeContract({
-        address: factoryAddress as `0x${string}`,
-        abi: factoryAbi,
-        functionName: 'deployWithDescriptor',
-        args: [
-          tokenName,
-          tokenSymbol,
-          supplyInWei,
-          cborHexData,
-          descriptor
-        ]
+      // Call backend API to deploy token
+      const response = await fetch('/api/deploy-token', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: tokenName,
+          symbol: tokenSymbol,
+          initialSupply: tokenSupply,
+          cborHex: preview.cborHex,
+          root: preview.root
+        })
       });
 
-      setTxInfo(`Token deployment transaction: ${hash}\nWaiting for confirmation...`);
-      
-      // Wait for transaction receipt to get token address
-      const publicClient = createPublicClient({
-        chain: chainFromEnv,
-        transport: http()
-      });
+      const data = await response.json();
 
-      const receipt = await publicClient.waitForTransactionReceipt({ hash });
-      
-      // Decode the AssetTokenDeployed event from the receipt logs
-      // Event signature: AssetTokenDeployed(address indexed tokenAddress, address indexed deployer, string name, string symbol, uint256 initialSupply)
-      let tokenAddress = 'Check transaction';
-      
-      for (const log of receipt.logs) {
-        try {
-          const decoded = decodeEventLog({
-            abi: factoryAbi,
-            data: log.data,
-            topics: log.topics
-          });
-          
-          if (decoded.eventName === 'AssetTokenDeployed') {
-            // Extract tokenAddress from decoded event args
-            const args = decoded.args as { tokenAddress?: Address; deployer?: Address; name?: string; symbol?: string; initialSupply?: bigint };
-            if (args.tokenAddress) {
-              tokenAddress = args.tokenAddress;
-              setDeployedTokenAddress(tokenAddress);
-              
-              console.log('✅ Decoded AssetTokenDeployed event:', {
-                tokenAddress: args.tokenAddress,
-                deployer: args.deployer,
-                name: args.name,
-                symbol: args.symbol,
-                initialSupply: args.initialSupply?.toString()
-              });
-              break;
-            }
-          }
-        } catch {
-          // Skip logs that don't match our ABI
-          continue;
-        }
+      if (!response.ok) {
+        throw new Error(data.error || 'Deployment failed');
       }
+
+      const { transactionHash, tokenAddress, blockNumber } = data;
+
+      setDeployedTokenAddress(tokenAddress);
 
       // Show initial success message
       setTxInfo(
@@ -1157,7 +956,10 @@ export default function Page() {
           </div>
           <div style={{ marginTop: '0.5rem' }}>
             <span style={{ color: 'rgba(255,255,255,0.7)' }}>Transaction: </span>
-            <TransactionLink hash={hash} chainId={chainFromEnv.id} />
+            <TransactionLink hash={transactionHash} chainId={chainFromEnv.id} />
+          </div>
+          <div style={{ marginTop: '0.5rem', fontSize: '0.875rem', color: 'rgba(255,255,255,0.6)' }}>
+            Block: {blockNumber}
           </div>
           <div style={{ marginTop: '1rem', color: 'rgba(251, 191, 36, 0.9)' }}>
             ⏳ Verifying contract on block explorer...
@@ -1166,6 +968,9 @@ export default function Page() {
       );
 
       // Attempt to verify the contract on Etherscan
+      const factoryAddress = process.env.NEXT_PUBLIC_TOKEN_FACTORY_ADDRESS;
+      const supplyInWei = BigInt(tokenSupply) * BigInt(10 ** 18);
+
       try {
         const verifyResponse = await fetch('/api/verify-contract', {
           method: 'POST',
@@ -1200,7 +1005,7 @@ export default function Page() {
               </div>
               <div style={{ marginTop: '0.5rem' }}>
                 <span style={{ color: 'rgba(255,255,255,0.7)' }}>Transaction: </span>
-                <TransactionLink hash={hash} chainId={chainFromEnv.id} />
+                <TransactionLink hash={transactionHash} chainId={chainFromEnv.id} />
               </div>
               <div style={{ marginTop: '1rem', color: 'rgba(255,255,255,0.8)' }}>
                 You can now view the contract source code and verify proofs onchain!
@@ -1225,7 +1030,7 @@ export default function Page() {
               </div>
               <div style={{ marginTop: '0.5rem' }}>
                 <span style={{ color: 'rgba(255,255,255,0.7)' }}>Transaction: </span>
-                <TransactionLink hash={hash} chainId={chainFromEnv.id} />
+                <TransactionLink hash={transactionHash} chainId={chainFromEnv.id} />
               </div>
               <div style={{ marginTop: '1rem', fontSize: '0.9rem', color: 'rgba(255,255,255,0.6)' }}>
                 {verifyResult.message || verifyResult.error || 'Verification failed - you can verify manually on the block explorer'}
@@ -1252,7 +1057,7 @@ export default function Page() {
             </div>
             <div style={{ marginTop: '0.5rem' }}>
               <span style={{ color: 'rgba(255,255,255,0.7)' }}>Transaction: </span>
-              <TransactionLink hash={hash} chainId={chainFromEnv.id} />
+              <TransactionLink hash={transactionHash} chainId={chainFromEnv.id} />
             </div>
             <div style={{ marginTop: '1rem', fontSize: '0.9rem', color: 'rgba(255,255,255,0.6)' }}>
               Contract verification failed. You can verify manually on the block explorer.
@@ -1423,11 +1228,6 @@ export default function Page() {
   async function verifyProofOnChain() {
     if (!proof || !deployedTokenAddress) {
       alert('Please generate a proof and deploy a token first');
-      return;
-    }
-
-    if (!walletConnected) {
-      alert('Please connect your wallet first');
       return;
     }
 
@@ -1616,40 +1416,6 @@ export default function Page() {
               }}>
                 FIX Descriptor Explorer
               </h1>
-              
-              {/* Wallet Status */}
-              <div style={{ 
-                display: 'flex', 
-                alignItems: 'center', 
-                gap: '0.75rem',
-                padding: '0.75rem 1rem',
-                background: walletConnected ? 'rgba(34, 197, 94, 0.1)' : 'rgba(255,255,255,0.05)',
-                border: walletConnected ? '1px solid rgba(34, 197, 94, 0.3)' : '1px solid rgba(255,255,255,0.1)',
-                borderRadius: '8px',
-                fontSize: 'clamp(0.8rem, 2vw, 0.9rem)',
-                minHeight: '44px'
-              }}>
-                <div style={{
-                  width: '8px',
-                  height: '8px',
-                  borderRadius: '50%',
-                  background: walletConnected ? '#22c55e' : '#ef4444'
-                }} />
-                <span style={{ color: walletConnected ? '#22c55e' : 'rgba(255,255,255,0.6)' }}>
-                  {walletConnected ? (
-                    walletAddress ? (
-                      <AddressLink 
-                        address={walletAddress} 
-                        chainId={chainFromEnv.id} 
-                        truncate={true}
-                        style={{ color: '#22c55e' }}
-                      />
-                    ) : 'Connected'
-                  ) : (
-                    'Not Connected'
-                  )}
-                </span>
-              </div>
             </div>
             <p style={{
               fontSize: 'clamp(1rem, 2.5vw, 1.125rem)',
@@ -1685,26 +1451,13 @@ export default function Page() {
                 border: '1px solid rgba(255,255,255,0.1)'
               }}>
                 <div style={{ fontSize: '0.875rem', color: 'rgba(255,255,255,0.6)', marginBottom: '0.25rem' }}>
-                  Network
+                  Gasless Deployment
                 </div>
                 <div style={{ fontSize: '1rem', fontWeight: '500', color: 'rgba(255,255,255,0.9)' }}>
-                  Sepolia Testnet
+                  No Wallet Required
                 </div>
               </div>
-              <div style={{
-                padding: '1rem',
-                background: 'rgba(0, 0, 0, 0.2)',
-                borderRadius: '8px',
-                border: '1px solid rgba(255,255,255,0.1)'
-              }}>
-                <div style={{ fontSize: '0.875rem', color: 'rgba(255,255,255,0.6)', marginBottom: '0.25rem' }}>
-                  No Cost
-                </div>
-                <div style={{ fontSize: '1rem', fontWeight: '500', color: 'rgba(255,255,255,0.9)' }}>
-                  Free Testnet ETH
-                </div>
-              </div>
-              <button 
+              <button
                 onClick={() => scrollToSection(examplesRef)}
                 style={{
                   padding: '1rem',
@@ -2688,7 +2441,7 @@ export default function Page() {
                     letterSpacing: '-0.01em',
                     color: 'rgba(255,255,255,0.95)'
                   }}>
-                    3. Deploy to Blockchain (Optional)
+                    3. Deploy to Blockchain
                   </h3>
                   <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: 'clamp(0.875rem, 2vw, 0.95rem)' }}>
                     Store your <Tooltip content="The cryptographic hash that represents your entire FIX descriptor">Merkle root</Tooltip> and <Tooltip content="The encoded binary data of your FIX message">CBOR data</Tooltip> on the <Tooltip content="Sepolia is a test network - no real money is used. Get free testnet ETH from faucets.">Sepolia testnet</Tooltip>
@@ -2698,51 +2451,17 @@ export default function Page() {
                 <LearnMore title="About Blockchain Deployment">
                   <p style={{ marginBottom: '1rem' }}>
                     <strong>What happens when you deploy?</strong><br/>
-                    Deployment creates a new ERC20 token contract on the Sepolia testnet with your FIX descriptor embedded. The CBOR data is stored using SSTORE2 (an efficient storage technique), and the Merkle root is saved in the contract.
+                    Deployment creates a new ERC20 token contract on the blockchain with your FIX descriptor embedded. The CBOR data is stored using SSTORE2 (an efficient storage technique), and the Merkle root is saved in the contract.
                   </p>
                   <p style={{ marginBottom: '1rem' }}>
                     <strong>Is this free?</strong><br/>
-                    Yes! Sepolia is a test network. You&apos;ll need testnet ETH (not real money) to pay for gas fees. Get free testnet ETH from:
-                    • <a href="https://sepoliafaucet.com" target="_blank" rel="noopener noreferrer" style={{ color: 'rgba(96, 165, 250, 0.9)', textDecoration: 'underline' }}>Sepolia Faucet</a><br/>
-                    • <a href="https://www.alchemy.com/faucets/ethereum-sepolia" target="_blank" rel="noopener noreferrer" style={{ color: 'rgba(96, 165, 250, 0.9)', textDecoration: 'underline' }}>Alchemy Sepolia Faucet</a>
+                    Yes! This is a gasless deployment - no wallet or crypto required. Our backend handles the transaction signing and pays all gas fees. Just fill in the token details and click deploy.
                   </p>
                   <p>
                     <strong>What can I do with a deployed token?</strong><br/>
                     Once deployed, anyone can read the CBOR data from the contract, verify Merkle proofs against the root, and decode the full FIX message. This demonstrates how real tokenized securities could work - with verifiable, standardized descriptors.
                   </p>
                 </LearnMore>
-
-                {/* Network Badge */}
-                <div style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '0.5rem',
-                  padding: '0.5rem 1rem',
-                  background: 'rgba(245, 158, 11, 0.1)',
-                  border: '1px solid rgba(245, 158, 11, 0.3)',
-                  borderRadius: '6px',
-                  marginBottom: '1rem'
-                }}>
-                  <div style={{
-                    width: '8px',
-                    height: '8px',
-                    borderRadius: '50%',
-                    background: 'rgba(245, 158, 11, 0.8)',
-                    animation: 'pulse-testnet 2s infinite'
-                  }} />
-                  <span style={{ fontSize: '0.875rem', fontWeight: '500', color: 'rgba(245, 158, 11, 0.9)' }}>
-                    Sepolia Testnet
-                  </span>
-                  <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)' }}>
-                    (No Real Money)
-                  </span>
-                </div>
-                <style dangerouslySetInnerHTML={{ __html: `
-                  @keyframes pulse-testnet {
-                    0%, 100% { opacity: 1; }
-                    50% { opacity: 0.5; }
-                  }
-                `}} />
 
                 <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
                   <button 
@@ -2894,85 +2613,28 @@ export default function Page() {
                         </div>
                       </div>
 
-                      <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-                        <button
-                          onClick={walletConnected ? undefined : connectWallet}
-                          style={{
-                            background: walletConnected ? 'rgba(34, 197, 94, 0.1)' : 'rgba(255,255,255,0.05)',
-                            color: walletConnected ? '#22c55e' : '#ffffff',
-                            border: walletConnected ? '1px solid rgba(34, 197, 94, 0.3)' : '1px solid rgba(255,255,255,0.2)',
-                            borderRadius: '6px',
-                            padding: '1rem 1.5rem',
-                            fontSize: 'clamp(0.85rem, 2vw, 0.9rem)',
-                            fontWeight: '500',
-                            cursor: walletConnected ? 'default' : 'pointer',
-                            transition: 'all 0.2s',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '0.5rem',
-                            minHeight: '44px',
-                            flex: '0 0 auto'
-                          }}
-                          onMouseEnter={(e) => {
-                            if (!walletConnected) {
-                              e.currentTarget.style.background = 'rgba(255,255,255,0.08)';
-                            }
-                          }}
-                          onMouseLeave={(e) => {
-                            if (!walletConnected) {
-                              e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
-                            }
-                          }}
-                        >
-                          {walletConnected ? (
-                            <>
-                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <path d="M9 12l2 2 4-4" />
-                                <circle cx="12" cy="12" r="10" />
-                              </svg>
-                              {walletAddress ? (
-                                <AddressLink
-                                  address={walletAddress}
-                                  chainId={chainFromEnv.id}
-                                  truncate={true}
-                                  style={{ color: '#22c55e' }}
-                                />
-                              ) : 'Connected'}
-                            </>
-                          ) : (
-                            <>
-                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3 4-3 9-3 9 1.34 9 3z" />
-                                <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5c0-1.66-4-3-9-3S3 3.34 3 5z" />
-                              </svg>
-                              Connect Wallet
-                            </>
-                          )}
-                        </button>
-
-                        <button
-                          onClick={deployWithFactory}
-                          disabled={!walletConnected || !tokenName || !tokenSymbol || !tokenSupply || loading}
-                          style={{
-                            background: walletConnected && tokenName && tokenSymbol && tokenSupply && !loading
-                              ? 'linear-gradient(135deg, rgba(59, 130, 246, 0.3) 0%, rgba(37, 99, 235, 0.3) 100%)'
-                              : 'rgba(255,255,255,0.05)',
-                            color: walletConnected && tokenName && tokenSymbol && tokenSupply && !loading ? '#60a5fa' : 'rgba(255,255,255,0.3)',
-                            border: '1px solid rgba(59, 130, 246, 0.3)',
-                            borderRadius: '6px',
-                            padding: '1rem',
-                            fontSize: 'clamp(0.85rem, 2vw, 0.9rem)',
-                            fontWeight: '600',
-                            cursor: walletConnected && tokenName && tokenSymbol && tokenSupply && !loading ? 'pointer' : 'not-allowed',
-                            transition: 'all 0.2s',
-                            opacity: walletConnected && tokenName && tokenSymbol && tokenSupply && !loading ? 1 : 0.5,
-                            minHeight: '44px',
-                            flex: '1 1 auto'
-                          }}
-                        >
-                          {loading ? '⏳ Deploying...' : '🚀 Deploy Token with Descriptor'}
-                        </button>
-                      </div>
+                      <button
+                        onClick={deployWithFactory}
+                        disabled={!tokenName || !tokenSymbol || !tokenSupply || loading}
+                        style={{
+                          background: tokenName && tokenSymbol && tokenSupply && !loading
+                            ? 'linear-gradient(135deg, rgba(59, 130, 246, 0.3) 0%, rgba(37, 99, 235, 0.3) 100%)'
+                            : 'rgba(255,255,255,0.05)',
+                          color: tokenName && tokenSymbol && tokenSupply && !loading ? '#60a5fa' : 'rgba(255,255,255,0.3)',
+                          border: '1px solid rgba(59, 130, 246, 0.3)',
+                          borderRadius: '6px',
+                          padding: '1rem',
+                          fontSize: 'clamp(0.85rem, 2vw, 0.9rem)',
+                          fontWeight: '600',
+                          cursor: tokenName && tokenSymbol && tokenSupply && !loading ? 'pointer' : 'not-allowed',
+                          transition: 'all 0.2s',
+                          opacity: tokenName && tokenSymbol && tokenSupply && !loading ? 1 : 0.5,
+                          minHeight: '44px',
+                          width: '100%'
+                        }}
+                      >
+                        {loading ? '⏳ Deploying...' : '🚀 Deploy Token with Descriptor'}
+                      </button>
                     </div>
                   </div>
                 )}
