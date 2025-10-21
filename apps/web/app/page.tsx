@@ -48,10 +48,69 @@ export default function ProblemPage() {
             fontSize: 'clamp(0.95rem, 2.5vw, 1.05rem)',
             color: 'rgba(255, 255, 255, 0.55)',
             maxWidth: '750px',
-            margin: '0 auto',
+            margin: '0 auto 2rem',
           }}>
             ERC-FIX changes this by embedding standardized FIX descriptors directly in token contracts.
           </p>
+
+          <div style={{
+            display: 'flex',
+            justifyContent: 'center',
+            gap: '1rem',
+            flexWrap: 'wrap',
+            marginTop: '2rem',
+          }}>
+            <a
+              href="/spec"
+              style={{
+                display: 'inline-block',
+                padding: '0.875rem 1.75rem',
+                background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.2) 0%, rgba(37, 99, 235, 0.2) 100%)',
+                border: '1px solid rgba(59, 130, 246, 0.4)',
+                borderRadius: '8px',
+                color: 'rgba(96, 165, 250, 0.95)',
+                textDecoration: 'none',
+                fontSize: 'clamp(0.9rem, 2.5vw, 1rem)',
+                fontWeight: '500',
+                transition: 'all 0.2s',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'linear-gradient(135deg, rgba(59, 130, 246, 0.3) 0%, rgba(37, 99, 235, 0.3) 100%)';
+                e.currentTarget.style.transform = 'translateY(-2px)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'linear-gradient(135deg, rgba(59, 130, 246, 0.2) 0%, rgba(37, 99, 235, 0.2) 100%)';
+                e.currentTarget.style.transform = 'translateY(0)';
+              }}
+            >
+              Read the Specification
+            </a>
+            <a
+              href="/explorer"
+              style={{
+                display: 'inline-block',
+                padding: '0.875rem 1.75rem',
+                background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.2) 0%, rgba(147, 51, 234, 0.2) 100%)',
+                border: '1px solid rgba(168, 85, 247, 0.4)',
+                borderRadius: '8px',
+                color: 'rgba(192, 132, 252, 0.95)',
+                textDecoration: 'none',
+                fontSize: 'clamp(0.9rem, 2.5vw, 1rem)',
+                fontWeight: '500',
+                transition: 'all 0.2s',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'linear-gradient(135deg, rgba(168, 85, 247, 0.3) 0%, rgba(147, 51, 234, 0.3) 100%)';
+                e.currentTarget.style.transform = 'translateY(-2px)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'linear-gradient(135deg, rgba(168, 85, 247, 0.2) 0%, rgba(147, 51, 234, 0.2) 100%)';
+                e.currentTarget.style.transform = 'translateY(0)';
+              }}
+            >
+              Try the Explorer
+            </a>
+          </div>
         </section>
 
         {/* Section 2: The Current Reality */}
@@ -67,12 +126,42 @@ export default function ProblemPage() {
             fontWeight: '600',
             marginBottom: 'clamp(1.5rem, 4vw, 2rem)',
             color: 'rgba(255, 255, 255, 0.95)',
+            lineHeight: '1.3',
           }}>
-            The Current Reality
+            The Current Reality: Settlement Delays, Manual Reconciliation, and Capital Inefficiency
           </h2>
-          
+
+          <div>
+            <div style={{
+              marginBottom: '3rem',
+              padding: 'clamp(0.5rem, 2vw, 1.5rem)',
+              background: 'rgba(0, 0, 0, 0.2)',
+              borderRadius: '8px',
+              overflowX: 'auto',
+              overflowY: 'hidden',
+              WebkitOverflowScrolling: 'touch',
+              scrollbarWidth: 'thin',
+              scrollbarColor: 'rgba(255, 255, 255, 0.3) rgba(0, 0, 0, 0.2)',
+            }}>
+              <div style={{ minWidth: '600px' }}>
+                <IncompatibilityFlow />
+              </div>
+            </div>
+            <p style={{
+              fontSize: '0.75rem',
+              color: 'rgba(255, 255, 255, 0.4)',
+              textAlign: 'center',
+              marginTop: '0.5rem',
+              fontStyle: 'italic',
+              display: 'none',
+            }}
+            className="mobile-scroll-hint">
+              ← Scroll to view full diagram →
+            </p>
+          </div>
+
           <div style={{
-            marginBottom: '2rem',
+            marginTop: '2rem',
           }}>
             <h3 style={{
               fontSize: 'clamp(1.1rem, 3vw, 1.3rem)',
@@ -82,7 +171,7 @@ export default function ProblemPage() {
             }}>
               Scenario: Bank A tokenizes a US Treasury bond
             </h3>
-            
+
             <ul style={{
               listStyle: 'none',
               padding: 0,
@@ -110,40 +199,7 @@ export default function ProblemPage() {
                 <span style={{ position: 'absolute', left: 0, color: 'rgba(239, 68, 68, 0.6)' }}>•</span>
                 Without standardized descriptors, each counterparty requires custom integration code
               </li>
-              <li style={{ marginBottom: '0.75rem', paddingLeft: '1.5rem', position: 'relative' }}>
-                <span style={{ position: 'absolute', left: 0, color: 'rgba(245, 158, 11, 0.7)' }}>•</span>
-                <strong>Consequence:</strong> Settlement delays, manual reconciliation, capital inefficiency and operational risk
-              </li>
             </ul>
-          </div>
-
-          <div>
-            <div style={{
-              marginTop: '3rem',
-              padding: 'clamp(0.5rem, 2vw, 1.5rem)',
-              background: 'rgba(0, 0, 0, 0.2)',
-              borderRadius: '8px',
-              overflowX: 'auto',
-              overflowY: 'hidden',
-              WebkitOverflowScrolling: 'touch',
-              scrollbarWidth: 'thin',
-              scrollbarColor: 'rgba(255, 255, 255, 0.3) rgba(0, 0, 0, 0.2)',
-            }}>
-              <div style={{ minWidth: '600px' }}>
-                <IncompatibilityFlow />
-              </div>
-            </div>
-            <p style={{
-              fontSize: '0.75rem',
-              color: 'rgba(255, 255, 255, 0.4)',
-              textAlign: 'center',
-              marginTop: '0.5rem',
-              fontStyle: 'italic',
-              display: 'none',
-            }}
-            className="mobile-scroll-hint">
-              ← Scroll to view full diagram →
-            </p>
           </div>
           <style jsx>{`
             @media (max-width: 768px) {
@@ -179,8 +235,37 @@ export default function ProblemPage() {
             Every new token still requires bespoke work per counterparty. Even in the best case, this consumes weeks and repeats whenever schemas change.
           </p>
 
+          <div>
+            <div style={{
+              padding: 'clamp(0.5rem, 2vw, 1.5rem)',
+              background: 'rgba(0, 0, 0, 0.2)',
+              borderRadius: '8px',
+              overflowX: 'auto',
+              overflowY: 'hidden',
+              WebkitOverflowScrolling: 'touch',
+              scrollbarWidth: 'thin',
+              scrollbarColor: 'rgba(255, 255, 255, 0.3) rgba(0, 0, 0, 0.2)',
+              marginBottom: '3rem',
+            }}>
+              <div style={{ minWidth: '750px' }}>
+                <IntegrationFlow />
+              </div>
+            </div>
+            <p style={{
+              fontSize: '0.75rem',
+              color: 'rgba(255, 255, 255, 0.4)',
+              textAlign: 'center',
+              marginTop: '0.5rem',
+              fontStyle: 'italic',
+              display: 'none',
+            }}
+            className="mobile-scroll-hint">
+              ← Scroll to view full diagram →
+            </p>
+          </div>
+
           <div style={{
-            marginBottom: '2rem',
+            marginTop: '2rem',
           }}>
             <h3 style={{
               fontSize: 'clamp(1.1rem, 3vw, 1.3rem)',
@@ -190,7 +275,7 @@ export default function ProblemPage() {
             }}>
               The Integration Timeline
             </h3>
-            
+
             <div style={{
               display: 'grid',
               gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
@@ -337,34 +422,6 @@ export default function ProblemPage() {
               </ul>
             </div>
           </div>
-
-          <div>
-            <div style={{
-              padding: 'clamp(0.5rem, 2vw, 1.5rem)',
-              background: 'rgba(0, 0, 0, 0.2)',
-              borderRadius: '8px',
-              overflowX: 'auto',
-              overflowY: 'hidden',
-              WebkitOverflowScrolling: 'touch',
-              scrollbarWidth: 'thin',
-              scrollbarColor: 'rgba(255, 255, 255, 0.3) rgba(0, 0, 0, 0.2)',
-            }}>
-              <div style={{ minWidth: '750px' }}>
-                <IntegrationFlow />
-              </div>
-            </div>
-            <p style={{
-              fontSize: '0.75rem',
-              color: 'rgba(255, 255, 255, 0.4)',
-              textAlign: 'center',
-              marginTop: '0.5rem',
-              fontStyle: 'italic',
-              display: 'none',
-            }}
-            className="mobile-scroll-hint">
-              ← Scroll to view full diagram →
-            </p>
-          </div>
         </section>
 
         {/* Section 4: The TradFi ↔ DeFi Disconnect */}
@@ -392,8 +449,37 @@ export default function ProblemPage() {
             Lack of interoperability between traditional finance and blockchain ecosystems
           </p>
 
+          <div>
+            <div style={{
+              padding: 'clamp(0.5rem, 2vw, 1.5rem)',
+              background: 'rgba(0, 0, 0, 0.2)',
+              borderRadius: '8px',
+              overflowX: 'auto',
+              overflowY: 'hidden',
+              WebkitOverflowScrolling: 'touch',
+              scrollbarWidth: 'thin',
+              scrollbarColor: 'rgba(255, 255, 255, 0.3) rgba(0, 0, 0, 0.2)',
+              marginBottom: '3rem',
+            }}>
+              <div style={{ minWidth: '700px' }}>
+                <FragmentedEcosystem />
+              </div>
+            </div>
+            <p style={{
+              fontSize: '0.75rem',
+              color: 'rgba(255, 255, 255, 0.4)',
+              textAlign: 'center',
+              marginTop: '0.5rem',
+              fontStyle: 'italic',
+              display: 'none',
+            }}
+            className="mobile-scroll-hint">
+              ← Scroll to view full diagram →
+            </p>
+          </div>
+
           <div style={{
-            marginBottom: '2rem',
+            marginTop: '2rem',
           }}>
             <h3 style={{
               fontSize: 'clamp(1.1rem, 3vw, 1.3rem)',
@@ -403,16 +489,16 @@ export default function ProblemPage() {
             }}>
               Cross-Platform Settlement Challenge
             </h3>
-            
+
             <p style={{
               fontSize: 'clamp(0.95rem, 2.5vw, 1.05rem)',
               lineHeight: '1.7',
               color: 'rgba(255, 255, 255, 0.75)',
               marginBottom: '1.5rem',
             }}>
-              Traditional finance systems (traditional brokers, investment banks, investment funds) have standardized on the FIX protocol for decades. 
-              Blockchain-based securities speak an entirely different language—custom JSON schemas, proprietary contract fields, 
-              and fragmented metadata standards. This fundamental incompatibility prevents seamless cross-platform settlement 
+              Traditional finance systems (traditional brokers, investment banks, investment funds) have standardized on the FIX protocol for decades.
+              Blockchain-based securities speak an entirely different language—custom JSON schemas, proprietary contract fields,
+              and fragmented metadata standards. This fundamental incompatibility prevents seamless cross-platform settlement
               and forces institutions to build translation layers that introduce risk, delay, and operational overhead.
             </p>
 
@@ -435,34 +521,6 @@ export default function ProblemPage() {
             </div>
           </div>
 
-          <div>
-            <div style={{
-              padding: 'clamp(0.5rem, 2vw, 1.5rem)',
-              background: 'rgba(0, 0, 0, 0.2)',
-              borderRadius: '8px',
-              overflowX: 'auto',
-              overflowY: 'hidden',
-              WebkitOverflowScrolling: 'touch',
-              scrollbarWidth: 'thin',
-              scrollbarColor: 'rgba(255, 255, 255, 0.3) rgba(0, 0, 0, 0.2)',
-            }}>
-              <div style={{ minWidth: '700px' }}>
-                <FragmentedEcosystem />
-              </div>
-            </div>
-            <p style={{
-              fontSize: '0.75rem',
-              color: 'rgba(255, 255, 255, 0.4)',
-              textAlign: 'center',
-              marginTop: '0.5rem',
-              fontStyle: 'italic',
-              display: 'none',
-            }}
-            className="mobile-scroll-hint">
-              ← Scroll to view full diagram →
-            </p>
-          </div>
-
           <div style={{
             marginTop: '2rem',
             padding: '1.5rem',
@@ -476,7 +534,7 @@ export default function ProblemPage() {
               margin: 0,
               textAlign: 'center',
             }}>
-              <strong>Why this matters:</strong> Without a common language, institutional capital remains siloed. 
+              <strong>Why this matters:</strong> Without a common language, institutional capital remains siloed.
               Cross-platform settlement remains a manual process, preventing the liquidity and efficiency gains that tokenization promises.
             </p>
           </div>
