@@ -44,6 +44,9 @@ type MerkleNodeData = {
   left?: MerkleNodeData;
   right?: MerkleNodeData;
   isHighlighted?: boolean;
+  // For leaves: FIX tag and value information
+  tag?: string;
+  value?: string;
 };
 
 // Example FIX messages for educational purposes
@@ -465,21 +468,57 @@ function MerkleTreeNode({
           {isRoot ? 'Root' : isLeaf ? 'Leaf' : 'Parent'}
         </div>
         
-        {/* Path for leaves */}
-        {isLeaf && node.path && (
-          <div style={{ 
-            fontSize: '0.75rem',
-            color: 'rgba(255,255,255,0.6)',
-            marginBottom: '0.5rem',
-            fontFamily: 'ui-monospace, monospace',
-            fontWeight: '500'
+        {/* Tag and Value for leaves */}
+        {isLeaf && node.tag && node.value && (
+          <div style={{
+            marginBottom: '0.75rem',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '0.25rem'
           }}>
-            {JSON.stringify(node.path)}
+            <div style={{
+              fontSize: '0.8rem',
+              color: 'rgba(96, 165, 250, 0.9)',
+              fontFamily: 'ui-monospace, monospace',
+              fontWeight: '600'
+            }}>
+              Tag {node.tag}
+            </div>
+            {FIX_TAGS[node.tag] && (
+              <div style={{
+                fontSize: '0.7rem',
+                color: 'rgba(255,255,255,0.5)',
+                marginBottom: '0.15rem'
+              }}>
+                {FIX_TAGS[node.tag].name}
+              </div>
+            )}
+            <div style={{
+              fontSize: '0.75rem',
+              color: 'rgba(255,255,255,0.8)',
+              fontFamily: 'ui-monospace, monospace',
+              fontWeight: '500'
+            }}>
+              = {node.value}
+            </div>
           </div>
         )}
-        
+
+        {/* Path for leaves (shown smaller if tag/value present) */}
+        {isLeaf && node.path && (
+          <div style={{
+            fontSize: '0.65rem',
+            color: 'rgba(255,255,255,0.4)',
+            marginBottom: '0.5rem',
+            fontFamily: 'ui-monospace, monospace',
+            fontWeight: '400'
+          }}>
+            Path: {JSON.stringify(node.path)}
+          </div>
+        )}
+
         {/* Hash Value */}
-        <div style={{ 
+        <div style={{
           fontSize: isRoot ? '0.8rem' : '0.75rem',
           fontFamily: 'ui-monospace, monospace',
           color: node.isHighlighted ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.7)',
@@ -1379,11 +1418,54 @@ export default function Page() {
     return highlightHasSelected(node.left, selectedPath) || highlightHasSelected(node.right, selectedPath);
   }
 
+  // Enrich merkle tree with tag and value information from tree data
+  function enrichMerkleTreeWithTagInfo(merkleNode: MerkleNodeData | null, treeData: TreeNodeData | null): MerkleNodeData | null {
+    if (!merkleNode || !treeData) return merkleNode;
+
+    // If this is a leaf node with a path, find the corresponding field in tree data
+    if (merkleNode.type === 'leaf' && merkleNode.path) {
+      const field = findFieldByPath(treeData, merkleNode.path);
+      if (field && field.type === 'scalar') {
+        return {
+          ...merkleNode,
+          tag: field.tag,
+          value: field.value
+        };
+      }
+    }
+
+    // Recursively process children
+    const enrichedLeft = merkleNode.left ? enrichMerkleTreeWithTagInfo(merkleNode.left, treeData) : undefined;
+    const enrichedRight = merkleNode.right ? enrichMerkleTreeWithTagInfo(merkleNode.right, treeData) : undefined;
+
+    return {
+      ...merkleNode,
+      left: enrichedLeft ?? undefined,
+      right: enrichedRight ?? undefined
+    };
+  }
+
+  // Helper function to find a field by path in tree data
+  function findFieldByPath(node: TreeNodeData, targetPath: number[]): TreeNodeData | null {
+    if (!node.path) return null;
+    if (JSON.stringify(node.path) === JSON.stringify(targetPath)) {
+      return node;
+    }
+    if (node.children) {
+      for (const child of node.children) {
+        const found = findFieldByPath(child, targetPath);
+        if (found) return found;
+      }
+    }
+    return null;
+  }
+
   const fixFields = preview?.parsedFields || [];
   const displayTreeData = treeData ? updateTreeExpansion(treeData) : null;
-  
-  // Get Merkle tree from API (with all real keccak256 hashes) and highlight selected path
-  const merkleTree = preview?.merkleTree || null;
+
+  // Get Merkle tree from API (with all real keccak256 hashes), enrich with tag info, and highlight selected path
+  const baseMerkleTree = preview?.merkleTree || null;
+  const enrichedMerkleTree = enrichMerkleTreeWithTagInfo(baseMerkleTree, displayTreeData);
   const selectedPath = pathInput ? (() => {
     try {
       return JSON.parse(pathInput);
@@ -1391,7 +1473,7 @@ export default function Page() {
       return null;
     }
   })() : null;
-  const highlightedMerkleTree = merkleTree && selectedPath ? highlightProofPath(merkleTree, selectedPath) : merkleTree;
+  const highlightedMerkleTree = enrichedMerkleTree && selectedPath ? highlightProofPath(enrichedMerkleTree, selectedPath) : enrichedMerkleTree;
 
   return (
     <div style={{ minHeight: '100vh', background: '#0a0a0a', color: '#ffffff' }}>
@@ -2644,8 +2726,8 @@ export default function Page() {
             {/* Proof Section */}
             <section ref={proofRef} style={{ marginBottom: '4rem' }}>
               <div style={{ marginBottom: '2rem' }}>
-                <h2 style={{ 
-                  fontSize: 'clamp(1.25rem, 3vw, 1.5rem)', 
+                <h2 style={{
+                  fontSize: 'clamp(1.25rem, 3vw, 1.5rem)',
                   fontWeight: '500',
                   marginBottom: '0.5rem',
                   letterSpacing: '-0.01em'
@@ -2653,28 +2735,30 @@ export default function Page() {
                   4. Generate Merkle Proof
                 </h2>
                 <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 'clamp(0.875rem, 2vw, 0.95rem)' }}>
-                  Prove a specific field&apos;s value without revealing other fields
+                  Select a FIX field and create a cryptographic proof that can verify the field&apos;s value <Tooltip content="The proof allows efficient onchain verification of a specific field without decoding the entire CBOR descriptor">onchain with minimal gas</Tooltip>
                 </p>
               </div>
 
               <LearnMore title="How Merkle Proofs Work">
                 <p style={{ marginBottom: '1rem' }}>
-                  <strong>The Problem:</strong><br/>
-                  You want to prove &ldquo;this bond has a 4.25% coupon rate&rdquo; without showing the entire descriptor (which might contain sensitive information like owner details).
+                  <strong>What&apos;s a Merkle Proof?</strong><br/>
+                  A Merkle proof lets you verify that a specific field exists in the onchain descriptor with a specific value, without needing to download and decode the entire CBOR data. This makes verification extremely gas-efficient.
                 </p>
                 <p style={{ marginBottom: '1rem' }}>
-                  <strong>The Solution:</strong><br/>
-                  A Merkle proof is like a receipt. You show:
-                  • The specific field you&apos;re proving (e.g., coupon rate = 4.25%)<br/>
-                  • A few &ldquo;sibling hashes&rdquo; (cryptographic fingerprints of other parts of the tree)<br/>
-                  • The verifier combines these to recompute the Merkle root
+                  <strong>How it works:</strong><br/>
+                  The full FIX descriptor is stored onchain as CBOR data, along with a Merkle root hash. To verify a field:
+                  <br/>• You provide the field value and its path in the CBOR structure
+                  <br/>• You provide a &ldquo;proof&rdquo; - a small set of sibling hashes from the Merkle tree
+                  <br/>• The smart contract recomputes the Merkle root from this data
+                  <br/>• If the recomputed root matches the stored root, the field is verified
                 </p>
                 <p style={{ marginBottom: '1rem' }}>
-                  If the recomputed root matches the one stored on-chain, the proof is valid! This works mathematically - you can&apos;t fake it without knowing the private data.
+                  <strong>Why is this useful?</strong><br/>
+                  Instead of decoding the entire descriptor onchain (expensive), you can verify individual fields efficiently. This enables use cases like &ldquo;prove this bond has a 4.25% coupon rate&rdquo; or &ldquo;verify the maturity date&rdquo; in a single transaction with minimal gas cost.
                 </p>
                 <p>
                   <strong>What&apos;s a &ldquo;path&rdquo;?</strong><br/>
-                  The path is how we navigate the CBOR tree to find a field. For example, [15] means &ldquo;the field at index 15 in the top-level array.&rdquo; You can click any field in the Tree View above to automatically select its path.
+                  The path is how we navigate the CBOR tree to find a field. For simple fields, the path is just the tag number: [15] means &ldquo;FIX tag 15.&rdquo; For nested group fields, paths include the group tag, entry index, and field tag.
                 </p>
               </LearnMore>
 
@@ -2685,14 +2769,15 @@ export default function Page() {
                 borderRadius: '8px',
                 marginBottom: '1.5rem',
                 fontSize: '0.9rem',
-                color: 'rgba(255,255,255,0.75)'
+                color: 'rgba(255,255,255,0.75)',
+                lineHeight: '1.6'
               }}>
-                <strong style={{ color: 'rgba(168, 85, 247, 0.9)' }}>💡 Tip:</strong> Click any field in the &ldquo;Tree View&rdquo; tab above to automatically fill in its path here!
+                <strong style={{ color: 'rgba(168, 85, 247, 0.9)' }}>💡 How it works:</strong> Select a field below to generate a Merkle proof. For example, selecting &ldquo;Tag 223 (CouponRate) = 4.250&rdquo; creates a compact proof that can efficiently verify this field&apos;s value onchain without decoding the entire descriptor.
               </div>
 
               {preview.paths && preview.paths.length > 0 && (
                 <div style={{ marginBottom: '1.5rem' }}>
-                  <div style={{ 
+                  <div style={{
                     fontSize: '0.8rem',
                     color: 'rgba(255,255,255,0.5)',
                     marginBottom: '1rem',
@@ -2700,65 +2785,206 @@ export default function Page() {
                     textTransform: 'uppercase',
                     letterSpacing: '0.05em'
                   }}>
-                    Available Paths
+                    Select a Field to Prove
                   </div>
-                  <div style={{ 
-                    maxHeight: '150px', 
+                  <div style={{
+                    maxHeight: '300px',
                     overflowY: 'auto',
                     border: '1px solid rgba(255,255,255,0.1)',
                     borderRadius: '8px',
                     background: 'rgba(255,255,255,0.03)'
                   }}>
-                    {preview.paths.map((path, idx) => (
-                      <button
-                        key={idx}
-                        onClick={() => setPathInput(JSON.stringify(path))}
-                        style={{
-                          display: 'block',
-                          width: '100%',
-                          textAlign: 'left',
-                          padding: '0.75rem 1rem',
-                          background: 'transparent',
-                          border: 'none',
-                          borderBottom: idx < preview.paths.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none',
-                          cursor: 'pointer',
-                          fontFamily: 'ui-monospace, monospace',
-                          fontSize: '0.875rem',
-                          color: 'rgba(255,255,255,0.7)',
-                          transition: 'all 0.2s'
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
-                          e.currentTarget.style.color = 'rgba(255,255,255,0.9)';
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.background = 'transparent';
-                          e.currentTarget.style.color = 'rgba(255,255,255,0.7)';
-                        }}
-                      >
-                        {JSON.stringify(path)}
-                      </button>
-                    ))}
+                    {preview.paths.map((path, idx) => {
+                      // Get the corresponding tag info
+                      // For simple scalar fields, path is [tagNumber]
+                      // For nested fields in groups, path is [groupTag, entryIndex, fieldTag]
+                      let tag: string | undefined;
+                      let value: string | undefined;
+                      let tagInfo: typeof FIX_TAGS[string] | undefined;
+
+                      // Try to match against tree data first
+                      if (displayTreeData) {
+                        const findFieldByPath = (node: TreeNodeData, targetPath: number[]): TreeNodeData | null => {
+                          if (!node.path) return null;
+                          if (JSON.stringify(node.path) === JSON.stringify(targetPath)) {
+                            return node;
+                          }
+                          if (node.children) {
+                            for (const child of node.children) {
+                              const found = findFieldByPath(child, targetPath);
+                              if (found) return found;
+                            }
+                          }
+                          return null;
+                        };
+
+                        const field = findFieldByPath(displayTreeData, path);
+                        if (field?.type === 'scalar') {
+                          tag = field.tag;
+                          value = field.value;
+                          tagInfo = tag ? FIX_TAGS[tag] : undefined;
+                        }
+                      }
+
+                      // Fallback: if path is simple [tagNumber], look it up in parsed fields
+                      if (!tag && path.length === 1 && fixFields) {
+                        const tagNum = String(path[0]);
+                        const parsedField = fixFields.find(f => f.tag === tagNum);
+                        if (parsedField) {
+                          tag = parsedField.tag;
+                          value = parsedField.value;
+                          tagInfo = parsedField.tagInfo;
+                        }
+                      }
+
+                      return (
+                        <button
+                          key={idx}
+                          onClick={() => setPathInput(JSON.stringify(path))}
+                          style={{
+                            display: 'flex',
+                            width: '100%',
+                            textAlign: 'left',
+                            padding: '0.875rem 1rem',
+                            background: pathInput === JSON.stringify(path) ? 'rgba(168, 85, 247, 0.1)' : 'transparent',
+                            border: 'none',
+                            borderBottom: idx < preview.paths.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none',
+                            cursor: 'pointer',
+                            fontSize: '0.875rem',
+                            color: 'rgba(255,255,255,0.7)',
+                            transition: 'all 0.2s',
+                            alignItems: 'center',
+                            gap: '0.75rem'
+                          }}
+                          onMouseEnter={(e) => {
+                            if (pathInput !== JSON.stringify(path)) {
+                              e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                            }
+                            e.currentTarget.style.color = 'rgba(255,255,255,0.9)';
+                          }}
+                          onMouseLeave={(e) => {
+                            if (pathInput !== JSON.stringify(path)) {
+                              e.currentTarget.style.background = 'transparent';
+                            }
+                            e.currentTarget.style.color = 'rgba(255,255,255,0.7)';
+                          }}
+                        >
+                          {tag && value ? (
+                            <>
+                              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                  <span style={{
+                                    fontFamily: 'ui-monospace, monospace',
+                                    fontWeight: '600',
+                                    color: 'rgba(96, 165, 250, 0.9)',
+                                    fontSize: '0.95rem'
+                                  }}>
+                                    Tag {tag}
+                                  </span>
+                                  {tagInfo && (
+                                    <span style={{
+                                      color: 'rgba(255,255,255,0.5)',
+                                      fontSize: '0.8rem'
+                                    }}>
+                                      {tagInfo.name}
+                                    </span>
+                                  )}
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                  <span style={{
+                                    fontSize: '0.75rem',
+                                    color: 'rgba(255,255,255,0.4)'
+                                  }}>
+                                    Prove that:
+                                  </span>
+                                  <span style={{
+                                    fontFamily: 'ui-monospace, monospace',
+                                    fontSize: '0.85rem',
+                                    color: 'rgba(255,255,255,0.8)',
+                                    fontWeight: '500'
+                                  }}>
+                                    {tag} = {value}
+                                  </span>
+                                </div>
+                              </div>
+                              <div style={{
+                                fontFamily: 'ui-monospace, monospace',
+                                fontSize: '0.7rem',
+                                color: 'rgba(255,255,255,0.3)',
+                                minWidth: 'fit-content'
+                              }}>
+                                {JSON.stringify(path)}
+                              </div>
+                            </>
+                          ) : (
+                            <div style={{
+                              fontFamily: 'ui-monospace, monospace',
+                              flex: 1
+                            }}>
+                              {JSON.stringify(path)}
+                            </div>
+                          )}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               )}
 
               <div style={{ marginBottom: '1.5rem' }}>
-                <div style={{ 
+                <div style={{
                   fontSize: '0.8rem',
                   color: 'rgba(255,255,255,0.5)',
                   marginBottom: '0.75rem',
                   fontWeight: '500',
                   textTransform: 'uppercase',
-                  letterSpacing: '0.05em'
+                  letterSpacing: '0.05em',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center'
                 }}>
-                  Path (JSON Array)
+                  <span>Selected Path</span>
+                  {pathInput && displayTreeData && (() => {
+                    try {
+                      const parsedPath = JSON.parse(pathInput);
+                      const findFieldByPath = (node: TreeNodeData, targetPath: number[]): TreeNodeData | null => {
+                        if (!node.path) return null;
+                        if (JSON.stringify(node.path) === JSON.stringify(targetPath)) {
+                          return node;
+                        }
+                        if (node.children) {
+                          for (const child of node.children) {
+                            const found = findFieldByPath(child, targetPath);
+                            if (found) return found;
+                          }
+                        }
+                        return null;
+                      };
+                      const field = findFieldByPath(displayTreeData, parsedPath);
+                      if (field && field.type === 'scalar') {
+                        const tagInfo = field.tag ? FIX_TAGS[field.tag] : null;
+                        return (
+                          <span style={{
+                            fontSize: '0.75rem',
+                            color: 'rgba(96, 165, 250, 0.9)',
+                            fontWeight: '500',
+                            textTransform: 'none'
+                          }}>
+                            Tag {field.tag}{tagInfo ? ` (${tagInfo.name})` : ''} = {field.value}
+                          </span>
+                        );
+                      }
+                    } catch {
+                      // Invalid JSON, ignore
+                    }
+                    return null;
+                  })()}
                 </div>
-                <input 
-                  value={pathInput} 
-                  onChange={(e) => setPathInput(e.target.value)} 
-                  placeholder='[15] or [454,0,456]'
-                  style={{ 
+                <input
+                  value={pathInput}
+                  onChange={(e) => setPathInput(e.target.value)}
+                  placeholder='Select a field above or enter path like [15]'
+                  style={{
                     width: '100%',
                     padding: '0.875rem 1rem',
                     borderRadius: '8px',
@@ -2769,34 +2995,35 @@ export default function Page() {
                     fontSize: 'clamp(0.8rem, 2vw, 0.875rem)',
                     boxSizing: 'border-box',
                     minHeight: '44px'
-                  }} 
+                  }}
                 />
               </div>
 
-              <button 
+              <button
                 onClick={doProof}
-                disabled={loading}
+                disabled={!pathInput || loading}
                 style={{
-                  background: loading ? 'rgba(255,255,255,0.1)' : '#ffffff',
-                  color: loading ? 'rgba(255,255,255,0.3)' : '#0a0a0a',
+                  background: pathInput && !loading ? '#ffffff' : 'rgba(255,255,255,0.1)',
+                  color: pathInput && !loading ? '#0a0a0a' : 'rgba(255,255,255,0.3)',
                   border: 'none',
                   borderRadius: '6px',
                   padding: '0.875rem 2rem',
                   fontSize: 'clamp(0.85rem, 2vw, 0.9rem)',
                   fontWeight: '500',
-                  cursor: loading ? 'not-allowed' : 'pointer',
+                  cursor: pathInput && !loading ? 'pointer' : 'not-allowed',
                   marginBottom: '2rem',
-                  minHeight: '44px'
+                  minHeight: '44px',
+                  transition: 'all 0.2s'
                 }}
               >
-                {loading ? 'Generating...' : 'Generate Proof'}
+                {loading ? 'Generating...' : pathInput ? 'Generate Proof' : 'Select a Field First'}
               </button>
 
         {proof && (
-                <div 
+                <div
                   ref={proofResultsRef}
-                  style={{ 
-                  display: 'grid', 
+                  style={{
+                  display: 'grid',
                   gap: '1.5rem',
                   padding: '2rem',
                   borderRadius: '12px',
@@ -2810,6 +3037,97 @@ export default function Page() {
                               'transparent',
                   transition: 'all 0.3s ease'
                 }}>
+                  {/* Proof Summary */}
+                  {pathInput && displayTreeData && (() => {
+                    try {
+                      const parsedPath = JSON.parse(pathInput);
+                      const findFieldByPath = (node: TreeNodeData, targetPath: number[]): TreeNodeData | null => {
+                        if (!node.path) return null;
+                        if (JSON.stringify(node.path) === JSON.stringify(targetPath)) {
+                          return node;
+                        }
+                        if (node.children) {
+                          for (const child of node.children) {
+                            const found = findFieldByPath(child, targetPath);
+                            if (found) return found;
+                          }
+                        }
+                        return null;
+                      };
+                      const field = findFieldByPath(displayTreeData, parsedPath);
+                      if (field && field.type === 'scalar') {
+                        const tagInfo = field.tag ? FIX_TAGS[field.tag] : null;
+                        return (
+                          <div style={{
+                            padding: '1.5rem',
+                            borderRadius: '8px',
+                            background: 'rgba(168, 85, 247, 0.1)',
+                            border: '1px solid rgba(168, 85, 247, 0.3)',
+                            marginBottom: '1rem'
+                          }}>
+                            <div style={{
+                              fontSize: '0.75rem',
+                              color: 'rgba(255,255,255,0.5)',
+                              marginBottom: '0.75rem',
+                              fontWeight: '500',
+                              textTransform: 'uppercase',
+                              letterSpacing: '0.05em'
+                            }}>
+                              Proof Generated For
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                <span style={{
+                                  fontFamily: 'ui-monospace, monospace',
+                                  fontWeight: '600',
+                                  color: 'rgba(168, 85, 247, 0.9)',
+                                  fontSize: '1.1rem'
+                                }}>
+                                  Tag {field.tag}
+                                </span>
+                                {tagInfo && (
+                                  <span style={{
+                                    color: 'rgba(255,255,255,0.6)',
+                                    fontSize: '0.9rem'
+                                  }}>
+                                    ({tagInfo.name})
+                                  </span>
+                                )}
+                                <span style={{
+                                  color: 'rgba(255,255,255,0.5)',
+                                  fontSize: '0.9rem'
+                                }}>
+                                  =
+                                </span>
+                                <span style={{
+                                  fontFamily: 'ui-monospace, monospace',
+                                  fontSize: '1rem',
+                                  color: 'rgba(255,255,255,0.9)',
+                                  fontWeight: '500'
+                                }}>
+                                  {field.value}
+                                </span>
+                              </div>
+                              {tagInfo?.description && (
+                                <div style={{
+                                  fontSize: '0.8rem',
+                                  color: 'rgba(255,255,255,0.5)',
+                                  fontStyle: 'italic',
+                                  marginTop: '0.25rem'
+                                }}>
+                                  {tagInfo.description}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      }
+                    } catch {
+                      // Invalid JSON, ignore
+                    }
+                    return null;
+                  })()}
+
                   {/* Verification Status Badge */}
                   {onChainVerificationStatus && (
                     <div style={{
