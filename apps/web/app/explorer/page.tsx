@@ -865,6 +865,11 @@ export default function Page() {
     setPreview(null);
     setProof(null);
     setCurrentStep(0);
+
+    // Auto-scroll to input section
+    setTimeout(() => {
+      scrollToSection(inputRef);
+    }, 100);
   }
 
 
