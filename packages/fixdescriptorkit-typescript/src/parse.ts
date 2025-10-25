@@ -1,4 +1,4 @@
-import { FIXParser } from 'fixparser';
+import { FIXParser, Message } from 'fixparser';
 import type { DescriptorTree, FixSchema, FixValue, GroupEntry, GroupNode, Tag } from './types';
 
 const SESSION_TAGS = new Set<Tag>([
@@ -131,60 +131,48 @@ export function parseFixDescriptor(raw: string, opts?: { allowSOH?: boolean; sch
   const allowSOH = opts?.allowSOH ?? true;
   const schema = opts?.schema ?? {};
 
-  // normalize to SOH-separated string (license-independent)
-  const soh = allowSOH
-    ? raw
-        .replace(/\r?\n/g, '\u0001')  // treat newlines as separators too
-        .replace(/\|/g, '\u0001')
-    : raw;
-
-  // First pass: naive split to ensure we always get business fields even if fixparser is limited
-  const naive: Array<{ tag: Tag; value: FixValue }> = [];
-  for (const p0 of soh.split('\u0001')) {
-    const p = p0.trim();
-    if (!p) continue;
-    const eq = p.indexOf('=');
-    if (eq <= 0) continue;
-    const tagStr = p.slice(0, eq);
-    const val = p.slice(eq + 1);
-    const t = Number(tagStr);
-    if (!Number.isFinite(t)) continue;
-    if (SESSION_TAGS.has(t)) continue;
-    naive.push({ tag: t as Tag, value: ensureString(val) });
-  }
-
-  let flat = naive.slice();
+  let flat: Array<{ tag: Tag; value: FixValue }> = [];
+  flat = [];
   try {
     // Correct FIXParser instantiation and usage
     const parser = new FIXParser();
-    const msg = parser.parse(soh);
-
-    // Handle different FIXParser response formats
-    let fields: any[] = [];
-    if (Array.isArray(msg)) {
-      // msg is an array of messages
-      if (msg.length > 0 && msg[0]) {
-        const firstMsg = msg[0] as any;
-        fields = firstMsg.fields || firstMsg.FieldList || [];
-      }
-    } else if (msg && typeof msg === 'object') {
-      // msg is a single message object
-      const msgObj = msg as any;
-      fields = msgObj.fields || msgObj.FieldList || msgObj.message?.fields || msgObj.message?.FieldList || [];
-    }
+    const msg = parser.parse(raw);
+    if (msg.length === 0) return {};
+    const firstMsg = msg[0] as Message;
 
     const fx: Array<{ tag: Tag; value: FixValue }> = [];
-    for (const field of fields) {
-      const tag = Number(field?.tag ?? field?.Tag ?? field?.[0]);
-      const value = ensureString(field?.value ?? field?.Val ?? field?.[1]);
+    for (const field of firstMsg.data) {
+      const tag = Number(field.tag);
+      const value = ensureString(field.value);
       if (!Number.isFinite(tag)) continue;
       if (SESSION_TAGS.has(tag)) continue;
       fx.push({ tag, value });
     }
-    if (fx.length > flat.length) flat = fx;
+    flat = fx;
   } catch (error) {
-    // ignore parsing errors and use naive approach
     console.warn('FIXParser failed, using naive parsing:', error);
+    // normalize to SOH-separated string (license-independent)
+    const soh = allowSOH
+      ? raw
+          .replace(/\r?\n/g, '')  // remove newlines
+          .replace(/\|/g, '\u0001')  // convert pipes to SOH
+      : raw;
+    // ignore parsing errors and use naive approach
+    // naive parsing to ensure we always get business fields even if fixparser is limited
+    const naive: Array<{ tag: Tag; value: FixValue }> = [];
+    for (const p0 of soh.split('\u0001')) {
+      const p = p0.trim();
+      if (!p) continue;
+      const eq = p.indexOf('=');
+      if (eq <= 0) continue;
+      const tagStr = p.slice(0, eq);
+      const val = p.slice(eq + 1);
+      const t = Number(tagStr);
+      if (!Number.isFinite(t)) continue;
+      if (SESSION_TAGS.has(t)) continue;
+      naive.push({ tag: t as Tag, value: ensureString(val) });
+    }
+    return assembleWithSchema(naive, schema);
   }
 
   return assembleWithSchema(flat, schema);
