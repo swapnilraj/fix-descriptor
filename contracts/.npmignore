@@ -1,0 +1,28 @@
+# Build artifacts
+out/
+cache/
+broadcast/
+lib/
+
+# Test files
+test/
+script/
+
+# Foundry config
+foundry.toml
+remappings.txt
+
+# Development
+.env
+.env.example
+.gitignore
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db

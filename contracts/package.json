@@ -1,0 +1,44 @@
+{
+  "name": "@fixdescriptorkit/contracts",
+  "version": "1.0.0",
+  "description": "ERC-FIX Solidity contracts for embedding FIX Protocol descriptors in tokens",
+  "main": "index.js",
+  "files": [
+    "src/**/*.sol",
+    "LICENSE",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "forge build",
+    "test": "forge test",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "solidity",
+    "ethereum",
+    "fix-protocol",
+    "erc-fix",
+    "smart-contracts",
+    "blockchain",
+    "defi",
+    "security-tokens",
+    "financial-instruments"
+  ],
+  "author": "Swapnil Raj",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/swapnilraj/fixdescriptorkit-evm.git",
+    "directory": "contracts"
+  },
+  "bugs": {
+    "url": "https://github.com/swapnilraj/fixdescriptorkit-evm/issues"
+  },
+  "homepage": "https://github.com/swapnilraj/fixdescriptorkit-evm#readme",
+  "peerDependencies": {
+    "@openzeppelin/contracts": "^5.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
