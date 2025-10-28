@@ -1,23 +1,21 @@
 {
-  "name": "fixdescriptorkit-typescript",
+  "name": "@fixdescriptorkit/ts-sdk",
   "version": "1.0.0",
+  "description": "Transform FIX asset descriptors into canonical CBOR payloads and Merkle commitments for blockchain verification",
   "main": "dist/src/index.js",
+  "module": "dist/src/index.js",
+  "types": "dist/src/index.d.ts",
+  "type": "module",
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "test": "FIXPARSER_LICENSE_KEY=FIXParser_QjtkyzBGvFLS0tLS1CRUdJTiBQR1AgU0lHTkVEIE1FU1NBR0UtLS0tLQpIYXNoOiBTSEE1MTIKCjguMy4zfHN3cEBuZXRoZXJtaW5kLmlvfDE3ODgzOTM2MDAwMDB8ZnJlZQotLS0tLUJFR0lOIFBHUCBTSUdOQVRVUkUtLS0tLQoKd3JzRUFSWUtBRzBGZ21pNGZYZ0pFQ0p3M09mWVRzVEpSUlFBQUFBQUFCd0FJSE5oYkhSQWJtOTBZWFJwCmIyNXpMbTl3Wlc1d1ozQnFjeTV2Y21jaHZ2SS9ZQnR1QlB1R3ozKzY3Y3hWcitPeEZveE8xNzhLL1dtdApUSlAxeGhZaEJDVmdXQ2dKSU50bVgrZVpnaUp3M09mWVRzVEpBQUNHYWdEK0o3ZTN4ZzByc0d4TVYwZlEKMzlIM29EUjFlTitPb2xCR2VKM002djkxVGhBQS8yeEFlSUlhbi9VaS9qT2xyNVdRdGdGR1BpemYrbjdwCmpZMWllZEJVTkxnTgo9eGZNWgotLS0tLUVORCBQR vitest run",
     "dev:test": "vitest",
     "clean": "rm -rf dist",
+    "prepublishOnly": "npm run clean && npm run build",
     "generate-cbor": "npx tsx scripts/generate-solidity-test-data.ts cbor > ../../contracts/src/generated/GeneratedCBORTestData.sol",
     "generate-merkle": "npx tsx scripts/generate-solidity-test-data.ts merkle > ../../contracts/src/generated/GeneratedMerkleData.sol",
     "generate-test-data": "npm run generate-cbor && npm run generate-merkle"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "description": "",
-  "type": "module",
-  "module": "dist/src/index.js",
-  "types": "dist/src/index.d.ts",
   "exports": {
     ".": {
       "import": "./dist/src/index.js",
@@ -25,17 +23,44 @@
     }
   },
   "files": [
-    "dist"
+    "dist/src",
+    "README.md",
+    "LICENSE"
   ],
+  "keywords": [
+    "fix",
+    "fix-protocol",
+    "blockchain",
+    "ethereum",
+    "cbor",
+    "merkle-tree",
+    "financial",
+    "asset-descriptor",
+    "evm",
+    "web3",
+    "defi",
+    "tradfi"
+  ],
+  "author": "Swapnil Raj <swp@nethermind.io>",
+  "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/swapnilraj/fixdescriptorkit-evm.git",
+    "directory": "packages/fixdescriptorkit-typescript"
+  },
+  "homepage": "https://erc-fix.com",
+  "bugs": {
+    "url": "https://github.com/swapnilraj/fixdescriptorkit-evm/issues"
+  },
   "dependencies": {
     "cbor-x": "^1.6.0",
     "fixparser": "^9.3.13",
-    "typescript": "^5.9.2",
     "viem": "^2.37.8",
-    "vitest": "^3.2.4",
     "zod": "^4.1.11"
   },
   "devDependencies": {
-    "@types/node": "^24.5.2"
+    "@types/node": "^24.5.2",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
   }
 }
