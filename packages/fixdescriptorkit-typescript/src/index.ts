@@ -10,13 +10,13 @@ export type {
   GroupSchema,
   FixSchema,
   EncodeAllOptions,
-} from './types';
+} from './types.js';
 
-export { DEMO_FIX_SCHEMA } from './types';
+export { DEMO_FIX_SCHEMA } from './types.js';
 
-export { parseFixDescriptor, treeToFixMessage } from './parse';
-export { buildCanonicalTree } from './canonical';
-export { encodeCanonicalCBOR, decodeCanonicalCBOR } from './cbor';
+export { parseFixDescriptor, treeToFixMessage } from './parse.js';
+export { buildCanonicalTree } from './canonical.js';
+export { encodeCanonicalCBOR, decodeCanonicalCBOR } from './cbor.js';
 export {
   enumerateLeaves,
   computeRoot,
@@ -24,7 +24,7 @@ export {
   verifyProofLocal,
   buildMerkleTreeStructure,
   type MerkleTreeNode,
-} from './merkle';
+} from './merkle.js';
 
 export {
   FIX_44_DICTIONARY,
@@ -33,13 +33,13 @@ export {
   getDictionaryHex,
   applyTagNames,
   type DictionaryEntry,
-} from './dictionary';
+} from './dictionary.js';
 
-import { parseFixDescriptor } from './parse';
-import { buildCanonicalTree } from './canonical';
-import { encodeCanonicalCBOR } from './cbor';
-import { enumerateLeaves, computeRoot } from './merkle';
-import type { CanonicalResult, EncodeAllOptions } from './types';
+import { parseFixDescriptor } from './parse.js';
+import { buildCanonicalTree } from './canonical.js';
+import { encodeCanonicalCBOR } from './cbor.js';
+import { enumerateLeaves, computeRoot } from './merkle.js';
+import type { CanonicalResult, EncodeAllOptions } from './types.js';
 import { keccak256, hexToBytes, bytesToHex } from 'viem';
 
 export function encodeAll(rawFix: string, opts?: EncodeAllOptions): CanonicalResult {
