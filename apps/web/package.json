@@ -13,9 +13,9 @@
   },
   "dependencies": {
     "fixdescriptorkit-typescript": "file:../../packages/fixdescriptorkit-typescript",
-    "next": "15.5.4",
-    "react": "19.1.0",
-    "react-dom": "19.1.0",
+    "next": "^16.1.1",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3",
     "viem": "^2.37.8",
     "zod": "^4.1.11"
   },
