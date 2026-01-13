@@ -1,5 +1,6 @@
 "use client";
 import Link from 'next/link';
+import Image from 'next/image';
 
 type NavigationProps = {
   currentPage: 'problem' | 'spec' | 'explorer';
@@ -24,14 +25,48 @@ export default function Navigation({ currentPage }: NavigationProps) {
         alignItems: 'center', 
         gap: 'clamp(1rem, 3vw, 2rem)' 
       }}>
-        <Link href="/" style={{ 
-            fontSize: 'clamp(1rem, 3vw, 1.25rem)', 
-            fontWeight: '600',
-            color: 'rgba(255,255,255,0.9)',
-            textDecoration: 'none'
-          }}>
-            ERC-FIX
-        </Link>
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 'clamp(1rem, 3vw, 1.5rem)',
+        }}>
+          <Link href="/" style={{ 
+              fontSize: 'clamp(1rem, 3vw, 1.25rem)', 
+              fontWeight: '600',
+              color: 'rgba(255,255,255,0.9)',
+              textDecoration: 'none'
+            }}>
+              ERC-FIX
+          </Link>
+          <a
+            href="https://nethermind.io"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              opacity: 0.6,
+              transition: 'opacity 0.2s',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.opacity = '1';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.opacity = '0.6';
+            }}
+          >
+            <Image
+              src="/brand/nethermind-white-horizontal.svg"
+              alt="Nethermind"
+              width={120}
+              height={28}
+              style={{
+                maxWidth: '100%',
+                height: 'auto',
+              }}
+            />
+          </a>
+        </div>
         <nav style={{ display: 'flex', gap: 'clamp(1rem, 3vw, 2rem)', fontSize: 'clamp(0.8rem, 2vw, 0.9rem)' }}>
           <Link 
             href="/" 

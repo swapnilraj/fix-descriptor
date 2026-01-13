@@ -1,7 +1,6 @@
 {
+  "buildCommand": "npm run generate-verification-json-if-possible && npm -w @fixdescriptorkit/ts-sdk run build && cd apps/web && npx next build",
   "installCommand": "npm install",
-  "buildCommand": "npm run vercel-build",
   "devCommand": "cd apps/web && npm run dev",
-  "framework": "nextjs",
   "outputDirectory": "apps/web/.next"
 }

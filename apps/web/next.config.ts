@@ -9,6 +9,13 @@ const nextConfig: NextConfig = {
   // External packages for server components
   serverExternalPackages: ['fixdescriptorkit-typescript'],
   
+  // Ensure public directory is included in deployment
+  experimental: {
+    outputFileTracingIncludes: {
+      '/': ['./public/**/*'],
+    },
+  },
+  
   // Turbopack configuration
   turbopack: {
     resolveAlias: {
