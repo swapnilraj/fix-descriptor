@@ -3837,9 +3837,48 @@ export default function Page() {
           <p style={{ 
             color: 'rgba(255,255,255,0.5)',
             fontSize: 'clamp(0.8rem, 2vw, 0.875rem)',
-            marginBottom: '1rem'
+            marginBottom: '0.5rem'
           }}>
             Transform FIX descriptors into verifiable onchain commitments
+          </p>
+          <p style={{ 
+            color: 'rgba(255,255,255,0.5)',
+            fontSize: 'clamp(0.8rem, 2vw, 0.875rem)',
+            marginBottom: '1rem'
+          }}>
+            ERC-FIX by{' '}
+            <a
+              href="https://nethermind.io"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                color: 'rgba(255, 255, 255, 0.7)',
+                textDecoration: 'none',
+                transition: 'color 0.2s',
+                display: 'inline-flex',
+                alignItems: 'baseline',
+                gap: '0.5rem',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.color = 'rgba(255, 255, 255, 0.9)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.color = 'rgba(255, 255, 255, 0.7)';
+              }}
+            >
+              <img 
+                src="/nethermind-icon.svg" 
+                alt="Nethermind" 
+                style={{ 
+                  height: '1.2rem', 
+                  width: '1.2rem',
+                  display: 'block',
+                  transform: 'translateY(0.25rem)',
+                  marginLeft: '0.25rem'
+                }} 
+              />
+              Nethermind
+            </a>
           </p>
           <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 'clamp(1rem, 3vw, 2rem)', fontSize: 'clamp(0.8rem, 2vw, 0.875rem)' }}>
               <a 

@@ -911,7 +911,49 @@ export default function ProblemPage() {
         color: 'rgba(255, 255, 255, 0.5)',
         fontSize: '0.9rem',
       }}>
-        <p>ERC-FIX: Standardized FIX descriptors for tokenized securities</p>
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: '1rem',
+        }}>
+          <p style={{ margin: 0 }}>
+            ERC-FIX by{' '}
+            <a
+              href="https://nethermind.io"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                color: 'rgba(255, 255, 255, 0.7)',
+                textDecoration: 'none',
+                transition: 'color 0.2s',
+                display: 'inline-flex',
+                alignItems: 'baseline',
+                gap: '0.5rem',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.color = 'rgba(255, 255, 255, 0.9)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.color = 'rgba(255, 255, 255, 0.7)';
+              }}
+            >
+              <img 
+                src="/nethermind-icon.svg" 
+                alt="Nethermind" 
+                style={{ 
+                  height: '1.2rem', 
+                  width: '1.2rem',
+                  display: 'block',
+                  transform: 'translateY(0.25rem)',
+                  marginLeft: '0.25rem'
+                }} 
+              />
+              Nethermind
+            </a>
+          </p>
+          <p style={{ margin: 0 }}>Standardized FIX descriptors for tokenized securities</p>
+        </div>
         <p className="print-only" style={{ 
           display: 'none', 
           marginTop: '1rem',

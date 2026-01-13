@@ -2358,6 +2358,41 @@ export default function SpecPage() {
             <p style={{ marginBottom: 'clamp(0.75rem, 2vw, 1rem)' }}>
               <strong>FixDescriptorKit Specification v1.0</strong>
             </p>
+            <p style={{ marginBottom: 'clamp(0.75rem, 2vw, 1rem)' }}>
+              ERC-FIX by{' '}
+              <a
+                href="https://nethermind.io"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  color: 'rgba(255, 255, 255, 0.7)',
+                  textDecoration: 'none',
+                  transition: 'color 0.2s',
+                  display: 'inline-flex',
+                  alignItems: 'baseline',
+                  gap: '0.5rem',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.color = 'rgba(255, 255, 255, 0.9)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.color = 'rgba(255, 255, 255, 0.7)';
+                }}
+              >
+                <img 
+                  src="/nethermind-icon.svg" 
+                  alt="Nethermind" 
+                  style={{ 
+                    height: '1.2rem', 
+                    width: '1.2rem',
+                    display: 'block',
+                    transform: 'translateY(0.25rem)',
+                    marginLeft: '0.25rem'
+                  }} 
+                />
+                Nethermind
+              </a>
+            </p>
             <p style={{ marginBottom: 'clamp(0.75rem, 2vw, 1rem)', display: 'flex', flexWrap: 'wrap', gap: 'clamp(1rem, 3vw, 1.5rem)', justifyContent: 'center', alignItems: 'center' }}>
               <Link href="/explorer" style={{ color: 'rgba(255,255,255,0.6)', textDecoration: 'none', minHeight: '44px', display: 'flex', alignItems: 'center' }}>
                 Try the Explorer
