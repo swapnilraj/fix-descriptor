@@ -1,10 +1,10 @@
 "use client";
 import { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
+import Image from 'next/image';
 import Navigation from '@/components/Navigation';
-import { abi as TokenFactoryAbi } from '@/lib/abis/AssetTokenFactory';
 import { abi as AssetTokenAbi } from '@/lib/abis/AssetTokenERC20';
-import { chainFromEnv, getDictionaryAddressOptional } from '@/lib/viemClient';
-import { createPublicClient, http, decodeEventLog } from 'viem';
+import { chainFromEnv } from '@/lib/viemClient';
+import { createPublicClient, http } from 'viem';
 import { AddressLink, TransactionLink } from '@/components/BlockExplorerLink';
 
 // Extend Window interface for MetaMask
@@ -816,7 +816,7 @@ export default function Page() {
 
   const stepsContainerRef = useRef<HTMLDivElement | null>(null);
   const stepIconRefs = useRef<Array<HTMLDivElement | null>>([]);
-  const [stepGeometry, setStepGeometry] = useState<{ width: number; edges: Array<{ left: number; right: number }> }>({ width: 0, edges: [] });
+  const [, setStepGeometry] = useState<{ width: number; edges: Array<{ left: number; right: number }> }>({ width: 0, edges: [] });
 
   useLayoutEffect(() => {
     const container = stepsContainerRef.current;
@@ -1667,7 +1667,7 @@ export default function Page() {
                 minWidth: 'min-content'
               }}
             >
-              {phases.map((phase, phaseIdx) => {
+              {phases.map((phase) => {
                 const phaseSteps = steps.filter(s => s.phase === phase.id);
                 const firstStepIdx = steps.findIndex(s => s.phase === phase.id);
                 const isPhaseActive = phaseSteps.some((_, i) => firstStepIdx + i === currentStep);
@@ -3866,12 +3866,12 @@ export default function Page() {
                 e.currentTarget.style.color = 'rgba(255, 255, 255, 0.7)';
               }}
             >
-              <img 
+              <Image 
                 src="/nethermind-icon.svg" 
-                alt="Nethermind" 
+                alt="Nethermind"
+                width={19}
+                height={19}
                 style={{ 
-                  height: '1.2rem', 
-                  width: '1.2rem',
                   display: 'block',
                   transform: 'translateY(0.25rem)',
                   marginLeft: '0.25rem'

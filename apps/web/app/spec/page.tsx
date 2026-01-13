@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import Navigation from '@/components/Navigation';
 
 export default function SpecPage() {
@@ -2379,12 +2380,12 @@ export default function SpecPage() {
                   e.currentTarget.style.color = 'rgba(255, 255, 255, 0.7)';
                 }}
               >
-                <img 
+                <Image 
                   src="/nethermind-icon.svg" 
-                  alt="Nethermind" 
+                  alt="Nethermind"
+                  width={19}
+                  height={19}
                   style={{ 
-                    height: '1.2rem', 
-                    width: '1.2rem',
                     display: 'block',
                     transform: 'translateY(0.25rem)',
                     marginLeft: '0.25rem'

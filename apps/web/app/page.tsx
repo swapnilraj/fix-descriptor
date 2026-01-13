@@ -1,5 +1,6 @@
 "use client";
 import Link from 'next/link';
+import Image from 'next/image';
 import Navigation from '@/components/Navigation';
 import IncompatibilityFlow from './diagrams/IncompatibilityFlow';
 import IntegrationFlow from './diagrams/IntegrationFlow';
@@ -938,12 +939,12 @@ export default function ProblemPage() {
                 e.currentTarget.style.color = 'rgba(255, 255, 255, 0.7)';
               }}
             >
-              <img 
+              <Image 
                 src="/nethermind-icon.svg" 
-                alt="Nethermind" 
+                alt="Nethermind"
+                width={19}
+                height={19}
                 style={{ 
-                  height: '1.2rem', 
-                  width: '1.2rem',
                   display: 'block',
                   transform: 'translateY(0.25rem)',
                   marginLeft: '0.25rem'
