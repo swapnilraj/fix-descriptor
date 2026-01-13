@@ -86,7 +86,7 @@ dist
 
 # Gatsby files
 .cache/
-public
+# Gatsby public folder (Next.js public folders should be tracked)
 
 # Vuepress build output
 .vuepress/dist
@@ -243,6 +243,7 @@ Icon?
 # Temporary files
 *.tmp
 *.temp
+tmp/
 
 # Build cache files
 .verification-json-cache
