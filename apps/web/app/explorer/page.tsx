@@ -47,6 +47,7 @@ type MerkleNodeData = {
   // For leaves: FIX tag and value information
   tag?: string;
   value?: string;
+  name?: string;
 };
 
 // Example FIX messages for educational purposes
@@ -220,7 +221,6 @@ function TreeNode({
 }) {
   const indent = level * 24;
   const hasChildren = node.children && node.children.length > 0;
-  const tagInfo = node.tag ? FIX_TAGS[node.tag] : null;
 
   return (
     <div style={{ marginLeft: `${indent}px` }}>
@@ -289,12 +289,12 @@ function TreeNode({
               }}>
                 {node.tag}
               </span>
-              {tagInfo && (
+              {node.name && (
                 <span style={{ 
                   fontSize: '0.75rem', 
                   color: 'rgba(255,255,255,0.4)'
                 }}>
-                  {tagInfo.name}
+                  {node.name}
                 </span>
               )}
               {node.value && (
@@ -484,13 +484,13 @@ function MerkleTreeNode({
             }}>
               Tag {node.tag}
             </div>
-            {FIX_TAGS[node.tag] && (
+            {node.name && (
               <div style={{
                 fontSize: '0.7rem',
                 color: 'rgba(255,255,255,0.5)',
                 marginBottom: '0.15rem'
               }}>
-                {FIX_TAGS[node.tag].name}
+                {node.name}
               </div>
             )}
             <div style={{
@@ -598,9 +598,11 @@ function MerkleTreeNode({
 
 export default function Page() {
   const [fixRaw, setFixRaw] = useState('');
+  const [schemaInput, setSchemaInput] = useState('');
+  const [templateId, setTemplateId] = useState('1');
   const [preview, setPreview] = useState<{ 
     root: string; 
-    cborHex: string; 
+    sbeHex: string; 
     leavesCount: number; 
     paths: number[][]; 
     merkleTree: MerkleNodeData;
@@ -883,13 +885,17 @@ export default function Page() {
     try {
       // Simulate step-by-step feedback
       setTimeout(() => setLoadingMessage('Building canonical tree...'), 300);
-      setTimeout(() => setLoadingMessage('Encoding to CBOR...'), 600);
+      setTimeout(() => setLoadingMessage('Encoding to SBE...'), 600);
       setTimeout(() => setLoadingMessage('Generating Merkle tree...'), 900);
       
       const res = await fetch('/api/preview', { 
         method: 'POST', 
         headers: { 'content-type': 'application/json' }, 
-        body: JSON.stringify({ fixRaw }) 
+        body: JSON.stringify({ 
+          fixRaw,
+          schema: schemaInput,
+          templateId: parseInt(templateId)
+        }) 
       });
       
     if (!res.ok) {
@@ -971,7 +977,7 @@ export default function Page() {
           name: tokenName,
           symbol: tokenSymbol,
           initialSupply: tokenSupply,
-          cborHex: preview.cborHex,
+          cborHex: preview.sbeHex,
           root: preview.root
         })
       });
@@ -1196,21 +1202,25 @@ export default function Page() {
 
       setFetchedCBOR(cborBytes);
 
-      // Decode CBOR via API endpoint
+      // Decode SBE via API endpoint
       const decodeResponse = await fetch('/api/decode-cbor', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cborHex: cborBytes })
+        body: JSON.stringify({ 
+          cborHex: cborBytes,
+          schema: schemaInput,
+          templateId: parseInt(templateId)
+        })
       });
 
       if (!decodeResponse.ok) {
         const errorData = await decodeResponse.json();
-        throw new Error(errorData.error || 'Failed to decode CBOR');
+        throw new Error(errorData.error || 'Failed to decode');
       }
 
       const decodeResult = await decodeResponse.json();
-      setDecodedFIX(decodeResult.fixMessage);           // numeric tags
-      setDecodedFIXNamed(decodeResult.fixMessageNamed); // named tags
+      setDecodedFIX(decodeResult.fixMessage);
+      setDecodedFIXNamed(decodeResult.fixMessage); // SBE doesn't have named version yet
       setFetchCBORStatus('success');
       setCurrentStep(7); // Update step indicator to show retrieval complete
 
@@ -1434,7 +1444,8 @@ export default function Page() {
         return {
           ...merkleNode,
           tag: field.tag,
-          value: field.value
+          value: field.value,
+          name: field.name
         };
       }
     }
@@ -1510,7 +1521,7 @@ export default function Page() {
               color: 'rgba(255,255,255,0.75)',
               marginBottom: '1.5rem'
             }}>
-              This interactive tool demonstrates how <Tooltip content="Financial Information eXchange - a standard messaging protocol used by the financial industry for real-time electronic communication">FIX</Tooltip> descriptors are transformed into verifiable on-chain commitments. Follow along as we parse a FIX message, encode it to <Tooltip content="Concise Binary Object Representation - a compact binary format similar to JSON but smaller and deterministic">CBOR</Tooltip>, generate a <Tooltip content="A cryptographic tree structure that allows you to prove specific data is part of a larger dataset without revealing the entire dataset">Merkle tree</Tooltip>, and deploy it to the blockchain.
+              This interactive tool demonstrates how <Tooltip content="Financial Information eXchange - a standard messaging protocol used by the financial industry for real-time electronic communication">FIX</Tooltip> descriptors are transformed into verifiable on-chain commitments. Follow along as we parse a FIX message, encode it to <Tooltip content="Simple Binary Encoding - a high-performance binary format used in financial systems for deterministic encoding">SBE</Tooltip>, generate a <Tooltip content="A cryptographic tree structure that allows you to prove specific data is part of a larger dataset without revealing the entire dataset">Merkle tree</Tooltip>, and deploy it to the blockchain.
             </p>
             
             <LearnMore title="What is this tool for?">
@@ -1521,7 +1532,7 @@ export default function Page() {
                 <strong>The Solution:</strong> Embed standardized FIX descriptors directly in token contracts. This explorer shows you exactly how that works, step by step.
               </p>
               <p>
-                <strong>What you&apos;ll see:</strong> Input a FIX message → Parse and canonicalize → Encode to CBOR → Generate Merkle root → Deploy to blockchain → Verify proofs → Retrieve data. Each step is explained as you go.
+                <strong>What you&apos;ll see:</strong> Input a FIX message → Parse and canonicalize → Encode to SBE → Generate Merkle root → Deploy to blockchain → Verify proofs → Retrieve data. Each step is explained as you go.
               </p>
             </LearnMore>
 
@@ -1878,8 +1889,8 @@ export default function Page() {
                     },
                     {
                       step: '03',
-                      title: 'CBOR Encode',
-                      description: 'Convert to Concise Binary Object Representation using canonical form for compact, deterministic storage.',
+                      title: 'SBE Encode',
+                      description: 'Convert to Simple Binary Encoding using schema for compact, deterministic, high-performance storage.',
                       icon: (
                         <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                           <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
@@ -2150,6 +2161,45 @@ export default function Page() {
             }} 
           />
 
+          <textarea 
+            value={schemaInput} 
+            onChange={(e) => setSchemaInput(e.target.value)} 
+            rows={8} 
+            placeholder="Paste schema here..."
+            style={{ 
+              width: '100%', 
+              padding: '1rem',
+              borderRadius: '8px',
+              border: '1px solid rgba(255,255,255,0.1)',
+              background: 'rgba(255,255,255,0.03)',
+              color: '#ffffff',
+              fontFamily: 'ui-monospace, monospace',
+              fontSize: 'clamp(0.8rem, 2vw, 0.875rem)',
+              marginBottom: '1.5rem',
+              resize: 'vertical',
+              lineHeight: '1.6',
+              boxSizing: 'border-box'
+            }} 
+          />
+
+          <input 
+            value={templateId} 
+            onChange={(e) => setTemplateId(e.target.value)} 
+            placeholder="Template ID"
+            style={{ 
+              width: '100%', 
+              padding: '1rem',
+              borderRadius: '8px',
+              border: '1px solid rgba(255,255,255,0.1)',
+              background: 'rgba(255,255,255,0.03)',
+              color: '#ffffff',
+              fontFamily: 'ui-monospace, monospace',
+              fontSize: 'clamp(0.8rem, 2vw, 0.875rem)',
+              marginBottom: '1.5rem',
+              boxSizing: 'border-box'
+            }} 
+          />
+
           {fixFields.length > 0 && (
             <div style={{ marginBottom: '1.5rem' }}>
               <div style={{ 
@@ -2278,14 +2328,14 @@ export default function Page() {
                   </h2>
                 </div>
                 <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: 'clamp(0.875rem, 2vw, 0.95rem)', marginLeft: '2.25rem' }}>
-                  Your FIX message has been parsed, encoded to <Tooltip content="A space-efficient binary format that's deterministic - the same data always produces the same bytes">CBOR</Tooltip>, and a <Tooltip content="A hash-based tree where each leaf is a field, allowing you to cryptographically prove any field's value">Merkle root</Tooltip> has been generated
+                  Your FIX message has been parsed, encoded to <Tooltip content="Simple Binary Encoding - a high-performance binary format that's deterministic and used in financial systems">SBE</Tooltip>, and a <Tooltip content="A hash-based tree where each leaf is a field, allowing you to cryptographically prove any field's value">Merkle root</Tooltip> has been generated
                 </p>
               </div>
 
-              <LearnMore title="Understanding CBOR and Merkle Trees">
+              <LearnMore title="Understanding SBE and Merkle Trees">
                 <p style={{ marginBottom: '1rem' }}>
-                  <strong>Why CBOR?</strong><br/>
-                  CBOR (Concise Binary Object Representation) is like JSON but binary and smaller. More importantly, it&apos;s <em>deterministic</em> - the same data always encodes to the exact same bytes. This is critical for blockchain because we need everyone to agree on the exact commitment.
+                  <strong>Why SBE?</strong><br/>
+                  SBE (Simple Binary Encoding) is a high-performance binary format used in financial systems. It&apos;s <em>deterministic</em> - the same data with the same schema always encodes to the exact same bytes. This is critical for blockchain because we need everyone to agree on the exact commitment.
                 </p>
                 <p style={{ marginBottom: '1rem' }}>
                   <strong>What&apos;s a Merkle Tree?</strong><br/>
@@ -2352,9 +2402,9 @@ export default function Page() {
                       <span style={{ fontWeight: '500', fontSize: '0.875rem' }}>{preview.leavesCount}</span>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.875rem' }}>CBOR Size</span>
+                      <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.875rem' }}>Encoded Size</span>
                       <span style={{ fontWeight: '500', fontSize: '0.875rem' }}>
-                        {Math.floor((preview.cborHex.length - 2) / 2)} bytes
+                        {Math.floor((preview.sbeHex.length - 2) / 2)} bytes
                       </span>
                     </div>
                   </div>
@@ -2365,7 +2415,7 @@ export default function Page() {
               <div style={{ marginBottom: '1.5rem' }}>
                 <div style={{ display: 'flex', gap: '0.5rem', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
                   {[
-                    { key: 'hex', label: 'CBOR Hex' },
+                    { key: 'hex', label: 'Encoded Hex' },
                     { key: 'tree', label: 'Tree View' },
                     { key: 'merkle', label: 'Merkle Tree' }
                   ].map(({ key, label }) => (
@@ -2402,11 +2452,11 @@ export default function Page() {
                       textTransform: 'uppercase',
                       letterSpacing: '0.05em'
                     }}>
-                      CBOR Hex
+                      SBE Encoded Hex
                     </div>
                     <textarea 
                       readOnly 
-                      value={preview.cborHex} 
+                      value={preview.sbeHex} 
                       rows={6} 
                       style={{ 
                         width: '100%',
@@ -2531,14 +2581,14 @@ export default function Page() {
                     3. Deploy to Blockchain
                   </h3>
                   <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: 'clamp(0.875rem, 2vw, 0.95rem)' }}>
-                    Store your <Tooltip content="The cryptographic hash that represents your entire FIX descriptor">Merkle root</Tooltip> and <Tooltip content="The encoded binary data of your FIX message">CBOR data</Tooltip> on the <Tooltip content="Sepolia is a test network - no real money is used. Get free testnet ETH from faucets.">Sepolia testnet</Tooltip>
+                    Store your <Tooltip content="The cryptographic hash that represents your entire FIX descriptor">Merkle root</Tooltip> and <Tooltip content="The SBE encoded binary data of your FIX message">encoded data</Tooltip> on the <Tooltip content="Sepolia is a test network - no real money is used. Get free testnet ETH from faucets.">Sepolia testnet</Tooltip>
                   </p>
                 </div>
 
                 <LearnMore title="About Blockchain Deployment">
                   <p style={{ marginBottom: '1rem' }}>
                     <strong>What happens when you deploy?</strong><br/>
-                    Deployment creates a new ERC20 token contract on the blockchain with your FIX descriptor embedded. The CBOR data is stored using SSTORE2 (an efficient storage technique), and the Merkle root is saved in the contract.
+                    Deployment creates a new ERC20 token contract on the blockchain with your FIX descriptor embedded. The SBE encoded data is stored using SSTORE2 (an efficient storage technique), and the Merkle root is saved in the contract.
                   </p>
                   <p style={{ marginBottom: '1rem' }}>
                     <strong>Is this free?</strong><br/>
@@ -2546,7 +2596,7 @@ export default function Page() {
                   </p>
                   <p>
                     <strong>What can I do with a deployed token?</strong><br/>
-                    Once deployed, anyone can read the CBOR data from the contract, verify Merkle proofs against the root, and decode the full FIX message. This demonstrates how real tokenized securities could work - with verifiable, standardized descriptors.
+                    Once deployed, anyone can read the encoded data from the contract, verify Merkle proofs against the root, and decode the full FIX message. This demonstrates how real tokenized securities could work - with verifiable, standardized descriptors.
                   </p>
                 </LearnMore>
 
@@ -2805,7 +2855,7 @@ export default function Page() {
                       // For nested fields in groups, path is [groupTag, entryIndex, fieldTag]
                       let tag: string | undefined;
                       let value: string | undefined;
-                      let tagInfo: typeof FIX_TAGS[string] | undefined;
+                      let fieldName: string | undefined;
 
                       // Try to match against tree data first
                       if (displayTreeData) {
@@ -2827,7 +2877,7 @@ export default function Page() {
                         if (field?.type === 'scalar') {
                           tag = field.tag;
                           value = field.value;
-                          tagInfo = tag ? FIX_TAGS[tag] : undefined;
+                          fieldName = field.name; // Use name from tree data (includes schema field names)
                         }
                       }
 
@@ -2838,7 +2888,7 @@ export default function Page() {
                         if (parsedField) {
                           tag = parsedField.tag;
                           value = parsedField.value;
-                          tagInfo = parsedField.tagInfo;
+                          fieldName = parsedField.tagInfo?.name || `Tag ${tag}`;
                         }
                       }
 
@@ -2886,12 +2936,12 @@ export default function Page() {
                                   }}>
                                     Tag {tag}
                                   </span>
-                                  {tagInfo && (
+                                  {fieldName && (
                                     <span style={{
                                       color: 'rgba(255,255,255,0.5)',
                                       fontSize: '0.8rem'
                                     }}>
-                                      {tagInfo.name}
+                                      {fieldName}
                                     </span>
                                   )}
                                 </div>
@@ -2967,7 +3017,6 @@ export default function Page() {
                       };
                       const field = findFieldByPath(displayTreeData, parsedPath);
                       if (field && field.type === 'scalar') {
-                        const tagInfo = field.tag ? FIX_TAGS[field.tag] : null;
                         return (
                           <span style={{
                             fontSize: '0.75rem',
@@ -2975,7 +3024,7 @@ export default function Page() {
                             fontWeight: '500',
                             textTransform: 'none'
                           }}>
-                            Tag {field.tag}{tagInfo ? ` (${tagInfo.name})` : ''} = {field.value}
+                            Tag {field.tag}{field.name ? ` (${field.name})` : ''} = {field.value}
                           </span>
                         );
                       }
@@ -3061,7 +3110,6 @@ export default function Page() {
                       };
                       const field = findFieldByPath(displayTreeData, parsedPath);
                       if (field && field.type === 'scalar') {
-                        const tagInfo = field.tag ? FIX_TAGS[field.tag] : null;
                         return (
                           <div style={{
                             padding: '1.5rem',
@@ -3090,12 +3138,12 @@ export default function Page() {
                                 }}>
                                   Tag {field.tag}
                                 </span>
-                                {tagInfo && (
+                                {field.name && (
                                   <span style={{
                                     color: 'rgba(255,255,255,0.6)',
                                     fontSize: '0.9rem'
                                   }}>
-                                    ({tagInfo.name})
+                                    ({field.name})
                                   </span>
                                 )}
                                 <span style={{
@@ -3113,16 +3161,6 @@ export default function Page() {
                                   {field.value}
                                 </span>
                               </div>
-                              {tagInfo?.description && (
-                                <div style={{
-                                  fontSize: '0.8rem',
-                                  color: 'rgba(255,255,255,0.5)',
-                                  fontStyle: 'italic',
-                                  marginTop: '0.25rem'
-                                }}>
-                                  {tagInfo.description}
-                                </div>
-                              )}
                             </div>
                           </div>
                         );
@@ -3457,7 +3495,7 @@ export default function Page() {
                     6. Retrieve & Decode Data
                   </h2>
                   <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 'clamp(0.875rem, 2vw, 0.95rem)' }}>
-                    Fetch the <Tooltip content="The binary-encoded FIX message stored using SSTORE2">CBOR data</Tooltip> from the deployed contract and decode it back to the original FIX message
+                    Fetch the <Tooltip content="The SBE binary-encoded FIX message stored using SSTORE2">encoded data</Tooltip> from the deployed contract and decode it back to the original FIX message
                   </p>
                   <div style={{
                     marginTop: '0.75rem',

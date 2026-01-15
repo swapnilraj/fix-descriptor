@@ -1,42 +1,79 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { decodeCanonicalCBOR, treeToFixMessage, applyTagNames } from 'fixdescriptorkit-typescript';
 
 export async function POST(request: NextRequest) {
   try {
-    const { cborHex } = await request.json();
+    const { cborHex, schema, templateId } = await request.json();
 
     if (!cborHex || typeof cborHex !== 'string') {
       return NextResponse.json(
-        { error: 'Invalid request: cborHex is required' },
+        { error: 'Invalid request: cborHex (encoded hex) is required' },
         { status: 400 }
       );
     }
 
-    // Convert hex to Uint8Array
-    const hexString = cborHex.startsWith('0x') ? cborHex.slice(2) : cborHex;
-    const bytes = new Uint8Array(hexString.match(/.{1,2}/g)!.map(byte => parseInt(byte, 16)));
+    if (!schema) {
+      return NextResponse.json(
+        { error: 'Invalid request: schema is required for SBE decoding' },
+        { status: 400 }
+      );
+    }
 
-    // Decode CBOR to tree structure
-    const tree = decodeCanonicalCBOR(bytes);
+    if (!templateId) {
+      return NextResponse.json(
+        { error: 'Invalid request: templateId is required for SBE decoding' },
+        { status: 400 }
+      );
+    }
 
-    // Convert tree to FIX format with numeric tags
-    const fixMessage = treeToFixMessage(tree);
+    // Get SBE encoder endpoint from environment
+    const sbeEncoderUrl = process.env.SBE_ENCODER_URL || process.env.NEXT_PUBLIC_SBE_ENCODER_URL;
     
-    // Convert tree to FIX format with human-readable tag names
-    const fixMessageNamed = applyTagNames(tree);
+    if (!sbeEncoderUrl) {
+      throw new Error('SBE_ENCODER_URL environment variable is not configured');
+    }
+
+    // Call SBE decoder API
+    const hexString = cborHex.startsWith('0x') ? cborHex.slice(2) : cborHex;
+    
+    const sbeResponse = await fetch(sbeEncoderUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        schema,
+        encodedMessage: hexString,
+        templateId
+      })
+    });
+
+    if (!sbeResponse.ok) {
+      const errorText = await sbeResponse.text();
+      throw new Error(`SBE decoding failed: ${errorText}`);
+    }
+
+    const sbeResult = await sbeResponse.json();
+
+    if (!sbeResult.success) {
+      throw new Error(`SBE decoding failed: ${sbeResult.error || 'Unknown error'}`);
+    }
+
+    // Build FIX message from decoded fields
+    const decodedFields = sbeResult.decodedFields || {};
+    const fixMessage = Object.entries(decodedFields)
+      .map(([tag, value]) => `${tag}=${value}`)
+      .join('|');
 
     return NextResponse.json({
       success: true,
-      fixMessage,         // numeric tags: "55=AAPL|48=US..."
-      fixMessageNamed,    // named tags: "Symbol=AAPL|SecurityID=US..."
-      tree
+      fixMessage,
+      decodedFields: sbeResult.decodedFields,
+      decodedMessage: sbeResult.decodedMessage
     });
   } catch (error) {
-    console.error('Failed to decode CBOR:', error);
+    console.error('Failed to decode:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 
     return NextResponse.json(
-      { error: `Failed to decode CBOR: ${errorMessage}` },
+      { error: `Failed to decode: ${errorMessage}` },
       { status: 500 }
     );
   }

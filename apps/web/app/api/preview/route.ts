@@ -1,9 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import {
-  DEMO_FIX_SCHEMA,
-  parseFixDescriptor,
   buildCanonicalTree,
-  encodeCanonicalCBOR,
   enumerateLeaves,
   computeRoot,
   buildMerkleTreeStructure,
@@ -11,7 +8,6 @@ import {
   type GroupNode
 } from 'fixdescriptorkit-typescript';
 export const runtime = 'nodejs';
-import { LicenseManager } from 'fixparser';
 
 // FIX Tag reference
 const FIX_TAGS: Record<string, { name: string; description: string }> = {
@@ -44,7 +40,7 @@ type TreeNodeData = {
 };
 
 // Convert DescriptorTree to TreeNodeData format
-function descriptorTreeToTreeData(tree: DescriptorTree): TreeNodeData {
+function descriptorTreeToTreeData(tree: DescriptorTree, schemaFieldMapping: Record<string, { name: string; type: string }> = {}): TreeNodeData {
   const root: TreeNodeData = {
     type: 'root',
     name: 'FIX Descriptor',
@@ -56,14 +52,17 @@ function descriptorTreeToTreeData(tree: DescriptorTree): TreeNodeData {
 
   for (const [tagNum, value] of Object.entries(tree)) {
     const tag = String(tagNum);
-    const tagInfo = FIX_TAGS[tag];
+    // Use schema field mapping first, fallback to FIX_TAGS
+    const schemaField = schemaFieldMapping[tag];
+    const tagInfo = schemaField || FIX_TAGS[tag];
+    const fieldName = schemaField ? schemaField.name : (FIX_TAGS[tag]?.name || `Tag ${tag}`);
 
     if (typeof value === 'string') {
       // Scalar field
       children.push({
         type: 'scalar',
         tag,
-        name: tagInfo?.name || `Tag ${tag}`,
+        name: fieldName,
         value,
         path: [Number(tag)],
         isExpanded: false
@@ -78,12 +77,13 @@ function descriptorTreeToTreeData(tree: DescriptorTree): TreeNodeData {
         
         for (const [entryTagNum, entryValue] of Object.entries(entry)) {
           const entryTag = String(entryTagNum);
-          const entryTagInfo = FIX_TAGS[entryTag];
+          const schemaEntryField = schemaFieldMapping[entryTag];
+          const entryFieldName = schemaEntryField ? schemaEntryField.name : (FIX_TAGS[entryTag]?.name || `Tag ${entryTag}`);
           
           entryChildren.push({
             type: 'scalar',
             tag: entryTag,
-            name: entryTagInfo?.name || `Tag ${entryTag}`,
+            name: entryFieldName,
             value: entryValue as string,
             path: [Number(tag), index + 1, Number(entryTag)],
             isExpanded: false
@@ -102,7 +102,7 @@ function descriptorTreeToTreeData(tree: DescriptorTree): TreeNodeData {
       children.push({
         type: 'group',
         tag,
-        name: tagInfo?.name || `Tag ${tag}`,
+        name: fieldName,
         value: String(groupNode.entries.length),
         children: groupChildren,
         path: [Number(tag)],
@@ -134,18 +134,88 @@ function descriptorTreeToFields(tree: DescriptorTree): Array<{ tag: string; valu
   return fields;
 }
 
+// Build DescriptorTree from SBE parsed fields
+function buildTreeFromSbeFields(parsedFields: Record<string, string>): DescriptorTree {
+  const tree: DescriptorTree = {};
+  
+  for (const [tag, value] of Object.entries(parsedFields)) {
+    // Simple scalar fields (no group support yet, but can be added if needed)
+    tree[Number(tag)] = String(value);
+  }
+  
+  return tree;
+}
+
+// Parse SBE schema to extract field ID to name mapping
+function parseSchemaFieldMapping(schemaXml: string): Record<string, { name: string; type: string }> {
+  const mapping: Record<string, { name: string; type: string }> = {};
+  
+  try {
+    // Simple regex-based parsing to extract field/data elements
+    // Match both <field> and <data> elements
+    const fieldRegex = /<(?:sbe:)?(?:field|data)\s+(?:[^>]*?\s+)?name=["']([^"']+)["'](?:[^>]*?\s+)?id=["'](\d+)["'](?:[^>]*?\s+)?type=["']([^"']+)["']/g;
+    const fieldRegex2 = /<(?:sbe:)?(?:field|data)\s+(?:[^>]*?\s+)?id=["'](\d+)["'](?:[^>]*?\s+)?name=["']([^"']+)["'](?:[^>]*?\s+)?type=["']([^"']+)["']/g;
+    
+    let match;
+    while ((match = fieldRegex.exec(schemaXml)) !== null) {
+      const [, name, id, type] = match;
+      mapping[id] = { name, type };
+    }
+    
+    // Reset and try alternate attribute order
+    while ((match = fieldRegex2.exec(schemaXml)) !== null) {
+      const [, id, name, type] = match;
+      mapping[id] = { name, type };
+    }
+  } catch (e) {
+    console.error('Error parsing schema:', e);
+  }
+  
+  return mapping;
+}
+
 export async function POST(req: NextRequest) {
   try {
-    // Try to set license if provided (best-effort)
-    const key = process.env.FIXPARSER_LICENSE_KEY;
-    if (key) {
-      try { await LicenseManager.setLicenseKey(key); } catch {}
+    const { fixRaw, schema, templateId } = await req.json();
+    
+    // Get SBE encoder endpoint from environment
+    const sbeEncoderUrl = process.env.SBE_ENCODER_URL || process.env.NEXT_PUBLIC_SBE_ENCODER_URL;
+    
+    if (!sbeEncoderUrl) {
+      throw new Error('SBE_ENCODER_URL environment variable is not configured');
     }
+    
+    // Call SBE encoder API first (it will parse the FIX message)
+    const sbeResponse = await fetch(sbeEncoderUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        schema,
+        fixMessage: fixRaw,
+        templateId
+      })
+    });
+    
+    if (!sbeResponse.ok) {
+      const errorText = await sbeResponse.text();
+      throw new Error(`SBE encoding failed: ${errorText}`);
+    }
+    
+    const sbeResult = await sbeResponse.json();
+    
 
-    const { fixRaw } = await req.json();
-    const tree = parseFixDescriptor(fixRaw, { schema: DEMO_FIX_SCHEMA, allowSOH: true });
+    console.log(sbeResult);
+    // Build tree from SBE parsed fields
+    const tree = buildTreeFromSbeFields(sbeResult.parsedFields || {});
     const canonical = buildCanonicalTree(tree);
-    const cbor = encodeCanonicalCBOR(canonical);
+    
+    if (!sbeResult.success) {
+      throw new Error(`SBE encoding failed: ${sbeResult.error || 'Unknown error'}`);
+    }
+    
+    const encodedHex = sbeResult.encodedHex;
+    const sbeHex = encodedHex.startsWith('0x') ? encodedHex : `0x${encodedHex}`;
+    
     const leaves = enumerateLeaves(canonical);
     
     // Build complete Merkle tree structure with all real keccak256 hashes
@@ -153,20 +223,46 @@ export async function POST(req: NextRequest) {
     
     const paths: number[][] = leaves.map((l) => l.path);
     const root = computeRoot(leaves);
-    const cborHex = '0x' + Buffer.from(cbor).toString('hex');
     
-    // Convert parsed tree to UI-friendly formats
-    const treeData = descriptorTreeToTreeData(tree);
-    const parsedFields = descriptorTreeToFields(tree);
+    // Parse schema to get field metadata
+    const schemaFieldMapping = parseSchemaFieldMapping(schema);
+    
+    // Convert parsed tree to UI-friendly formats with schema field names
+    const treeData = descriptorTreeToTreeData(tree, schemaFieldMapping);
+    
+    // Use SBE encoder's parsed fields for display (includes field names from schema)
+    const parsedFieldsFromSbe = sbeResult.parsedFields || {};
+    const mappedFieldsFromSbe = sbeResult.mappedFields || {};
+    
+    // Build field display array with both tag ID and field name from schema
+    const parsedFields = Object.entries(parsedFieldsFromSbe).map(([tag, value]) => {
+      const fieldMetadata = schemaFieldMapping[tag];
+      const fieldName = fieldMetadata ? fieldMetadata.name : `Tag ${tag}`;
+      const fieldType = fieldMetadata ? fieldMetadata.type : 'unknown';
+      
+      return {
+        tag,
+        value: String(value),
+        tagInfo: { 
+          name: fieldName, 
+          description: `Type: ${fieldType}`
+        }
+      };
+    });
     
     return NextResponse.json({ 
       root, 
-      cborHex, 
+      sbeHex, 
       leavesCount: leaves.length, 
       paths,
       merkleTree, // Complete tree structure with all real hashes
       treeData, // Structured tree data for tree view
-      parsedFields // Flat list of fields for display
+      parsedFields, // Fields from SBE encoder with schema metadata
+      sbeMetadata: {
+        mappedFields: mappedFieldsFromSbe,
+        encodedBytes: sbeResult.encodedBytes,
+        schemaFields: schemaFieldMapping
+      }
     });
   } catch (e: unknown) {
     const msg = e instanceof Error
