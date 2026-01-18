@@ -6,6 +6,7 @@ import { abi as AssetTokenAbi } from '@/lib/abis/AssetTokenERC20';
 import { chainFromEnv } from '@/lib/viemClient';
 import { createPublicClient, http } from 'viem';
 import { AddressLink, TransactionLink } from '@/components/BlockExplorerLink';
+import { orchestraToSbe } from '@/lib/orchestraToSbe';
 
 // Extend Window interface for MetaMask
 declare global {
@@ -600,15 +601,171 @@ export default function Page() {
   const [fixRaw, setFixRaw] = useState('');
   const [schemaInput, setSchemaInput] = useState('');
   const [templateId, setTemplateId] = useState('1');
+  const [parsedOrchestra, setParsedOrchestra] = useState<{
+    messageName: string;
+    messageId: string;
+    msgType: string;
+    fields: Array<{ id: string; name: string; type: string; sbeType: string }>;
+  } | null>(null);
+  const [orchestraError, setOrchestraError] = useState<string | null>(null);
+  const [allMessages, setAllMessages] = useState<Array<{ name: string; id: string; msgType: string }>>([]);
+  const [selectedMessageIndex, setSelectedMessageIndex] = useState(0);
+  
+  // Parse Orchestra XML when schema input changes
+  useEffect(() => {
+    if (!schemaInput.trim()) {
+      setParsedOrchestra(null);
+      setOrchestraError(null);
+      return;
+    }
+    
+    try {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(schemaInput, 'text/xml');
+      
+      const parserError = doc.querySelector('parsererror');
+      if (parserError) {
+        setOrchestraError('Invalid XML syntax');
+        setParsedOrchestra(null);
+        return;
+      }
+      
+      // Build field dictionary from <fields> section ONLY (repository-style Orchestra)
+      const fieldDictionary = new Map<string, { name: string; type: string }>();
+      
+      // Find the <fields> container element first
+      let fieldsContainer: Element | null = null;
+      let fieldsContainerList = doc.getElementsByTagName('fields');
+      if (fieldsContainerList.length === 0) {
+        fieldsContainerList = doc.getElementsByTagName('fixr:fields');
+      }
+      if (fieldsContainerList.length > 0) {
+        fieldsContainer = fieldsContainerList[0];
+        
+        // Only get field elements that are direct children of the fields container
+        const children = fieldsContainer.children;
+        for (let i = 0; i < children.length; i++) {
+          const child = children[i];
+          const tagName = child.tagName.toLowerCase();
+          if (tagName === 'field' || tagName === 'fixr:field') {
+            const id = child.getAttribute('id');
+            const name = child.getAttribute('name');
+            const type = child.getAttribute('type');
+            if (id && name && type) {
+              fieldDictionary.set(id, { name, type });
+            }
+          }
+        }
+      }
+      
+      // Get messages (handle namespace-prefixed elements)
+      let messages = doc.getElementsByTagName('message');
+      if (messages.length === 0) {
+        messages = doc.getElementsByTagName('fixr:message');
+      }
+      
+      if (messages.length === 0) {
+        setOrchestraError('No message element found');
+        setParsedOrchestra(null);
+        setAllMessages([]);
+        return;
+      }
+      
+      // Store all messages for selection
+      const messageList: Array<{ name: string; id: string; msgType: string }> = [];
+      for (let i = 0; i < messages.length; i++) {
+        const msg = messages[i];
+        const name = msg.getAttribute('name') || `Message ${i + 1}`;
+        const id = msg.getAttribute('id') || '?';
+        const msgType = msg.getAttribute('msgType') || '?';
+        messageList.push({ name, id, msgType });
+      }
+      setAllMessages(messageList);
+      
+      // Use selected message (default to first)
+      const messageIndex = Math.min(selectedMessageIndex, messages.length - 1);
+      const message = messages[messageIndex];
+      const messageName = message.getAttribute('name') || 'Unknown';
+      const messageId = message.getAttribute('id') || '?';
+      const msgType = message.getAttribute('msgType') || '?';
+      
+      const fields: Array<{ id: string; name: string; type: string; sbeType: string }> = [];
+      
+      // Try to find structure element (first direct child)
+      let structure: Element | null = null;
+      for (let i = 0; i < message.children.length; i++) {
+        const child = message.children[i];
+        const tagName = child.tagName.toLowerCase();
+        if (tagName === 'structure' || tagName === 'fixr:structure') {
+          structure = child;
+          break;
+        }
+      }
+      
+      const sourceElement = structure || message;
+      
+      // Check for fieldRef elements (repository-style with field references)
+      // Only get direct children to avoid nested components/groups
+      let hasFieldRefs = false;
+      for (let i = 0; i < sourceElement.children.length; i++) {
+        const child = sourceElement.children[i];
+        const tagName = child.tagName.toLowerCase();
+        
+        if (tagName === 'fieldref' || tagName === 'fixr:fieldref') {
+          hasFieldRefs = true;
+          const id = child.getAttribute('id');
+          
+          if (id) {
+            if (fieldDictionary.has(id)) {
+              const fieldDef = fieldDictionary.get(id)!;
+              fields.push({ id, name: fieldDef.name, type: fieldDef.type, sbeType: '→ will be converted' });
+            } else {
+              // Field not found in dictionary - might be a component or group ref, skip it
+              continue;
+            }
+          }
+        }
+      }
+      
+      // If no fieldRefs found, look for inline field definitions (simple Orchestra format)
+      if (!hasFieldRefs) {
+        for (let i = 0; i < sourceElement.children.length; i++) {
+          const child = sourceElement.children[i];
+          const tagName = child.tagName.toLowerCase();
+          
+          if (tagName === 'field' || tagName === 'fixr:field') {
+            const id = child.getAttribute('id') || '?';
+            const name = child.getAttribute('name') || '?';
+            const type = child.getAttribute('type') || '?';
+            fields.push({ id, name, type, sbeType: '→ will be converted' });
+          }
+        }
+      }
+      
+      if (fields.length === 0) {
+        setOrchestraError(`No fields found in message "${messageName}". Message may use components/groups which aren't displayed here.`);
+        // Don't return - show the message info even if no direct fields
+      }
+      
+      setParsedOrchestra({ messageName, messageId, msgType, fields });
+      setOrchestraError(null);
+    } catch (error) {
+      setOrchestraError(error instanceof Error ? error.message : 'Parse error');
+      setParsedOrchestra(null);
+    }
+  }, [schemaInput, selectedMessageIndex]);
+  
   const [preview, setPreview] = useState<{ 
     root: string; 
-    sbeHex: string; 
+    sbeHex: string;
+    sbeBase64: string; 
     leavesCount: number; 
     paths: number[][]; 
     merkleTree: MerkleNodeData;
     treeData?: TreeNodeData;
     parsedFields?: Array<{ tag: string; value: string; tagInfo?: typeof FIX_TAGS[string] }>;
   } | null>(null);
+  const [generatedSbeSchema, setGeneratedSbeSchema] = useState<string>('');
   const [pathInput, setPathInput] = useState('');
   const [proof, setProof] = useState<ProofResult>(null);
   const [txInfo, setTxInfo] = useState<React.ReactNode>('');
@@ -866,6 +1023,7 @@ export default function Page() {
     setFixRaw(EXAMPLES[key].fix);
     setPreview(null);
     setProof(null);
+    setGeneratedSbeSchema('');
     setCurrentStep(0);
 
     // Auto-scroll to input section
@@ -878,11 +1036,26 @@ export default function Page() {
   async function doPreview() {
     setProof(null);
     setOnChainVerificationStatus(null); // Reset verification status when preview changes
+    setGeneratedSbeSchema(''); // Reset SBE schema
     setLoading(true);
     setLoadingMessage('Parsing FIX message...');
     setCurrentStep(1);
     
     try {
+      // Convert Orchestra XML to SBE
+      setLoadingMessage('Converting Orchestra to SBE...');
+      let sbeSchema: string;
+      try {
+        sbeSchema = orchestraToSbe(schemaInput, selectedMessageIndex);
+        setGeneratedSbeSchema(sbeSchema); // Store for display
+      } catch (error) {
+        alert(`Failed to convert Orchestra to SBE: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        setCurrentStep(0);
+        setLoadingMessage('');
+        setLoading(false);
+        return;
+      }
+      
       // Simulate step-by-step feedback
       setTimeout(() => setLoadingMessage('Building canonical tree...'), 300);
       setTimeout(() => setLoadingMessage('Encoding to SBE...'), 600);
@@ -893,7 +1066,7 @@ export default function Page() {
         headers: { 'content-type': 'application/json' }, 
         body: JSON.stringify({ 
           fixRaw,
-          schema: schemaInput,
+          schema: sbeSchema,
           templateId: parseInt(templateId)
         }) 
       });
@@ -2165,7 +2338,7 @@ export default function Page() {
             value={schemaInput} 
             onChange={(e) => setSchemaInput(e.target.value)} 
             rows={8} 
-            placeholder="Paste schema here..."
+            placeholder="Paste Orchestra XML schema here..."
             style={{ 
               width: '100%', 
               padding: '1rem',
@@ -2181,6 +2354,156 @@ export default function Page() {
               boxSizing: 'border-box'
             }} 
           />
+
+          {/* Orchestra XML Parser Preview */}
+          {orchestraError && (
+            <div style={{
+              padding: '1rem',
+              marginBottom: '1.5rem',
+              background: 'rgba(239, 68, 68, 0.1)',
+              border: '1px solid rgba(239, 68, 68, 0.3)',
+              borderRadius: '8px',
+              color: 'rgba(239, 68, 68, 0.9)',
+              fontSize: '0.875rem'
+            }}>
+              <strong>⚠️ Parse Error:</strong> {orchestraError}
+            </div>
+          )}
+
+          {parsedOrchestra && (
+            <div style={{ marginBottom: '1.5rem' }}>
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: '0.75rem'
+              }}>
+                <div style={{
+                  fontSize: '0.875rem',
+                  color: 'rgba(255,255,255,0.5)',
+                  fontWeight: '500'
+                }}>
+                  📋 Parsed Orchestra Schema
+                </div>
+                {allMessages.length > 1 && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)' }}>
+                      Message:
+                    </span>
+                    <select
+                      value={selectedMessageIndex}
+                      onChange={(e) => setSelectedMessageIndex(Number(e.target.value))}
+                      style={{
+                        background: 'rgba(255,255,255,0.05)',
+                        border: '1px solid rgba(255,255,255,0.2)',
+                        borderRadius: '6px',
+                        color: 'rgba(255,255,255,0.9)',
+                        padding: '0.375rem 0.75rem',
+                        fontSize: '0.8rem',
+                        cursor: 'pointer',
+                        maxWidth: '300px'
+                      }}
+                    >
+                      {allMessages.map((msg, idx) => (
+                        <option key={idx} value={idx} style={{ background: '#1a1a1a' }}>
+                          {msg.name} (Type: {msg.msgType}, ID: {msg.id})
+                        </option>
+                      ))}
+                    </select>
+                    <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.3)' }}>
+                      {selectedMessageIndex + 1}/{allMessages.length}
+                    </span>
+                  </div>
+                )}
+              </div>
+              <div style={{
+                border: '1px solid rgba(255,255,255,0.1)',
+                borderRadius: '8px',
+                background: 'rgba(255,255,255,0.03)',
+                padding: '1rem'
+              }}>
+                <div style={{
+                  display: 'flex',
+                  gap: '2rem',
+                  marginBottom: '1rem',
+                  paddingBottom: '0.75rem',
+                  borderBottom: '1px solid rgba(255,255,255,0.1)'
+                }}>
+                  <div>
+                    <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.75rem' }}>Message:</span>
+                    <div style={{ fontWeight: '600', color: 'rgba(168, 85, 247, 0.9)' }}>
+                      {parsedOrchestra.messageName}
+                    </div>
+                  </div>
+                  <div>
+                    <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.75rem' }}>MsgType:</span>
+                    <div style={{ fontWeight: '600', color: 'rgba(251, 191, 36, 0.9)' }}>
+                      {parsedOrchestra.msgType}
+                    </div>
+                  </div>
+                  <div>
+                    <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.75rem' }}>ID:</span>
+                    <div style={{ fontWeight: '600', color: 'rgba(96, 165, 250, 0.9)' }}>
+                      {parsedOrchestra.messageId}
+                    </div>
+                  </div>
+                  <div>
+                    <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.75rem' }}>Fields:</span>
+                    <div style={{ fontWeight: '600', color: 'rgba(34, 197, 94, 0.9)' }}>
+                      {parsedOrchestra.fields.length}
+                    </div>
+                  </div>
+                </div>
+                
+                <div style={{
+                  maxHeight: '200px',
+                  overflowY: 'auto'
+                }}>
+                  {parsedOrchestra.fields.map((field, idx) => (
+                    <div
+                      key={idx}
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        padding: '0.5rem 0',
+                        borderBottom: idx < parsedOrchestra.fields.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none',
+                        fontSize: '0.875rem'
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flex: 1 }}>
+                        <span style={{
+                          fontFamily: 'ui-monospace, monospace',
+                          fontWeight: '600',
+                          color: 'rgba(96, 165, 250, 0.9)',
+                          minWidth: '2rem'
+                        }}>
+                          {field.id}
+                        </span>
+                        <span style={{
+                          color: 'rgba(255,255,255,0.9)',
+                          fontWeight: '500'
+                        }}>
+                          {field.name}
+                        </span>
+                      </div>
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.5rem',
+                        color: 'rgba(255,255,255,0.5)',
+                        fontSize: '0.8rem',
+                        fontFamily: 'ui-monospace, monospace'
+                      }}>
+                        <span>{field.type}</span>
+                        <span style={{ color: 'rgba(255,255,255,0.3)' }}>→</span>
+                        <span style={{ color: 'rgba(34, 197, 94, 0.7)' }}>SBE</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
 
           <input 
             value={templateId} 
@@ -2404,7 +2727,7 @@ export default function Page() {
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                       <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.875rem' }}>Encoded Size</span>
                       <span style={{ fontWeight: '500', fontSize: '0.875rem' }}>
-                        {Math.floor((preview.sbeHex.length - 2) / 2)} bytes
+                        {Math.floor((preview.sbeBase64.length * 3) / 4)} bytes
                       </span>
                     </div>
                   </div>
@@ -2415,7 +2738,7 @@ export default function Page() {
               <div style={{ marginBottom: '1.5rem' }}>
                 <div style={{ display: 'flex', gap: '0.5rem', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
                   {[
-                    { key: 'hex', label: 'Encoded Hex' },
+                    { key: 'hex', label: 'Encoded Base64' },
                     { key: 'tree', label: 'Tree View' },
                     { key: 'merkle', label: 'Merkle Tree' }
                   ].map(({ key, label }) => (
@@ -2452,11 +2775,11 @@ export default function Page() {
                       textTransform: 'uppercase',
                       letterSpacing: '0.05em'
                     }}>
-                      SBE Encoded Hex
+                      SBE Encoded Base64
                     </div>
                     <textarea 
                       readOnly 
-                      value={preview.sbeHex} 
+                      value={preview.sbeBase64} 
                       rows={6} 
                       style={{ 
                         width: '100%',
@@ -2472,6 +2795,39 @@ export default function Page() {
                         boxSizing: 'border-box'
                       }} 
                     />
+
+                    {generatedSbeSchema && (
+                      <div style={{ marginTop: '1.5rem' }}>
+                        <div style={{ 
+                          fontSize: '0.8rem',
+                          color: 'rgba(255,255,255,0.5)',
+                          marginBottom: '0.75rem',
+                          fontWeight: '500',
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.05em'
+                        }}>
+                          Generated SBE Schema
+                        </div>
+                        <textarea 
+                          readOnly 
+                          value={generatedSbeSchema} 
+                          rows={12} 
+                          style={{ 
+                            width: '100%',
+                            padding: '1rem',
+                            borderRadius: '8px',
+                            border: '1px solid rgba(255,255,255,0.1)',
+                            background: 'rgba(255,255,255,0.03)',
+                            color: 'rgba(34, 197, 94, 0.8)',
+                            fontFamily: 'ui-monospace, monospace',
+                            fontSize: 'clamp(0.65rem, 1.5vw, 0.7rem)',
+                            resize: 'vertical',
+                            lineHeight: '1.6',
+                            boxSizing: 'border-box'
+                          }} 
+                        />
+                      </div>
+                    )}
                   </>
                 )}
 

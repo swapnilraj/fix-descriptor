@@ -213,8 +213,8 @@ export async function POST(req: NextRequest) {
       throw new Error(`SBE encoding failed: ${sbeResult.error || 'Unknown error'}`);
     }
     
-    const encodedHex = sbeResult.encodedHex;
-    const sbeHex = encodedHex.startsWith('0x') ? encodedHex : `0x${encodedHex}`;
+    const sbeBase64 = sbeResult.encodedBase64;
+    const sbeHex = sbeResult.encodedHex.startsWith('0x') ? sbeResult.encodedHex : `0x${sbeResult.encodedHex}`;
     
     const leaves = enumerateLeaves(canonical);
     
@@ -252,7 +252,8 @@ export async function POST(req: NextRequest) {
     
     return NextResponse.json({ 
       root, 
-      sbeHex, 
+      sbeHex, // For deployment (contracts need hex)
+      sbeBase64, // For display
       leavesCount: leaves.length, 
       paths,
       merkleTree, // Complete tree structure with all real hashes

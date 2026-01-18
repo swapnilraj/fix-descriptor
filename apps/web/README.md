@@ -343,6 +343,31 @@ vercel --prod
 
 See [DEPLOYMENT.md](../../DEPLOYMENT.md) in the root for detailed instructions.
 
+### Schema Format Support
+
+The application accepts **FIX Orchestra XML** as input:
+
+- **Orchestra XML**: Standard FIX protocol specification format
+- Automatically converted to SBE before encoding
+- Supports field types like String, Qty, Price, int, etc.
+
+**Example Orchestra XML** (see `lib/example-orchestra.xml`):
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<repository name="Example" xmlns="http://fixprotocol.io/2020/orchestra/repository">
+  <messages>
+    <message name="Order" id="1">
+      <structure>
+        <field id="11" name="orderId" type="int" presence="required"/>
+        <field id="38" name="quantity" type="Qty" presence="required"/>
+        <field id="44" name="price" type="Price" presence="required"/>
+        <field id="55" name="symbol" type="String" presence="required"/>
+      </structure>
+    </message>
+  </messages>
+</repository>
+```
+
 ### Environment Variables
 
 ```env
