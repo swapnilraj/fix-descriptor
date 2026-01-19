@@ -755,17 +755,44 @@ export default function Page() {
     }
   }, [schemaInput, selectedMessageIndex]);
   
-  // Auto-generate SBE schema when Orchestra is parsed or messageBuilderValues change
+  // Parse FIX raw input and populate message builder
+  useEffect(() => {
+    if (fixRaw.trim()) {
+      const fields: Record<string, string> = {};
+      const pairs = fixRaw.split('|');
+      
+      for (const pair of pairs) {
+        const [tag, value] = pair.split('=');
+        if (tag && value && !['8', '9', '10', '35'].includes(tag)) {
+          fields[tag] = value;
+        }
+      }
+      
+      // Merge with existing values (append, don't replace)
+      setMessageBuilderValues(prev => ({
+        ...prev,
+        ...fields
+      }));
+    }
+  }, [fixRaw]);
+
+  // Auto-generate SBE schema when Orchestra is parsed or message builder values change
   useEffect(() => {
     if (schemaInput.trim()) {
       try {
         // Get field IDs from messageBuilderValues (fields that have been filled in)
-        const filledFieldIds = Object.keys(messageBuilderValues).filter(id => messageBuilderValues[id]?.trim());
+        const filledFieldIds = Object.keys(messageBuilderValues).filter(id => 
+          messageBuilderValues[id] !== undefined && messageBuilderValues[id] !== ''
+        );
         
-        // Generate SBE schema with fields from all components being used
-        // If no fields filled yet, pass undefined to include all components
-        const sbeSchema = orchestraToSbe(schemaInput, filledFieldIds.length > 0 ? filledFieldIds : undefined);
-        setGeneratedSbeSchema(sbeSchema);
+        if (filledFieldIds.length > 0) {
+          // Generate SBE schema only for the fields in the message
+          const sbeSchema = orchestraToSbe(schemaInput, filledFieldIds);
+          setGeneratedSbeSchema(sbeSchema);
+        } else {
+          // No fields filled yet, show empty schema
+          setGeneratedSbeSchema('<!-- No fields in message yet. Add fields to generate schema. -->');
+        }
       } catch (error) {
         console.error('Failed to generate SBE schema:', error);
         setGeneratedSbeSchema('');
@@ -1046,16 +1073,7 @@ export default function Page() {
     setProof(null);
     setCurrentStep(0);
 
-    // Parse FIX message and populate message builder
-    const fields: Record<string, string> = {};
-    const pairs = fixMessage.split('|');
-    for (const pair of pairs) {
-      const [tag, value] = pair.split('=');
-      if (tag && value && !['8', '9', '10', '35'].includes(tag)) {
-        fields[tag] = value;
-      }
-    }
-    setMessageBuilderValues(fields);
+    // The useEffect for fixRaw will handle parsing and populating messageBuilderValues
 
     // Auto-scroll to input section
     setTimeout(() => {
@@ -2400,6 +2418,41 @@ export default function Page() {
             </div>
           )}
 
+          {/* Generated SBE Schema Preview */}
+          {generatedSbeSchema && parsedOrchestra && (
+            <div style={{ marginBottom: '1.5rem' }}>
+              <div style={{
+                fontSize: '0.875rem',
+                color: 'rgba(255,255,255,0.5)',
+                marginBottom: '0.75rem',
+                fontWeight: '500',
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em'
+              }}>
+                🔄 Generated SBE Schema
+              </div>
+              <textarea 
+                readOnly 
+                value={generatedSbeSchema} 
+                rows={10}
+                className="custom-scrollbar"
+                style={{
+                  width: '100%',
+                  padding: '1rem',
+                  borderRadius: '8px',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  background: 'rgba(255,255,255,0.03)',
+                  color: 'rgba(34, 197, 94, 0.9)',
+                  fontFamily: 'ui-monospace, monospace',
+                  fontSize: '0.75rem',
+                  lineHeight: '1.5',
+                  resize: 'vertical',
+                  boxSizing: 'border-box'
+                }}
+              />
+            </div>
+          )}
+
           {parsedOrchestra && (
             <div style={{ marginBottom: '1.5rem' }}>
               <div style={{
@@ -2535,41 +2588,6 @@ export default function Page() {
             </div>
           )}
 
-          {/* Generated SBE Schema Preview */}
-          {generatedSbeSchema && parsedOrchestra && (
-            <div style={{ marginBottom: '1.5rem' }}>
-              <div style={{
-                fontSize: '0.875rem',
-                color: 'rgba(255,255,255,0.5)',
-                marginBottom: '0.75rem',
-                fontWeight: '500',
-                textTransform: 'uppercase',
-                letterSpacing: '0.05em'
-              }}>
-                🔄 Generated SBE Schema
-              </div>
-              <textarea 
-                readOnly 
-                value={generatedSbeSchema} 
-                rows={10}
-                className="custom-scrollbar"
-                style={{
-                  width: '100%',
-                  padding: '1rem',
-                  borderRadius: '8px',
-                  border: '1px solid rgba(255,255,255,0.1)',
-                  background: 'rgba(255,255,255,0.03)',
-                  color: 'rgba(34, 197, 94, 0.9)',
-                  fontFamily: 'ui-monospace, monospace',
-                  fontSize: '0.75rem',
-                  lineHeight: '1.5',
-                  resize: 'vertical',
-                  boxSizing: 'border-box'
-                }}
-              />
-            </div>
-          )}
-
           {/* Message Builder */}
           {parsedOrchestra && parsedOrchestra.fields.filter(f => !['8', '9', '10', '35'].includes(f.id)).length > 0 && (
             <div style={{ marginBottom: '1.5rem' }}>
@@ -2592,7 +2610,13 @@ export default function Page() {
                 <p style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.6)', marginBottom: '1rem' }}>
                   Fill in the business fields. Message updates automatically as you type.
                 </p>
-                <div style={{ display: 'grid', gap: '0.75rem' }}>
+                <div className="custom-scrollbar" style={{ 
+                  display: 'grid', 
+                  gap: '0.75rem',
+                  maxHeight: '400px',
+                  overflowY: 'auto',
+                  paddingRight: '0.5rem'
+                }}>
                   {parsedOrchestra.fields
                     .filter(field => !['8', '9', '10', '35'].includes(field.id))
                     .map((field, idx) => (
@@ -2622,23 +2646,21 @@ export default function Page() {
                         placeholder={`Enter ${field.name}...`}
                         onChange={(e) => {
                           const value = e.target.value;
-                          const newValues = {
-                            ...messageBuilderValues,
-                            [field.id]: value
-                          };
-                          setMessageBuilderValues(newValues);
                           
-                          // Auto-update FIX message
-                          const parts = parsedOrchestra.fields
-                            .filter(f => !['8', '9', '10', '35'].includes(f.id))
-                            .map(f => {
-                              const val = newValues[f.id]?.trim();
-                              return val ? `${f.id}=${val}` : '';
-                            })
-                            .filter(Boolean);
-                          
-                          const fixMessage = parts.length > 0 ? parts.join('|') : '';
-                          setFixRaw(fixMessage);
+                          // Update message builder values (append/merge, not replace)
+                          setMessageBuilderValues(prev => {
+                            const updated = { ...prev, [field.id]: value };
+                            
+                            // Auto-update FIX message with all current values
+                            const parts = Object.entries(updated)
+                              .filter(([id, val]) => val && val.trim() && !['8', '9', '10', '35'].includes(id))
+                              .map(([id, val]) => `${id}=${val}`);
+                            
+                            const fixMessage = parts.length > 0 ? parts.join('|') : '';
+                            setFixRaw(fixMessage);
+                            
+                            return updated;
+                          });
                         }}
                         style={{
                           padding: '0.5rem',

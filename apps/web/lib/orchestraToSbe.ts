@@ -29,120 +29,101 @@ export function orchestraToSbe(orchestraXml: string, fieldIds?: string[]): strin
     const fieldDictionary = new Map<string, { name: string; type: string }>();
     
     // Find the <fields> container element first
+    // Try multiple approaches to handle different namespace styles
     let fieldsContainer: Element | null = null;
+    
+    // Method 1: Try without namespace prefix
     let fieldsContainerList = orchestraDoc.getElementsByTagName('fields');
+    
+    // Method 2: Try with namespace URI
     if (fieldsContainerList.length === 0) {
-      fieldsContainerList = orchestraDoc.getElementsByTagName('fixr:fields');
+      fieldsContainerList = orchestraDoc.getElementsByTagNameNS('http://fixprotocol.io/2016/fixrepository', 'fields');
     }
-    if (fieldsContainerList.length > 0) {
+    
+    // Method 3: Try to find any element with local name 'fields'
+    if (fieldsContainerList.length === 0) {
+      const allElements = orchestraDoc.getElementsByTagName('*');
+      for (let i = 0; i < allElements.length; i++) {
+        const el = allElements[i];
+        if (el.localName === 'fields' || el.tagName.endsWith(':fields')) {
+          fieldsContainer = el;
+          break;
+        }
+      }
+    } else {
       fieldsContainer = fieldsContainerList[0];
+    }
+    
+    if (fieldsContainer) {
+      console.log(`Found fields container with ${fieldsContainer.children.length} children`);
       
       // Only get field elements that are direct children of the fields container
       const children = fieldsContainer.children;
       for (let i = 0; i < children.length; i++) {
         const child = children[i];
-        const tagName = child.tagName.toLowerCase();
-        if (tagName === 'field' || tagName === 'fixr:field') {
+        const localName = child.localName || child.tagName.split(':').pop();
+        
+        if (localName === 'field') {
           const id = child.getAttribute('id');
           const name = child.getAttribute('name');
-          const type = child.getAttribute('type');
-          if (id && name && type) {
+          let type = child.getAttribute('type');
+          
+          // Some fields might have the type in a different attribute or not have a type
+          // Default to String for fields without a type
+          if (!type) {
+            type = 'String';
+          }
+          
+          if (id && name) {
             fieldDictionary.set(id, { name, type });
           }
         }
       }
+    } else {
+      console.warn('Could not find fields container in Orchestra XML');
     }
 
     // Extract component information (handle both namespace-aware and non-namespace queries)
     let components = orchestraDoc.getElementsByTagName('component');
     if (components.length === 0) {
-      components = orchestraDoc.getElementsByTagName('fixr:component');
+      components = orchestraDoc.getElementsByTagNameNS('http://fixprotocol.io/2016/fixrepository', 'component');
     }
     
-    if (components.length === 0) {
-      throw new Error('No components found in Orchestra XML');
-    }
+    console.log(`Found ${components.length} components in Orchestra XML`);
 
-    // Collect all fields from components
-    const allComponentFields = new Map<string, OrchestraField>();
-    const componentNames: string[] = [];
+    // Generate schema only for the fields present in the input message
+    const messageFields = new Map<string, OrchestraField>();
     
-    // If fieldIds provided, only include components that have those fields
-    // Otherwise, include all components
-    for (let i = 0; i < components.length; i++) {
-      const component = components[i];
-      const componentName = component.getAttribute('name') || `Component${i}`;
-      const componentFields: OrchestraField[] = [];
-      
-      // Try to find structure element
-      let structure: Element | null = null;
-      for (let j = 0; j < component.children.length; j++) {
-        const child = component.children[j];
-        const tagName = child.tagName.toLowerCase();
-        if (tagName === 'structure' || tagName === 'fixr:structure') {
-          structure = child;
-          break;
-        }
-      }
-
-      const sourceElement = structure || component;
-      
-      // Extract fieldRef elements
-      for (let j = 0; j < sourceElement.children.length; j++) {
-        const child = sourceElement.children[j];
-        const tagName = child.tagName.toLowerCase();
-        
-        if (tagName === 'fieldref' || tagName === 'fixr:fieldref') {
-          const id = child.getAttribute('id');
-          const required = child.getAttribute('presence') === 'required';
-          
-          if (id && fieldDictionary.has(id)) {
-            const fieldDef = fieldDictionary.get(id)!;
-            componentFields.push({
-              id,
-              name: fieldDef.name,
-              type: mapOrchestraTypeToSbe(fieldDef.type),
-              required,
-              description: undefined
-            });
-          }
-        } else if (tagName === 'field' || tagName === 'fixr:field') {
-          // Inline field definition
-          const id = child.getAttribute('id');
-          const name = child.getAttribute('name');
-          const type = child.getAttribute('type');
-          if (id && name && type) {
-            componentFields.push({
-              id,
-              name,
-              type: mapOrchestraTypeToSbe(type),
-              required: child.getAttribute('presence') === 'required',
-              description: undefined
-            });
-          }
-        }
-      }
-      
-      // If fieldIds specified, only include this component if it has matching fields
-      // If fieldIds not specified, include all components
-      const shouldInclude = !fieldIds || componentFields.some(f => fieldIds.includes(f.id));
-      
-      if (shouldInclude && componentFields.length > 0) {
-        componentNames.push(componentName);
-        componentFields.forEach(field => {
-          if (!allComponentFields.has(field.id)) {
-            allComponentFields.set(field.id, field);
-          }
+    if (!fieldIds || fieldIds.length === 0) {
+      throw new Error('No field IDs provided. Cannot generate SBE schema without knowing which fields to include.');
+    }
+    
+    console.log(`Generating SBE schema for ${fieldIds.length} field(s): ${fieldIds.join(', ')}`);
+    
+    // Add each requested field from the field dictionary
+    for (const fieldId of fieldIds) {
+      if (fieldDictionary.has(fieldId)) {
+        const fieldDef = fieldDictionary.get(fieldId)!;
+        messageFields.set(fieldId, {
+          id: fieldId,
+          name: fieldDef.name,
+          type: mapOrchestraTypeToSbe(fieldDef.type),
+          required: false,
+          description: undefined
         });
+      } else {
+        console.warn(`Field ID ${fieldId} not found in Orchestra field dictionary`);
       }
     }
     
-    const fields: OrchestraField[] = Array.from(allComponentFields.values());
-    const messageName = componentNames.length > 0 ? componentNames.join('_') : 'SecurityDefinition';
+    const fields: OrchestraField[] = Array.from(messageFields.values());
+    console.log(`Generated SBE schema with ${fields.length} fields`);
+    
+    const messageName = 'FIXMessage';
     const messageId = '1';
 
     if (fields.length === 0) {
-      throw new Error(`No fields found in Orchestra components. Components may only contain nested groups which are not yet supported for SBE conversion.`);
+      throw new Error(`No valid fields found. Requested field IDs: ${fieldIds.join(', ')}`);
     }
 
     // Generate SBE schema
