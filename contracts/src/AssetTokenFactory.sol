@@ -8,10 +8,10 @@ import "./IFixDescriptor.sol";
 /**
  * @title AssetTokenFactory
  * @notice Factory contract for deploying AssetTokenERC20 contracts with embedded FIX descriptors
- * @dev Simplifies the deployment process by handling token creation, CBOR deployment, and descriptor setup
+ * @dev Simplifies the deployment process by handling token creation, SBE deployment, and descriptor setup
  */
 contract AssetTokenFactory {
-    /// @notice Data contract factory for CBOR storage
+    /// @notice Data contract factory for SBE storage
     DataContractFactory public immutable dataFactory;
 
     /// @notice Array of all deployed asset tokens
@@ -33,7 +33,7 @@ contract AssetTokenFactory {
     event DescriptorSet(
         address indexed tokenAddress,
         bytes32 indexed fixRoot,
-        address fixCBORPtr
+        address fixSBEPtr
     );
 
     /**
@@ -73,25 +73,24 @@ contract AssetTokenFactory {
      * @param name Token name
      * @param symbol Token symbol
      * @param initialSupply Initial token supply
-     * @param cborData CBOR-encoded descriptor data
-     * @param descriptor The complete FixDescriptor struct (including dictionaryContract for human-readable output)
+     * @param sbeData SBE-encoded descriptor data
+     * @param descriptor The complete FixDescriptor struct
      * @return tokenAddress Address of the deployed token
-     * @return cborPtr Address of the deployed CBOR data contract
-     * @dev The descriptor should include dictionaryContract address to enable getHumanReadableDescriptor() function
+     * @return sbePtr Address of the deployed SBE data contract
      */
     function deployWithDescriptor(
         string memory name,
         string memory symbol,
         uint256 initialSupply,
-        bytes memory cborData,
+        bytes memory sbeData,
         IFixDescriptor.FixDescriptor memory descriptor
-    ) external returns (address tokenAddress, address cborPtr) {
-        // Deploy CBOR data first
-        cborPtr = dataFactory.deploy(cborData);
+    ) external returns (address tokenAddress, address sbePtr) {
+        // Deploy SBE data first
+        sbePtr = dataFactory.deploy(sbeData);
 
-        // Update descriptor with the deployed CBOR pointer
-        descriptor.fixCBORPtr = cborPtr;
-        descriptor.fixCBORLen = uint32(cborData.length);
+        // Update descriptor with the deployed SBE pointer
+        descriptor.fixSBEPtr = sbePtr;
+        descriptor.fixSBELen = uint32(sbeData.length);
 
         // Deploy the token contract with factory as temporary owner (to set descriptor)
         AssetTokenERC20 token = new AssetTokenERC20(name, symbol, initialSupply, address(this));
@@ -109,7 +108,7 @@ contract AssetTokenFactory {
         tokensByDeployer[msg.sender].push(tokenAddress);
 
         emit AssetTokenDeployed(tokenAddress, msg.sender, name, symbol, initialSupply);
-        emit DescriptorSet(tokenAddress, descriptor.fixRoot, cborPtr);
+        emit DescriptorSet(tokenAddress, descriptor.fixRoot, sbePtr);
     }
 
     /**

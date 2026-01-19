@@ -56,17 +56,17 @@ const EXAMPLES = {
   treasury: {
     name: "US Treasury Bond",
     description: "A simple government security with basic fields",
-    fix: "8=FIX.4.4|9=0000|35=d|55=USTB-2030-11-15|48=US91282CEZ76|22=4|167=TBOND|461=DBFTFR|541=20301115|223=4.250|15=USD|10=000"
+    fix: "55=USTB-2030-11-15|48=US91282CEZ76|22=4|167=1|461=DBFTFR|541=20301115|223=4250|15=USD"
   },
   corporate: {
     name: "Corporate Bond",
     description: "Corporate bond with nested groups and multiple identifiers",
-    fix: "8=FIX.4.4|9=0000|35=d|55=ACME-CORP-2028|48=US000402AJ19|22=1|167=CORP|461=DBFXXX|15=USD|541=20280515|223=3.750|454=2|455=000402AJ1|456=1|455=US000402AJ19|456=4|453=2|448=ISSUER_ACME|447=D|452=1|448=TRUSTEE_BANK|447=D|452=24|10=000"
+    fix: "55=ACME-CORP-2028|48=US000402AJ19|22=1|167=2|461=DBFXXX|15=USD|541=20280515|223=3750"
   },
   simple: {
     name: "Simple Equity",
     description: "Basic equity instrument with minimal fields",
-    fix: "8=FIX.4.4|9=0000|35=d|55=AAPL|48=US0378331005|22=1|167=CS|15=USD|10=000"
+    fix: "55=AAPL|48=US0378331005|22=1|167=3|15=USD"
   }
 };
 
@@ -600,7 +600,6 @@ function MerkleTreeNode({
 export default function Page() {
   const [fixRaw, setFixRaw] = useState('');
   const [schemaInput, setSchemaInput] = useState('');
-  const [templateId, setTemplateId] = useState('1');
   const [parsedOrchestra, setParsedOrchestra] = useState<{
     messageName: string;
     messageId: string;
@@ -610,6 +609,7 @@ export default function Page() {
   const [orchestraError, setOrchestraError] = useState<string | null>(null);
   const [allMessages, setAllMessages] = useState<Array<{ name: string; id: string; msgType: string }>>([]);
   const [selectedMessageIndex, setSelectedMessageIndex] = useState(0);
+  const [messageBuilderValues, setMessageBuilderValues] = useState<Record<string, string>>({});
   
   // Parse Orchestra XML when schema input changes
   useEffect(() => {
@@ -658,36 +658,36 @@ export default function Page() {
         }
       }
       
-      // Get messages (handle namespace-prefixed elements)
-      let messages = doc.getElementsByTagName('message');
-      if (messages.length === 0) {
-        messages = doc.getElementsByTagName('fixr:message');
+      // Get components (handle namespace-prefixed elements)
+      let components = doc.getElementsByTagName('component');
+      if (components.length === 0) {
+        components = doc.getElementsByTagName('fixr:component');
       }
       
-      if (messages.length === 0) {
-        setOrchestraError('No message element found');
+      if (components.length === 0) {
+        setOrchestraError('No component element found');
         setParsedOrchestra(null);
         setAllMessages([]);
         return;
       }
       
-      // Store all messages for selection
+      // Store all components for selection
       const messageList: Array<{ name: string; id: string; msgType: string }> = [];
-      for (let i = 0; i < messages.length; i++) {
-        const msg = messages[i];
-        const name = msg.getAttribute('name') || `Message ${i + 1}`;
-        const id = msg.getAttribute('id') || '?';
-        const msgType = msg.getAttribute('msgType') || '?';
-        messageList.push({ name, id, msgType });
+      for (let i = 0; i < components.length; i++) {
+        const comp = components[i];
+        const name = comp.getAttribute('name') || `Component ${i + 1}`;
+        const id = comp.getAttribute('id') || '?';
+        const category = comp.getAttribute('category') || '?';
+        messageList.push({ name, id, msgType: category });
       }
       setAllMessages(messageList);
       
-      // Use selected message (default to first)
-      const messageIndex = Math.min(selectedMessageIndex, messages.length - 1);
-      const message = messages[messageIndex];
+      // Use selected component (default to first)
+      const messageIndex = Math.min(selectedMessageIndex, components.length - 1);
+      const message = components[messageIndex];
       const messageName = message.getAttribute('name') || 'Unknown';
       const messageId = message.getAttribute('id') || '?';
-      const msgType = message.getAttribute('msgType') || '?';
+      const msgType = message.getAttribute('category') || '?';
       
       const fields: Array<{ id: string; name: string; type: string; sbeType: string }> = [];
       
@@ -743,7 +743,7 @@ export default function Page() {
       }
       
       if (fields.length === 0) {
-        setOrchestraError(`No fields found in message "${messageName}". Message may use components/groups which aren't displayed here.`);
+        setOrchestraError(`No fields found in component "${messageName}". Component may use nested groups which aren't displayed here.`);
         // Don't return - show the message info even if no direct fields
       }
       
@@ -754,6 +754,26 @@ export default function Page() {
       setParsedOrchestra(null);
     }
   }, [schemaInput, selectedMessageIndex]);
+  
+  // Auto-generate SBE schema when Orchestra is parsed or messageBuilderValues change
+  useEffect(() => {
+    if (schemaInput.trim()) {
+      try {
+        // Get field IDs from messageBuilderValues (fields that have been filled in)
+        const filledFieldIds = Object.keys(messageBuilderValues).filter(id => messageBuilderValues[id]?.trim());
+        
+        // Generate SBE schema with fields from all components being used
+        // If no fields filled yet, pass undefined to include all components
+        const sbeSchema = orchestraToSbe(schemaInput, filledFieldIds.length > 0 ? filledFieldIds : undefined);
+        setGeneratedSbeSchema(sbeSchema);
+      } catch (error) {
+        console.error('Failed to generate SBE schema:', error);
+        setGeneratedSbeSchema('');
+      }
+    } else {
+      setGeneratedSbeSchema('');
+    }
+  }, [schemaInput, selectedMessageIndex, messageBuilderValues]);
   
   const [preview, setPreview] = useState<{ 
     root: string; 
@@ -1020,11 +1040,22 @@ export default function Page() {
   }, [steps.length]);
 
   function loadExample(key: keyof typeof EXAMPLES) {
-    setFixRaw(EXAMPLES[key].fix);
+    const fixMessage = EXAMPLES[key].fix;
+    setFixRaw(fixMessage);
     setPreview(null);
     setProof(null);
-    setGeneratedSbeSchema('');
     setCurrentStep(0);
+
+    // Parse FIX message and populate message builder
+    const fields: Record<string, string> = {};
+    const pairs = fixMessage.split('|');
+    for (const pair of pairs) {
+      const [tag, value] = pair.split('=');
+      if (tag && value && !['8', '9', '10', '35'].includes(tag)) {
+        fields[tag] = value;
+      }
+    }
+    setMessageBuilderValues(fields);
 
     // Auto-scroll to input section
     setTimeout(() => {
@@ -1036,25 +1067,21 @@ export default function Page() {
   async function doPreview() {
     setProof(null);
     setOnChainVerificationStatus(null); // Reset verification status when preview changes
-    setGeneratedSbeSchema(''); // Reset SBE schema
     setLoading(true);
     setLoadingMessage('Parsing FIX message...');
     setCurrentStep(1);
     
     try {
-      // Convert Orchestra XML to SBE
-      setLoadingMessage('Converting Orchestra to SBE...');
-      let sbeSchema: string;
-      try {
-        sbeSchema = orchestraToSbe(schemaInput, selectedMessageIndex);
-        setGeneratedSbeSchema(sbeSchema); // Store for display
-      } catch (error) {
-        alert(`Failed to convert Orchestra to SBE: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      // Use the already-generated SBE schema
+      if (!generatedSbeSchema) {
+        alert('SBE schema not available. Please ensure Orchestra XML is valid.');
         setCurrentStep(0);
         setLoadingMessage('');
         setLoading(false);
         return;
       }
+      
+      const sbeSchema = generatedSbeSchema;
       
       // Simulate step-by-step feedback
       setTimeout(() => setLoadingMessage('Building canonical tree...'), 300);
@@ -1066,8 +1093,7 @@ export default function Page() {
         headers: { 'content-type': 'application/json' }, 
         body: JSON.stringify({ 
           fixRaw,
-          schema: sbeSchema,
-          templateId: parseInt(templateId)
+          schema: sbeSchema
         }) 
       });
       
@@ -1381,8 +1407,7 @@ export default function Page() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           cborHex: cborBytes,
-          schema: schemaInput,
-          templateId: parseInt(templateId)
+          schema: schemaInput
         })
       });
 
@@ -2287,73 +2312,78 @@ export default function Page() {
               marginBottom: '0.5rem',
               letterSpacing: '-0.01em'
             }}>
-              1. Input FIX Message
+              1. Input Schema & Message
             </h2>
             <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 'clamp(0.875rem, 2vw, 0.95rem)' }}>
-              Start by entering a <Tooltip content="A tag-value message format used globally by banks, brokers, and exchanges to communicate trade information">FIX Security Definition message</Tooltip>
+              Start by entering an Orchestra XML schema, then build or paste a FIX message
             </p>
           </div>
 
-          <LearnMore title="Understanding FIX Messages">
-            <p style={{ marginBottom: '1rem' }}>
-              <strong>What is FIX?</strong><br/>
-              FIX (Financial Information eXchange) is the messaging standard that powers modern financial markets. Banks, brokers, exchanges, and asset managers use it to communicate trade details, security information, and market data in real-time.
-            </p>
-            <p style={{ marginBottom: '1rem' }}>
-              <strong>Message Format:</strong><br/>
-              FIX messages use a simple tag=value format. Each tag is a number representing a specific field:<br/>
-              • Tag 55 = Symbol (e.g., &ldquo;AAPL&rdquo;)<br/>
-              • Tag 48 = SecurityID (e.g., a CUSIP or ISIN)<br/>
-              • Tag 167 = SecurityType (e.g., &ldquo;TBOND&rdquo; for Treasury Bond)<br/>
-              Tags are separated by the | character (representing SOH - Start of Header in the actual protocol).
-            </p>
-            <p>
-              <strong>What gets encoded?</strong><br/>
-              Only business/instrument fields are encoded into the on-chain commitment. Session fields (tags 8, 9, 10, 35) are excluded because they&apos;re for message transport, not instrument definition.
-            </p>
-          </LearnMore>
-
-          <textarea 
-            value={fixRaw} 
-            onChange={(e) => setFixRaw(e.target.value)} 
-            rows={8} 
-            placeholder="Paste FIX message here..."
-            style={{ 
-              width: '100%', 
-              padding: '1rem',
-              borderRadius: '8px',
-              border: '1px solid rgba(255,255,255,0.1)',
-              background: 'rgba(255,255,255,0.03)',
-              color: '#ffffff',
-              fontFamily: 'ui-monospace, monospace',
-              fontSize: 'clamp(0.8rem, 2vw, 0.875rem)',
-              marginBottom: '1.5rem',
-              resize: 'vertical',
-              lineHeight: '1.6',
-              boxSizing: 'border-box'
-            }} 
-          />
-
-          <textarea 
-            value={schemaInput} 
-            onChange={(e) => setSchemaInput(e.target.value)} 
-            rows={8} 
-            placeholder="Paste Orchestra XML schema here..."
-            style={{ 
-              width: '100%', 
-              padding: '1rem',
-              borderRadius: '8px',
-              border: '1px solid rgba(255,255,255,0.1)',
-              background: 'rgba(255,255,255,0.03)',
-              color: '#ffffff',
-              fontFamily: 'ui-monospace, monospace',
-              fontSize: 'clamp(0.8rem, 2vw, 0.875rem)',
-              marginBottom: '1.5rem',
-              resize: 'vertical',
-              lineHeight: '1.6',
-              boxSizing: 'border-box'
-            }} 
-          />
+          {/* Schema Input */}
+          <div style={{ marginBottom: '1.5rem' }}>
+            <div style={{
+              fontSize: '0.875rem',
+              color: 'rgba(255,255,255,0.5)',
+              marginBottom: '0.75rem',
+              fontWeight: '500',
+              textTransform: 'uppercase',
+              letterSpacing: '0.05em'
+            }}>
+              Orchestra XML Schema
+            </div>
+            <textarea 
+              value={schemaInput} 
+              onChange={(e) => setSchemaInput(e.target.value)} 
+              rows={8} 
+              placeholder="Paste Orchestra XML schema here..."
+              className="no-scrollbar"
+              style={{ 
+                width: '100%', 
+                padding: '1rem',
+                borderRadius: '8px',
+                border: '1px solid rgba(255,255,255,0.1)',
+                background: 'rgba(255,255,255,0.03)',
+                color: '#ffffff',
+                fontFamily: 'ui-monospace, monospace',
+                fontSize: 'clamp(0.8rem, 2vw, 0.875rem)',
+                resize: 'vertical',
+                lineHeight: '1.6',
+                boxSizing: 'border-box'
+              }} 
+            />
+            <button
+              onClick={async () => {
+                try {
+                  const response = await fetch('/ORCHESTRAFIX44.xml');
+                  const text = await response.text();
+                  setSchemaInput(text);
+                } catch (error) {
+                  console.error('Failed to load Orchestra schema:', error);
+                }
+              }}
+              style={{
+                marginTop: '0.75rem',
+                padding: '0.5rem 1rem',
+                background: 'rgba(168, 85, 247, 0.1)',
+                border: '1px solid rgba(168, 85, 247, 0.3)',
+                borderRadius: '6px',
+                color: 'rgba(168, 85, 247, 0.9)',
+                fontSize: '0.875rem',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgba(168, 85, 247, 0.15)';
+                e.currentTarget.style.borderColor = 'rgba(168, 85, 247, 0.5)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'rgba(168, 85, 247, 0.1)';
+                e.currentTarget.style.borderColor = 'rgba(168, 85, 247, 0.3)';
+              }}
+            >
+              Load FIX 4.4 Orchestra Schema
+            </button>
+          </div>
 
           {/* Orchestra XML Parser Preview */}
           {orchestraError && (
@@ -2388,7 +2418,7 @@ export default function Page() {
                 {allMessages.length > 1 && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                     <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)' }}>
-                      Message:
+                      Component:
                     </span>
                     <select
                       value={selectedMessageIndex}
@@ -2406,7 +2436,7 @@ export default function Page() {
                     >
                       {allMessages.map((msg, idx) => (
                         <option key={idx} value={idx} style={{ background: '#1a1a1a' }}>
-                          {msg.name} (Type: {msg.msgType}, ID: {msg.id})
+                          {msg.name} (Category: {msg.msgType}, ID: {msg.id})
                         </option>
                       ))}
                     </select>
@@ -2430,13 +2460,13 @@ export default function Page() {
                   borderBottom: '1px solid rgba(255,255,255,0.1)'
                 }}>
                   <div>
-                    <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.75rem' }}>Message:</span>
+                    <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.75rem' }}>Component:</span>
                     <div style={{ fontWeight: '600', color: 'rgba(168, 85, 247, 0.9)' }}>
                       {parsedOrchestra.messageName}
                     </div>
                   </div>
                   <div>
-                    <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.75rem' }}>MsgType:</span>
+                    <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.75rem' }}>Category:</span>
                     <div style={{ fontWeight: '600', color: 'rgba(251, 191, 36, 0.9)' }}>
                       {parsedOrchestra.msgType}
                     </div>
@@ -2455,7 +2485,7 @@ export default function Page() {
                   </div>
                 </div>
                 
-                <div style={{
+                <div className="custom-scrollbar pr-4" style={{
                   maxHeight: '200px',
                   overflowY: 'auto'
                 }}>
@@ -2505,23 +2535,198 @@ export default function Page() {
             </div>
           )}
 
-          <input 
-            value={templateId} 
-            onChange={(e) => setTemplateId(e.target.value)} 
-            placeholder="Template ID"
-            style={{ 
-              width: '100%', 
-              padding: '1rem',
-              borderRadius: '8px',
-              border: '1px solid rgba(255,255,255,0.1)',
-              background: 'rgba(255,255,255,0.03)',
-              color: '#ffffff',
-              fontFamily: 'ui-monospace, monospace',
-              fontSize: 'clamp(0.8rem, 2vw, 0.875rem)',
-              marginBottom: '1.5rem',
-              boxSizing: 'border-box'
-            }} 
-          />
+          {/* Generated SBE Schema Preview */}
+          {generatedSbeSchema && parsedOrchestra && (
+            <div style={{ marginBottom: '1.5rem' }}>
+              <div style={{
+                fontSize: '0.875rem',
+                color: 'rgba(255,255,255,0.5)',
+                marginBottom: '0.75rem',
+                fontWeight: '500',
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em'
+              }}>
+                🔄 Generated SBE Schema
+              </div>
+              <textarea 
+                readOnly 
+                value={generatedSbeSchema} 
+                rows={10}
+                className="custom-scrollbar"
+                style={{
+                  width: '100%',
+                  padding: '1rem',
+                  borderRadius: '8px',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  background: 'rgba(255,255,255,0.03)',
+                  color: 'rgba(34, 197, 94, 0.9)',
+                  fontFamily: 'ui-monospace, monospace',
+                  fontSize: '0.75rem',
+                  lineHeight: '1.5',
+                  resize: 'vertical',
+                  boxSizing: 'border-box'
+                }}
+              />
+            </div>
+          )}
+
+          {/* Message Builder */}
+          {parsedOrchestra && parsedOrchestra.fields.filter(f => !['8', '9', '10', '35'].includes(f.id)).length > 0 && (
+            <div style={{ marginBottom: '1.5rem' }}>
+              <div style={{
+                fontSize: '0.875rem',
+                color: 'rgba(255,255,255,0.5)',
+                marginBottom: '0.75rem',
+                fontWeight: '500',
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em'
+              }}>
+                📝 Message Builder
+              </div>
+              <div style={{
+                border: '1px solid rgba(255,255,255,0.1)',
+                borderRadius: '8px',
+                background: 'rgba(255,255,255,0.03)',
+                padding: '1rem'
+              }}>
+                <p style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.6)', marginBottom: '1rem' }}>
+                  Fill in the business fields. Message updates automatically as you type.
+                </p>
+                <div style={{ display: 'grid', gap: '0.75rem' }}>
+                  {parsedOrchestra.fields
+                    .filter(field => !['8', '9', '10', '35'].includes(field.id))
+                    .map((field, idx) => (
+                    <div key={idx} style={{
+                      display: 'grid',
+                      gridTemplateColumns: '80px 120px 1fr',
+                      gap: '0.75rem',
+                      alignItems: 'center',
+                      fontSize: '0.85rem'
+                    }}>
+                      <span style={{
+                        color: 'rgba(96, 165, 250, 0.9)',
+                        fontFamily: 'ui-monospace, monospace',
+                        fontWeight: '600'
+                      }}>
+                        {field.id}
+                      </span>
+                      <span style={{
+                        color: 'rgba(255,255,255,0.7)',
+                        fontWeight: '500'
+                      }}>
+                        {field.name}
+                      </span>
+                      <input
+                        type="text"
+                        value={messageBuilderValues[field.id] || ''}
+                        placeholder={`Enter ${field.name}...`}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          const newValues = {
+                            ...messageBuilderValues,
+                            [field.id]: value
+                          };
+                          setMessageBuilderValues(newValues);
+                          
+                          // Auto-update FIX message
+                          const parts = parsedOrchestra.fields
+                            .filter(f => !['8', '9', '10', '35'].includes(f.id))
+                            .map(f => {
+                              const val = newValues[f.id]?.trim();
+                              return val ? `${f.id}=${val}` : '';
+                            })
+                            .filter(Boolean);
+                          
+                          const fixMessage = parts.length > 0 ? parts.join('|') : '';
+                          setFixRaw(fixMessage);
+                        }}
+                        style={{
+                          padding: '0.5rem',
+                          borderRadius: '4px',
+                          border: '1px solid rgba(255,255,255,0.15)',
+                          background: 'rgba(255,255,255,0.05)',
+                          color: '#ffffff',
+                          fontFamily: 'ui-monospace, monospace',
+                          fontSize: '0.8rem'
+                        }}
+                      />
+                    </div>
+                  ))}
+                </div>
+                <button
+                  onClick={() => {
+                    setMessageBuilderValues({});
+                    setFixRaw('');
+                  }}
+                  style={{
+                    marginTop: '1rem',
+                    padding: '0.75rem 1.5rem',
+                    background: 'rgba(255,255,255,0.05)',
+                    border: '1px solid rgba(255,255,255,0.2)',
+                    borderRadius: '6px',
+                    color: 'rgba(255,255,255,0.7)',
+                    cursor: 'pointer',
+                    fontSize: '0.875rem',
+                    fontWeight: '500'
+                  }}
+                >
+                  Clear All Fields
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* FIX Message Input */}
+          <div style={{ marginBottom: '1.5rem' }}>
+            <div style={{
+              fontSize: '0.875rem',
+              color: 'rgba(255,255,255,0.5)',
+              marginBottom: '0.75rem',
+              fontWeight: '500',
+              textTransform: 'uppercase',
+              letterSpacing: '0.05em'
+            }}>
+              FIX Message
+            </div>
+            <LearnMore title="Understanding FIX Messages">
+              <p style={{ marginBottom: '1rem' }}>
+                <strong>What is FIX?</strong><br/>
+                FIX (Financial Information eXchange) is the messaging standard that powers modern financial markets. Banks, brokers, exchanges, and asset managers use it to communicate trade details, security information, and market data in real-time.
+              </p>
+              <p style={{ marginBottom: '1rem' }}>
+                <strong>Message Format:</strong><br/>
+                FIX messages use a simple tag=value format. Each tag is a number representing a specific field:<br/>
+                • Tag 55 = Symbol (e.g., &ldquo;AAPL&rdquo;)<br/>
+                • Tag 48 = SecurityID (e.g., a CUSIP or ISIN)<br/>
+                • Tag 167 = SecurityType (e.g., &ldquo;TBOND&rdquo; for Treasury Bond)<br/>
+                Tags are separated by the | character (representing SOH - Start of Header in the actual protocol).
+              </p>
+              <p>
+                <strong>What gets encoded?</strong><br/>
+                Only business/instrument fields are encoded into the on-chain commitment. Session fields (tags 8, 9, 10, 35) are excluded because they&apos;re for message transport, not instrument definition.
+              </p>
+            </LearnMore>
+            <textarea 
+              value={fixRaw} 
+              onChange={(e) => setFixRaw(e.target.value)} 
+              rows={4} 
+              placeholder="Enter business fields only (e.g., 55=AAPL|48=US0378331005) or use the builder above..."
+              className="custom-scrollbar"
+              style={{ 
+                width: '100%', 
+                padding: '1rem',
+                borderRadius: '8px',
+                border: '1px solid rgba(255,255,255,0.1)',
+                background: 'rgba(255,255,255,0.03)',
+                color: '#ffffff',
+                fontFamily: 'ui-monospace, monospace',
+                fontSize: 'clamp(0.8rem, 2vw, 0.875rem)',
+                resize: 'vertical',
+                lineHeight: '1.6',
+                boxSizing: 'border-box'
+              }} 
+            />
+          </div>
 
           {fixFields.length > 0 && (
             <div style={{ marginBottom: '1.5rem' }}>
@@ -2533,7 +2738,7 @@ export default function Page() {
               }}>
                 Parsed Fields ({fixFields.length})
               </div>
-              <div style={{ 
+              <div className="custom-scrollbar" style={{ 
                 maxHeight: '200px', 
                 overflowY: 'auto',
                 border: '1px solid rgba(255,255,255,0.1)',
@@ -2780,7 +2985,8 @@ export default function Page() {
                     <textarea 
                       readOnly 
                       value={preview.sbeBase64} 
-                      rows={6} 
+                      rows={6}
+                      className="custom-scrollbar"
                       style={{ 
                         width: '100%',
                         padding: '1rem',
@@ -2811,7 +3017,8 @@ export default function Page() {
                         <textarea 
                           readOnly 
                           value={generatedSbeSchema} 
-                          rows={12} 
+                          rows={12}
+                          className="custom-scrollbar"
                           style={{ 
                             width: '100%',
                             padding: '1rem',

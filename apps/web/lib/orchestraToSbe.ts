@@ -13,7 +13,7 @@ export interface OrchestraField {
   description?: string;
 }
 
-export function orchestraToSbe(orchestraXml: string, messageIndex: number = 0): string {
+export function orchestraToSbe(orchestraXml: string, fieldIds?: string[]): string {
   try {
     // Parse Orchestra XML
     const parser = new DOMParser();
@@ -53,92 +53,96 @@ export function orchestraToSbe(orchestraXml: string, messageIndex: number = 0): 
       }
     }
 
-    // Extract message information (handle both namespace-aware and non-namespace queries)
-    let messages = orchestraDoc.getElementsByTagName('message');
-    if (messages.length === 0) {
-      messages = orchestraDoc.getElementsByTagName('fixr:message');
+    // Extract component information (handle both namespace-aware and non-namespace queries)
+    let components = orchestraDoc.getElementsByTagName('component');
+    if (components.length === 0) {
+      components = orchestraDoc.getElementsByTagName('fixr:component');
     }
     
-    if (messages.length === 0) {
-      throw new Error('No messages found in Orchestra XML');
-    }
-
-    // Use specified message index (default to first)
-    const actualIndex = Math.min(messageIndex, messages.length - 1);
-    const message = messages[actualIndex];
-    const messageName = message.getAttribute('name') || 'Message';
-    const messageId = message.getAttribute('id') || '1';
-    
-    // Extract fields from the message
-    const fields: OrchestraField[] = [];
-    
-    // Try to find structure element (first direct child)
-    let structure: Element | null = null;
-    for (let i = 0; i < message.children.length; i++) {
-      const child = message.children[i];
-      const tagName = child.tagName.toLowerCase();
-      if (tagName === 'structure' || tagName === 'fixr:structure') {
-        structure = child;
-        break;
-      }
+    if (components.length === 0) {
+      throw new Error('No components found in Orchestra XML');
     }
 
-    const sourceElement = structure || message;
+    // Collect all fields from components
+    const allComponentFields = new Map<string, OrchestraField>();
+    const componentNames: string[] = [];
     
-    // Check for fieldRef elements (repository-style with field references)
-    // Only get direct children to avoid nested components/groups
-    let hasFieldRefs = false;
-    for (let i = 0; i < sourceElement.children.length; i++) {
-      const child = sourceElement.children[i];
-      const tagName = child.tagName.toLowerCase();
+    // If fieldIds provided, only include components that have those fields
+    // Otherwise, include all components
+    for (let i = 0; i < components.length; i++) {
+      const component = components[i];
+      const componentName = component.getAttribute('name') || `Component${i}`;
+      const componentFields: OrchestraField[] = [];
       
-      if (tagName === 'fieldref' || tagName === 'fixr:fieldref') {
-        hasFieldRefs = true;
-        const id = child.getAttribute('id');
-        const required = child.getAttribute('presence') === 'required';
-        
-        if (id && fieldDictionary.has(id)) {
-          const fieldDef = fieldDictionary.get(id)!;
-          fields.push({
-            id,
-            name: fieldDef.name,
-            type: mapOrchestraTypeToSbe(fieldDef.type),
-            required,
-            description: undefined
-          });
+      // Try to find structure element
+      let structure: Element | null = null;
+      for (let j = 0; j < component.children.length; j++) {
+        const child = component.children[j];
+        const tagName = child.tagName.toLowerCase();
+        if (tagName === 'structure' || tagName === 'fixr:structure') {
+          structure = child;
+          break;
         }
-        // Skip if field not found - it might be a component or group ref
       }
-    }
-    
-    // If no fieldRefs found, look for inline field definitions (simple Orchestra format)
-    if (!hasFieldRefs) {
-      for (let i = 0; i < sourceElement.children.length; i++) {
-        const child = sourceElement.children[i];
+
+      const sourceElement = structure || component;
+      
+      // Extract fieldRef elements
+      for (let j = 0; j < sourceElement.children.length; j++) {
+        const child = sourceElement.children[j];
         const tagName = child.tagName.toLowerCase();
         
-        if (tagName === 'field' || tagName === 'fixr:field') {
+        if (tagName === 'fieldref' || tagName === 'fixr:fieldref') {
+          const id = child.getAttribute('id');
+          const required = child.getAttribute('presence') === 'required';
+          
+          if (id && fieldDictionary.has(id)) {
+            const fieldDef = fieldDictionary.get(id)!;
+            componentFields.push({
+              id,
+              name: fieldDef.name,
+              type: mapOrchestraTypeToSbe(fieldDef.type),
+              required,
+              description: undefined
+            });
+          }
+        } else if (tagName === 'field' || tagName === 'fixr:field') {
+          // Inline field definition
           const id = child.getAttribute('id');
           const name = child.getAttribute('name');
           const type = child.getAttribute('type');
-          const required = child.getAttribute('presence') === 'required' || 
-                         child.getAttribute('required') === 'Y';
-          
           if (id && name && type) {
-            fields.push({
+            componentFields.push({
               id,
               name,
               type: mapOrchestraTypeToSbe(type),
-              required,
-              description: child.getAttribute('description') || undefined
+              required: child.getAttribute('presence') === 'required',
+              description: undefined
             });
           }
         }
       }
+      
+      // If fieldIds specified, only include this component if it has matching fields
+      // If fieldIds not specified, include all components
+      const shouldInclude = !fieldIds || componentFields.some(f => fieldIds.includes(f.id));
+      
+      if (shouldInclude && componentFields.length > 0) {
+        componentNames.push(componentName);
+        componentFields.forEach(field => {
+          if (!allComponentFields.has(field.id)) {
+            allComponentFields.set(field.id, field);
+          }
+        });
+      }
     }
+    
+    const fields: OrchestraField[] = Array.from(allComponentFields.values());
+    const messageName = componentNames.length > 0 ? componentNames.join('_') : 'SecurityDefinition';
+    const messageId = '1';
 
     if (fields.length === 0) {
-      throw new Error(`No fields found in Orchestra message "${messageName}". Message may only contain components/groups which are not yet supported for SBE conversion.`);
+      throw new Error(`No fields found in Orchestra components. Components may only contain nested groups which are not yet supported for SBE conversion.`);
     }
 
     // Generate SBE schema
@@ -211,15 +215,23 @@ function generateSbeSchema(
   messageId: string,
   fields: OrchestraField[]
 ): string {
-  const sbeFields = fields.map(field => {
+  // Separate fixed-size fields from variable-length data fields
+  // SBE requires all fields before all data elements
+  const fixedFields: string[] = [];
+  const varFields: string[] = [];
+  
+  fields.forEach(field => {
     const isVarLength = field.type === 'varStringEncoding' || field.type === 'varDataEncoding';
     
     if (isVarLength) {
-      return `    <data name="${field.name}" id="${field.id}" type="${field.type}"/>`;
+      varFields.push(`    <data name="${field.name}" id="${field.id}" type="${field.type}"/>`);
     } else {
-      return `    <field name="${field.name}" id="${field.id}" type="${field.type}"/>`;
+      fixedFields.push(`    <field name="${field.name}" id="${field.id}" type="${field.type}"/>`);
     }
-  }).join('\n');
+  });
+  
+  // Concatenate fixed fields first, then variable fields
+  const sbeFields = [...fixedFields, ...varFields].join('\n');
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <sbe:messageSchema xmlns:sbe="http://fixprotocol.io/2016/sbe" 

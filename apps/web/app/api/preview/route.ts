@@ -176,7 +176,7 @@ function parseSchemaFieldMapping(schemaXml: string): Record<string, { name: stri
 
 export async function POST(req: NextRequest) {
   try {
-    const { fixRaw, schema, templateId } = await req.json();
+    const { fixRaw, schema } = await req.json();
     
     // Get SBE encoder endpoint from environment
     const sbeEncoderUrl = process.env.SBE_ENCODER_URL || process.env.NEXT_PUBLIC_SBE_ENCODER_URL;
@@ -191,8 +191,7 @@ export async function POST(req: NextRequest) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         schema,
-        fixMessage: fixRaw,
-        templateId
+        fixMessage: fixRaw
       })
     });
     

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(request: NextRequest) {
   try {
-    const { cborHex, schema, templateId } = await request.json();
+    const { cborHex, schema } = await request.json();
 
     if (!cborHex || typeof cborHex !== 'string') {
       return NextResponse.json(
@@ -14,13 +14,6 @@ export async function POST(request: NextRequest) {
     if (!schema) {
       return NextResponse.json(
         { error: 'Invalid request: schema is required for SBE decoding' },
-        { status: 400 }
-      );
-    }
-
-    if (!templateId) {
-      return NextResponse.json(
-        { error: 'Invalid request: templateId is required for SBE decoding' },
         { status: 400 }
       );
     }
@@ -40,8 +33,7 @@ export async function POST(request: NextRequest) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         schema,
-        encodedMessage: hexString,
-        templateId
+        encodedMessage: hexString
       })
     });
 

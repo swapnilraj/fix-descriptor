@@ -12,9 +12,8 @@ import "../SSTORE2.sol";
 
 /// @title BondDescriptorMerkle
 /// @notice ERC20 bond token using Merkle proof verification for FIX field access
-/// @dev Demonstrates Merkle-based approach: stores CBOR via SSTORE2 + Merkle root
+/// @dev Demonstrates Merkle-based approach: stores SBE via SSTORE2 + Merkle root
 ///      Clients generate proofs offchain and submit them for verification
-///      Compare with BondDescriptorReader.sol which uses direct CBOR parsing
 contract BondDescriptorMerkle is ERC20, Ownable, ERC165, IFixDescriptor {
     using FixDescriptorLib for FixDescriptorLib.Storage;
 
@@ -43,7 +42,7 @@ contract BondDescriptorMerkle is ERC20, Ownable, ERC165, IFixDescriptor {
      * @param symbol Token symbol
      * @param initialSupply Initial token supply
      * @param initialOwner Address to receive initial supply and ownership
-     * @param cborDescriptor CBOR-encoded FIX descriptor to store via SSTORE2
+     * @param sbeDescriptor SBE-encoded FIX descriptor to store via SSTORE2
      * @param merkleRoot Merkle root commitment for the descriptor
      * @param dictHash FIX dictionary/Orchestra hash
      */
@@ -52,25 +51,25 @@ contract BondDescriptorMerkle is ERC20, Ownable, ERC165, IFixDescriptor {
         string memory symbol,
         uint256 initialSupply,
         address initialOwner,
-        bytes memory cborDescriptor,
+        bytes memory sbeDescriptor,
         bytes32 merkleRoot,
         bytes32 dictHash
     ) ERC20(name, symbol) Ownable(initialOwner) {
         _mint(initialOwner, initialSupply);
 
-        // Store CBOR descriptor using SSTORE2 (baseline storage cost)
-        address cborPtr = SSTORE2.write(cborDescriptor);
+        // Store SBE descriptor using SSTORE2 (baseline storage cost)
+        address sbePtr = SSTORE2.write(sbeDescriptor);
 
         // Initialize FIX descriptor with Merkle root
-        _initializeDescriptor(cborPtr, uint32(cborDescriptor.length), merkleRoot, dictHash);
+        _initializeDescriptor(sbePtr, uint32(sbeDescriptor.length), merkleRoot, dictHash);
     }
 
     /**
      * @dev Internal function to initialize descriptor
      */
     function _initializeDescriptor(
-        address cborPtr,
-        uint32 cborLen,
+        address sbePtr,
+        uint32 sbeLen,
         bytes32 merkleRoot,
         bytes32 dictHash
     ) private {
@@ -80,13 +79,13 @@ contract BondDescriptorMerkle is ERC20, Ownable, ERC165, IFixDescriptor {
             dictHash: dictHash,
             dictionaryContract: address(0),
             fixRoot: merkleRoot,
-            fixCBORPtr: cborPtr,
-            fixCBORLen: cborLen,
+            fixSBEPtr: sbePtr,
+            fixSBELen: sbeLen,
             fixURI: ""
         });
         _fixDescriptor.initialized = true;
 
-        emit FixDescriptorSet(merkleRoot, dictHash, cborPtr, cborLen);
+        emit FixDescriptorSet(merkleRoot, dictHash, sbePtr, sbeLen);
     }
 
     /// @notice Read bond symbol with Merkle proof verification
@@ -97,12 +96,12 @@ contract BondDescriptorMerkle is ERC20, Ownable, ERC165, IFixDescriptor {
         bytes calldata valueBytes,
         MerkleProof calldata merkleProof
     ) public view returns (string memory symbol) {
-        // Build pathCBOR for tag 55: [55] -> 0x811837
-        bytes memory pathCBOR = abi.encodePacked(uint8(0x81), uint8(0x18), uint8(TAG_SYMBOL));
+        // Build pathSBE for tag 55: [55] -> 0x811837
+        bytes memory pathSBE = abi.encodePacked(uint8(0x81), uint8(0x18), uint8(TAG_SYMBOL));
         
         // Verify the Merkle proof using internal function
         require(
-            _verifyProof(pathCBOR, valueBytes, merkleProof.proof, merkleProof.directions),
+            _verifyProof(pathSBE, valueBytes, merkleProof.proof, merkleProof.directions),
             "Invalid Merkle proof for Symbol"
         );
 
@@ -119,11 +118,11 @@ contract BondDescriptorMerkle is ERC20, Ownable, ERC165, IFixDescriptor {
         MerkleProof calldata merkleProof,
         uint8 decimals
     ) public view returns (uint256 bps) {
-        // Build pathCBOR for tag 223: [223] -> 0x8118df
-        bytes memory pathCBOR = abi.encodePacked(uint8(0x81), uint8(0x18), uint8(TAG_COUPON_RATE));
+        // Build pathSBE for tag 223: [223] -> 0x8118df
+        bytes memory pathSBE = abi.encodePacked(uint8(0x81), uint8(0x18), uint8(TAG_COUPON_RATE));
         
         require(
-            _verifyProof(pathCBOR, valueBytes, merkleProof.proof, merkleProof.directions),
+            _verifyProof(pathSBE, valueBytes, merkleProof.proof, merkleProof.directions),
             "Invalid Merkle proof for CouponRate"
         );
 
@@ -138,11 +137,11 @@ contract BondDescriptorMerkle is ERC20, Ownable, ERC165, IFixDescriptor {
         bytes calldata valueBytes,
         MerkleProof calldata merkleProof
     ) public view returns (uint256 timestamp) {
-        // Build pathCBOR for tag 541: [541] -> 0x81_19_021d
-        bytes memory pathCBOR = abi.encodePacked(uint8(0x81), uint8(0x19), uint16(TAG_MATURITY_DATE));
+        // Build pathSBE for tag 541: [541] -> 0x81_19_021d
+        bytes memory pathSBE = abi.encodePacked(uint8(0x81), uint8(0x19), uint16(TAG_MATURITY_DATE));
         
         require(
-            _verifyProof(pathCBOR, valueBytes, merkleProof.proof, merkleProof.directions),
+            _verifyProof(pathSBE, valueBytes, merkleProof.proof, merkleProof.directions),
             "Invalid Merkle proof for MaturityDate"
         );
 
@@ -164,7 +163,7 @@ contract BondDescriptorMerkle is ERC20, Ownable, ERC165, IFixDescriptor {
         bytes calldata altIdSourceValueBytes,
         MerkleProof calldata altIdSourceProof
     ) public view returns (string memory altId, string memory altIdSource) {
-        // Build pathCBOR for SecurityAltID: [454, index, 455]
+        // Build pathSBE for SecurityAltID: [454, index, 455]
         bytes memory altIdPath = _buildNestedPath(TAG_SECURITY_ALT_ID_GROUP, uint16(index), TAG_SECURITY_ALT_ID);
         
         require(
@@ -172,7 +171,7 @@ contract BondDescriptorMerkle is ERC20, Ownable, ERC165, IFixDescriptor {
             "Invalid Merkle proof for SecurityAltID"
         );
 
-        // Build pathCBOR for SecurityAltIDSource: [454, index, 456]
+        // Build pathSBE for SecurityAltIDSource: [454, index, 456]
         bytes memory altIdSourcePath = _buildNestedPath(TAG_SECURITY_ALT_ID_GROUP, uint16(index), TAG_SECURITY_ALT_ID_SRC);
         
         require(
@@ -183,14 +182,14 @@ contract BondDescriptorMerkle is ERC20, Ownable, ERC165, IFixDescriptor {
         return (string(altIdValueBytes), string(altIdSourceValueBytes));
     }
 
-    /// @notice Helper to build CBOR path for nested group access
-    /// @dev Constructs CBOR array [groupTag, index, fieldTag]
+    /// @notice Helper to build SBE path for nested group access
+    /// @dev Constructs SBE array [groupTag, index, fieldTag]
     function _buildNestedPath(uint16 groupTag, uint16 index, uint16 fieldTag)
         private
         pure
         returns (bytes memory)
     {
-        // CBOR array with 3 elements: 0x83
+        // SBE array with 3 elements: 0x83
         // Each uint16 is encoded as 0x19 followed by 2 bytes (big-endian)
         return abi.encodePacked(
             uint8(0x83),  // Array of 3 elements
@@ -200,10 +199,10 @@ contract BondDescriptorMerkle is ERC20, Ownable, ERC165, IFixDescriptor {
         );
     }
 
-    /// @notice Internal helper to verify Merkle proof with memory pathCBOR
+    /// @notice Internal helper to verify Merkle proof with memory pathSBE
     /// @dev Converts memory to calldata by using FixMerkleVerifier directly
     function _verifyProof(
-        bytes memory pathCBOR,
+        bytes memory pathSBE,
         bytes calldata value,
         bytes32[] calldata proof,
         bool[] calldata directions
@@ -211,7 +210,7 @@ contract BondDescriptorMerkle is ERC20, Ownable, ERC165, IFixDescriptor {
         require(_fixDescriptor.isInitialized(), "Descriptor not initialized");
         return FixMerkleVerifier.verify(
             _fixDescriptor.getRoot(),
-            pathCBOR,
+            pathSBE,
             value,
             proof,
             directions
@@ -290,36 +289,29 @@ contract BondDescriptorMerkle is ERC20, Ownable, ERC165, IFixDescriptor {
      * @inheritdoc IFixDescriptor
      */
     function verifyField(
-        bytes calldata pathCBOR,
+        bytes calldata pathSBE,
         bytes calldata value,
         bytes32[] calldata proof,
         bool[] calldata directions
     ) external view override returns (bool) {
-        return _fixDescriptor.verifyFieldProof(pathCBOR, value, proof, directions);
+        return _fixDescriptor.verifyFieldProof(pathSBE, value, proof, directions);
     }
 
     /**
-     * @notice Get CBOR data chunk using SSTORE2
-     * @dev CBOR is still stored for fallback/debugging purposes
+     * @notice Get SBE data chunk using SSTORE2
+     * @dev SBE is stored for reference purposes
      * @param start Start offset
      * @param size Number of bytes to read
-     * @return chunk The requested CBOR data
+     * @return chunk The requested SBE data
      */
-    function getFixCBORChunk(uint256 start, uint256 size)
+    function getFixSBEChunk(uint256 start, uint256 size)
         external
         view
         returns (bytes memory chunk)
     {
         require(_fixDescriptor.isInitialized(), "Descriptor not initialized");
         FixDescriptor memory descriptor = _fixDescriptor.getDescriptor();
-        return SSTORE2.read(descriptor.fixCBORPtr, start, size);
-    }
-
-    /**
-     * @inheritdoc IFixDescriptor
-     */
-    function getHumanReadableDescriptor() external pure override returns (string memory) {
-        revert("Not implemented");
+        return SSTORE2.read(descriptor.fixSBEPtr, start, size);
     }
 
     /**
