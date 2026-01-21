@@ -6,7 +6,7 @@ import { abi as AssetTokenAbi } from '@/lib/abis/AssetTokenERC20';
 import { chainFromEnv } from '@/lib/viemClient';
 import { createPublicClient, http } from 'viem';
 import { AddressLink, TransactionLink } from '@/components/BlockExplorerLink';
-import { orchestraToSbe } from '@/lib/orchestraToSbe';
+import { orchestraToSbe, orchestraToSbeFullSchema, extractMessageIdFromSbe } from '@/lib/orchestraToSbe';
 
 // Extend Window interface for MetaMask
 declare global {
@@ -600,6 +600,8 @@ function MerkleTreeNode({
 export default function Page() {
   const [fixRaw, setFixRaw] = useState('');
   const [schemaInput, setSchemaInput] = useState('');
+  const [availableMessageTypes, setAvailableMessageTypes] = useState<Array<{ name: string; msgType: string }>>([]);
+  const [selectedMessageType, setSelectedMessageType] = useState('SecurityDefinition');
   const [parsedOrchestra, setParsedOrchestra] = useState<{
     messageName: string;
     messageId: string;
@@ -610,8 +612,54 @@ export default function Page() {
   const [allMessages, setAllMessages] = useState<Array<{ name: string; id: string; msgType: string }>>([]);
   const [selectedMessageIndex, setSelectedMessageIndex] = useState(0);
   const [messageBuilderValues, setMessageBuilderValues] = useState<Record<string, string>>({});
+  const [generatedSbeSchema, setGeneratedSbeSchema] = useState<string>('');
+  const [fullSbeSchema, setFullSbeSchema] = useState<string>('');
+  const [currentMessageId, setCurrentMessageId] = useState<string>('');
   
-  // Parse Orchestra XML when schema input changes
+  // Extract available message types when Orchestra schema is loaded
+  useEffect(() => {
+    if (!schemaInput.trim()) {
+      setAvailableMessageTypes([]);
+      return;
+    }
+    
+    try {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(schemaInput, 'text/xml');
+      
+      const parserError = doc.querySelector('parsererror');
+      if (parserError) {
+        return;
+      }
+      
+      // Extract all message definitions
+      const messageTypes: Array<{ name: string; msgType: string }> = [];
+      const messages = doc.getElementsByTagName('*');
+      for (let i = 0; i < messages.length; i++) {
+        const el = messages[i];
+        const localName = el.localName || el.tagName.split(':').pop();
+        if (localName === 'message') {
+          const name = el.getAttribute('name');
+          const msgType = el.getAttribute('msgType');
+          if (name && msgType) {
+            messageTypes.push({ name, msgType });
+          }
+        }
+      }
+      
+      console.log(`Found ${messageTypes.length} message types in Orchestra`);
+      setAvailableMessageTypes(messageTypes);
+      
+      // Set default if not already set
+      if (messageTypes.length > 0 && !messageTypes.find(m => m.name === selectedMessageType)) {
+        setSelectedMessageType(messageTypes[0].name);
+      }
+    } catch (error) {
+      console.error('Failed to extract message types:', error);
+    }
+  }, [schemaInput]);
+  
+  // Parse Orchestra XML when schema input or message type changes
   useEffect(() => {
     if (!schemaInput.trim()) {
       setParsedOrchestra(null);
@@ -658,43 +706,45 @@ export default function Page() {
         }
       }
       
-      // Get components (handle namespace-prefixed elements)
+      // Get components (for resolving component references)
       let components = doc.getElementsByTagName('component');
       if (components.length === 0) {
         components = doc.getElementsByTagName('fixr:component');
       }
       
-      if (components.length === 0) {
-        setOrchestraError('No component element found');
+      // Find the selected message definition
+      let messageElement: Element | null = null;
+      const messages = doc.getElementsByTagName('*');
+      for (let i = 0; i < messages.length; i++) {
+        const el = messages[i];
+        const localName = el.localName || el.tagName.split(':').pop();
+        if (localName === 'message' && el.getAttribute('name') === selectedMessageType) {
+          messageElement = el;
+          break;
+        }
+      }
+      
+      if (!messageElement) {
+        console.error(`Message type "${selectedMessageType}" not found in Orchestra XML`);
+        setOrchestraError(`Message type "${selectedMessageType}" not found in Orchestra XML`);
         setParsedOrchestra(null);
         setAllMessages([]);
         return;
       }
       
-      // Store all components for selection
-      const messageList: Array<{ name: string; id: string; msgType: string }> = [];
-      for (let i = 0; i < components.length; i++) {
-        const comp = components[i];
-        const name = comp.getAttribute('name') || `Component ${i + 1}`;
-        const id = comp.getAttribute('id') || '?';
-        const category = comp.getAttribute('category') || '?';
-        messageList.push({ name, id, msgType: category });
-      }
-      setAllMessages(messageList);
+      console.log(`Found message element for ${selectedMessageType}`);
       
-      // Use selected component (default to first)
-      const messageIndex = Math.min(selectedMessageIndex, components.length - 1);
-      const message = components[messageIndex];
-      const messageName = message.getAttribute('name') || 'Unknown';
-      const messageId = message.getAttribute('id') || '?';
-      const msgType = message.getAttribute('category') || '?';
+      const messageName = messageElement.getAttribute('name') || 'Unknown';
+      const messageId = messageElement.getAttribute('id') || '?';
+      const msgType = messageElement.getAttribute('msgType') || '?';
       
       const fields: Array<{ id: string; name: string; type: string; sbeType: string }> = [];
+      const fieldIds = new Set<string>();
       
-      // Try to find structure element (first direct child)
+      // Find structure element
       let structure: Element | null = null;
-      for (let i = 0; i < message.children.length; i++) {
-        const child = message.children[i];
+      for (let i = 0; i < messageElement.children.length; i++) {
+        const child = messageElement.children[i];
         const tagName = child.tagName.toLowerCase();
         if (tagName === 'structure' || tagName === 'fixr:structure') {
           structure = child;
@@ -702,58 +752,93 @@ export default function Page() {
         }
       }
       
-      const sourceElement = structure || message;
+      if (!structure) {
+        console.error(`No structure found for message "${selectedMessageType}"`);
+        setOrchestraError(`No structure found for message "${selectedMessageType}"`);
+        setParsedOrchestra(null);
+        return;
+      }
       
-      // Check for fieldRef elements (repository-style with field references)
-      // Only get direct children to avoid nested components/groups
-      let hasFieldRefs = false;
-      for (let i = 0; i < sourceElement.children.length; i++) {
-        const child = sourceElement.children[i];
-        const tagName = child.tagName.toLowerCase();
-        
-        if (tagName === 'fieldref' || tagName === 'fixr:fieldref') {
-          hasFieldRefs = true;
-          const id = child.getAttribute('id');
+      console.log(`Found structure for ${selectedMessageType}`);
+      
+      // Get groups for resolving group references
+      let groups = doc.getElementsByTagName('group');
+      if (groups.length === 0) {
+        groups = doc.getElementsByTagName('fixr:group');
+      }
+      
+      // Helper function to recursively extract fields from an element
+      const extractFieldsFromElement = (element: Element): void => {
+        for (let i = 0; i < element.children.length; i++) {
+          const child = element.children[i];
+          const localName = (child.localName || child.tagName.split(':').pop() || '').toLowerCase();
           
-          if (id) {
-            if (fieldDictionary.has(id)) {
-              const fieldDef = fieldDictionary.get(id)!;
-              fields.push({ id, name: fieldDef.name, type: fieldDef.type, sbeType: '→ will be converted' });
-            } else {
-              // Field not found in dictionary - might be a component or group ref, skip it
-              continue;
+          if (localName === 'fieldref') {
+            const id = child.getAttribute('id');
+            if (id) {
+              console.log(`Found fieldRef: ${id}`);
+              fieldIds.add(id);
+            }
+          } else if (localName === 'componentref') {
+            // Resolve component reference
+            const compId = child.getAttribute('id');
+            if (compId) {
+              console.log(`Resolving componentRef: ${compId}`);
+              const comp = Array.from(components).find(c => c.getAttribute('id') === compId);
+              if (comp) {
+                extractFieldsFromElement(comp);
+              } else {
+                console.warn(`Component ${compId} not found`);
+              }
+            }
+          } else if (localName === 'groupref') {
+            // Resolve group reference
+            const groupId = child.getAttribute('id');
+            if (groupId) {
+              console.log(`Resolving groupRef: ${groupId}`);
+              const group = Array.from(groups).find(g => g.getAttribute('id') === groupId);
+              if (group) {
+                extractFieldsFromElement(group);
+              } else {
+                console.warn(`Group ${groupId} not found`);
+              }
             }
           }
         }
-      }
+      };
       
-      // If no fieldRefs found, look for inline field definitions (simple Orchestra format)
-      if (!hasFieldRefs) {
-        for (let i = 0; i < sourceElement.children.length; i++) {
-          const child = sourceElement.children[i];
-          const tagName = child.tagName.toLowerCase();
-          
-          if (tagName === 'field' || tagName === 'fixr:field') {
-            const id = child.getAttribute('id') || '?';
-            const name = child.getAttribute('name') || '?';
-            const type = child.getAttribute('type') || '?';
-            fields.push({ id, name, type, sbeType: '→ will be converted' });
-          }
+      console.log(`Starting field extraction from structure with ${structure.children.length} children`);
+      // Extract fields from the message structure
+      extractFieldsFromElement(structure);
+      console.log(`Field extraction complete, found ${fieldIds.size} field IDs`);
+      
+      // Convert field IDs to field definitions
+      for (const id of fieldIds) {
+        if (fieldDictionary.has(id)) {
+          const fieldDef = fieldDictionary.get(id)!;
+          fields.push({ id, name: fieldDef.name, type: fieldDef.type, sbeType: '→ will be converted' });
         }
       }
       
+      // Sort fields by numeric ID
+      fields.sort((a, b) => parseInt(a.id) - parseInt(b.id));
+      
+      console.log(`Extracted ${fields.length} fields for ${selectedMessageType}:`, fields.map(f => `${f.id}:${f.name}`).join(', '));
+      
       if (fields.length === 0) {
-        setOrchestraError(`No fields found in component "${messageName}". Component may use nested groups which aren't displayed here.`);
-        // Don't return - show the message info even if no direct fields
+        console.warn(`No fields found for message "${selectedMessageType}". Message may use nested groups.`);
+        setOrchestraError(`No fields found for message "${selectedMessageType}". Message may use nested groups.`);
+      } else {
+        setOrchestraError(null);
       }
       
       setParsedOrchestra({ messageName, messageId, msgType, fields });
-      setOrchestraError(null);
+      setAllMessages([]);
     } catch (error) {
       setOrchestraError(error instanceof Error ? error.message : 'Parse error');
       setParsedOrchestra(null);
     }
-  }, [schemaInput, selectedMessageIndex]);
+  }, [schemaInput, selectedMessageType]);
   
   // Parse FIX raw input and populate message builder
   useEffect(() => {
@@ -776,31 +861,50 @@ export default function Page() {
     }
   }, [fixRaw]);
 
-  // Auto-generate SBE schema when Orchestra is parsed or message builder values change
+  // Auto-generate full SBE schema when Orchestra is loaded
   useEffect(() => {
     if (schemaInput.trim()) {
       try {
-        // Get field IDs from messageBuilderValues (fields that have been filled in)
-        const filledFieldIds = Object.keys(messageBuilderValues).filter(id => 
-          messageBuilderValues[id] !== undefined && messageBuilderValues[id] !== ''
-        );
+        // Generate full SBE schema with ALL message types
+        const fullSchema = orchestraToSbeFullSchema(schemaInput);
+        setFullSbeSchema(fullSchema);
+        console.log('Generated full SBE schema with all messages');
+      } catch (error) {
+        console.error('Failed to generate full SBE schema:', error);
+        setFullSbeSchema('');
+      }
+    } else {
+      setFullSbeSchema('');
+    }
+  }, [schemaInput]);
+
+  // Auto-generate single-message SBE schema and extract messageId when message type changes
+  useEffect(() => {
+    if (schemaInput.trim() && selectedMessageType && fullSbeSchema) {
+      try {
+        // Generate SBE schema for the selected message type (for preview)
+        const sbeSchema = orchestraToSbe(schemaInput, selectedMessageType);
+        setGeneratedSbeSchema(sbeSchema);
         
-        if (filledFieldIds.length > 0) {
-          // Generate SBE schema only for the fields in the message
-          const sbeSchema = orchestraToSbe(schemaInput, filledFieldIds);
-          setGeneratedSbeSchema(sbeSchema);
+        // Extract messageId from the full schema for the selected message type
+        const messageId = extractMessageIdFromSbe(fullSbeSchema, selectedMessageType);
+        if (messageId) {
+          setCurrentMessageId(messageId);
+          console.log(`Message ID for ${selectedMessageType}: ${messageId}`);
         } else {
-          // No fields filled yet, show empty schema
-          setGeneratedSbeSchema('<!-- No fields in message yet. Add fields to generate schema. -->');
+          console.warn(`Could not find message ID for ${selectedMessageType}`);
+          setCurrentMessageId('');
         }
       } catch (error) {
         console.error('Failed to generate SBE schema:', error);
-        setGeneratedSbeSchema('');
+        setGeneratedSbeSchema(`<!-- Error generating schema: ${error instanceof Error ? error.message : 'Unknown error'} -->`);
+        setCurrentMessageId('');
       }
     } else {
       setGeneratedSbeSchema('');
+      setCurrentMessageId('');
     }
-  }, [schemaInput, selectedMessageIndex, messageBuilderValues]);
+  }, [schemaInput, selectedMessageType, fullSbeSchema]);
   
   const [preview, setPreview] = useState<{ 
     root: string; 
@@ -812,7 +916,6 @@ export default function Page() {
     treeData?: TreeNodeData;
     parsedFields?: Array<{ tag: string; value: string; tagInfo?: typeof FIX_TAGS[string] }>;
   } | null>(null);
-  const [generatedSbeSchema, setGeneratedSbeSchema] = useState<string>('');
   const [pathInput, setPathInput] = useState('');
   const [proof, setProof] = useState<ProofResult>(null);
   const [txInfo, setTxInfo] = useState<React.ReactNode>('');
@@ -1090,8 +1193,8 @@ export default function Page() {
     setCurrentStep(1);
     
     try {
-      // Use the already-generated SBE schema
-      if (!generatedSbeSchema) {
+      // Use the full SBE schema with all messages
+      if (!fullSbeSchema) {
         alert('SBE schema not available. Please ensure Orchestra XML is valid.');
         setCurrentStep(0);
         setLoadingMessage('');
@@ -1099,7 +1202,13 @@ export default function Page() {
         return;
       }
       
-      const sbeSchema = generatedSbeSchema;
+      if (!currentMessageId) {
+        alert('Message ID not available. Please select a valid message type.');
+        setCurrentStep(0);
+        setLoadingMessage('');
+        setLoading(false);
+        return;
+      }
       
       // Simulate step-by-step feedback
       setTimeout(() => setLoadingMessage('Building canonical tree...'), 300);
@@ -1111,7 +1220,8 @@ export default function Page() {
         headers: { 'content-type': 'application/json' }, 
         body: JSON.stringify({ 
           fixRaw,
-          schema: sbeSchema
+          schema: fullSbeSchema,
+          messageId: currentMessageId
         }) 
       });
       
@@ -2403,6 +2513,105 @@ export default function Page() {
             </button>
           </div>
 
+          {/* Generated SBE Schema Preview - Full Schema with All Messages */}
+          {fullSbeSchema && (
+            <div style={{ marginBottom: '1.5rem' }}>
+              <div style={{
+                fontSize: '0.875rem',
+                color: 'rgba(255,255,255,0.5)',
+                marginBottom: '0.75rem',
+                fontWeight: '500',
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em'
+              }}>
+                🔄 Generated SBE Schema (All Messages)
+              </div>
+              <div style={{
+                fontSize: '0.75rem',
+                color: 'rgba(255,255,255,0.4)',
+                marginBottom: '0.5rem'
+              }}>
+                This schema contains all message types from the Orchestra file and will be sent to the encoder.
+              </div>
+              <textarea 
+                readOnly 
+                value={fullSbeSchema} 
+                rows={15}
+                className="custom-scrollbar"
+                style={{
+                  width: '100%',
+                  padding: '1rem',
+                  borderRadius: '8px',
+                  border: '1px solid rgba(34, 197, 94, 0.2)',
+                  background: 'rgba(34, 197, 94, 0.03)',
+                  color: 'rgba(34, 197, 94, 0.9)',
+                  fontFamily: 'ui-monospace, monospace',
+                  fontSize: '0.75rem',
+                  lineHeight: '1.5',
+                  resize: 'vertical',
+                  boxSizing: 'border-box'
+                }}
+              />
+            </div>
+          )}
+
+          {/* Message Type Selection */}
+          <div style={{ marginBottom: '1.5rem' }}>
+            <div style={{ 
+              marginTop: '1rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.75rem'
+            }}>
+              <label style={{
+                fontSize: '0.875rem',
+                color: 'rgba(255,255,255,0.7)',
+                fontWeight: '500'
+              }}>
+                Message Type:
+              </label>
+              <select
+                value={selectedMessageType}
+                onChange={(e) => setSelectedMessageType(e.target.value)}
+                style={{
+                  flex: 1,
+                  padding: '0.5rem',
+                  background: 'rgba(255,255,255,0.05)',
+                  border: '1px solid rgba(255,255,255,0.2)',
+                  borderRadius: '6px',
+                  color: '#ffffff',
+                  fontSize: '0.875rem',
+                  cursor: 'pointer'
+                }}
+              >
+                {availableMessageTypes.length > 0 ? (
+                  availableMessageTypes.map((msg) => (
+                    <option key={msg.name} value={msg.name}>
+                      {msg.name} ({msg.msgType})
+                    </option>
+                  ))
+                ) : (
+                  <option value="">Load Orchestra schema first...</option>
+                )}
+              </select>
+            </div>
+            
+            {/* Display current message ID */}
+            {currentMessageId && (
+              <div style={{
+                fontSize: '0.75rem',
+                color: 'rgba(96, 165, 250, 0.8)',
+                marginTop: '0.5rem',
+                padding: '0.5rem',
+                background: 'rgba(59, 130, 246, 0.05)',
+                border: '1px solid rgba(59, 130, 246, 0.2)',
+                borderRadius: '6px'
+              }}>
+                <strong>Message ID:</strong> {currentMessageId}
+              </div>
+            )}
+          </div>
+
           {/* Orchestra XML Parser Preview */}
           {orchestraError && (
             <div style={{
@@ -2415,41 +2624,6 @@ export default function Page() {
               fontSize: '0.875rem'
             }}>
               <strong>⚠️ Parse Error:</strong> {orchestraError}
-            </div>
-          )}
-
-          {/* Generated SBE Schema Preview */}
-          {generatedSbeSchema && parsedOrchestra && (
-            <div style={{ marginBottom: '1.5rem' }}>
-              <div style={{
-                fontSize: '0.875rem',
-                color: 'rgba(255,255,255,0.5)',
-                marginBottom: '0.75rem',
-                fontWeight: '500',
-                textTransform: 'uppercase',
-                letterSpacing: '0.05em'
-              }}>
-                🔄 Generated SBE Schema
-              </div>
-              <textarea 
-                readOnly 
-                value={generatedSbeSchema} 
-                rows={10}
-                className="custom-scrollbar"
-                style={{
-                  width: '100%',
-                  padding: '1rem',
-                  borderRadius: '8px',
-                  border: '1px solid rgba(255,255,255,0.1)',
-                  background: 'rgba(255,255,255,0.03)',
-                  color: 'rgba(34, 197, 94, 0.9)',
-                  fontFamily: 'ui-monospace, monospace',
-                  fontSize: '0.75rem',
-                  lineHeight: '1.5',
-                  resize: 'vertical',
-                  boxSizing: 'border-box'
-                }}
-              />
             </div>
           )}
 
@@ -2542,7 +2716,9 @@ export default function Page() {
                   maxHeight: '200px',
                   overflowY: 'auto'
                 }}>
-                  {parsedOrchestra.fields.map((field, idx) => (
+                  {parsedOrchestra.fields
+                    .sort((a, b) => parseInt(a.id) - parseInt(b.id))
+                    .map((field, idx) => (
                     <div
                       key={idx}
                       style={{
@@ -2619,6 +2795,7 @@ export default function Page() {
                 }}>
                   {parsedOrchestra.fields
                     .filter(field => !['8', '9', '10', '35'].includes(field.id))
+                    .sort((a, b) => parseInt(a.id) - parseInt(b.id))
                     .map((field, idx) => (
                     <div key={idx} style={{
                       display: 'grid',
