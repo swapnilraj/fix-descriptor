@@ -1057,7 +1057,7 @@ export default function Page() {
     },
     { 
       name: "Encode", 
-      description: "CBOR Binary",
+      description: "SBE Binary",
       phase: "offchain",
       icon: (
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -1260,19 +1260,34 @@ export default function Page() {
     setOnChainVerificationStatus(null); // Reset verification status when generating new proof
     
     try {
-    const parsedPath = JSON.parse(pathInput || '[]');
+      const parsedPath = JSON.parse(pathInput || '[]');
       const res = await fetch('/api/proof', { 
         method: 'POST', 
         headers: { 'content-type': 'application/json' }, 
-        body: JSON.stringify({ fixRaw, path: parsedPath }) 
+        body: JSON.stringify({ 
+          fixRaw, 
+          path: parsedPath,
+          schema: fullSbeSchema || generatedSbeSchema,
+          messageId: currentMessageId
+        }) 
       });
-    const json: ProofResult = await res.json();
-    setProof(json);
-    
-    // Auto-scroll to proof results
-    setTimeout(() => {
-      scrollToSection(proofResultsRef);
-    }, 100);
+      
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || 'Proof generation failed');
+      }
+      
+      const json: ProofResult = await res.json();
+      setProof(json);
+      
+      // Auto-scroll to proof results
+      setTimeout(() => {
+        scrollToSection(proofResultsRef);
+      }, 100);
+    } catch (error) {
+      console.error('Proof generation error:', error);
+      alert(`Failed to generate proof: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      setProof(null);
     } finally {
       setLoading(false);
     }
@@ -1304,7 +1319,7 @@ export default function Page() {
           name: tokenName,
           symbol: tokenSymbol,
           initialSupply: tokenSupply,
-          cborHex: preview.sbeHex,
+          sbeHex: preview.sbeHex,
           root: preview.root
         })
       });
@@ -1328,7 +1343,7 @@ export default function Page() {
             <AddressLink address={tokenAddress} chainId={chainFromEnv.id} />
           </div>
           <div style={{ marginBottom: '0.5rem', color: 'rgba(34, 197, 94, 0.9)' }}>
-            ✓ CBOR Deployed<br />
+            ✓ SBE Data Deployed<br />
             ✓ Descriptor Set
           </div>
           <div style={{ marginTop: '0.5rem' }}>
@@ -1376,7 +1391,7 @@ export default function Page() {
                 <AddressLink address={tokenAddress} chainId={chainFromEnv.id} />
               </div>
               <div style={{ marginBottom: '0.5rem', color: 'rgba(34, 197, 94, 0.9)' }}>
-                ✓ CBOR Deployed<br />
+                ✓ SBE Data Deployed<br />
                 ✓ Descriptor Set<br />
                 ✓ Contract Verified
               </div>
@@ -1399,7 +1414,7 @@ export default function Page() {
                 <AddressLink address={tokenAddress} chainId={chainFromEnv.id} />
               </div>
               <div style={{ marginBottom: '0.5rem', color: 'rgba(34, 197, 94, 0.9)' }}>
-                ✓ CBOR Deployed<br />
+                ✓ SBE Data Deployed<br />
                 ✓ Descriptor Set
               </div>
               <div style={{ marginBottom: '0.5rem', color: 'rgba(251, 191, 36, 0.9)' }}>
@@ -1426,7 +1441,7 @@ export default function Page() {
               <AddressLink address={tokenAddress} chainId={chainFromEnv.id} />
             </div>
             <div style={{ marginBottom: '0.5rem', color: 'rgba(34, 197, 94, 0.9)' }}>
-              ✓ CBOR Deployed<br />
+              ✓ SBE Data Deployed<br />
               ✓ Descriptor Set
             </div>
             <div style={{ marginBottom: '0.5rem', color: 'rgba(251, 191, 36, 0.9)' }}>
@@ -2245,7 +2260,7 @@ export default function Page() {
                     {
                       step: '05',
                       title: 'Deploy Token',
-                      description: 'Deploy an ERC20 or ERC721 token contract with the FIX descriptor and CBOR data embedded onchain using SSTORE2, creating a self-contained asset.',
+                      description: 'Deploy an ERC20 or ERC721 token contract with the FIX descriptor and SBE binary data embedded onchain using SSTORE2, creating a self-contained asset.',
                       icon: (
                         <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                           <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
@@ -2271,7 +2286,7 @@ export default function Page() {
                     {
                       step: '07',
                       title: 'Retrieve Offchain',
-                      description: 'Read the CBOR data directly from the contract using SSTORE2 and decode it back to the original FIX message for full transparency and auditability.',
+                      description: 'Read the SBE binary data directly from the contract using SSTORE2 and decode it back to the original FIX message for full transparency and auditability.',
                       icon: (
                         <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                           <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
@@ -3552,19 +3567,19 @@ export default function Page() {
                   4. Generate Merkle Proof
                 </h2>
                 <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 'clamp(0.875rem, 2vw, 0.95rem)' }}>
-                  Select a FIX field and create a cryptographic proof that can verify the field&apos;s value <Tooltip content="The proof allows efficient onchain verification of a specific field without decoding the entire CBOR descriptor">onchain with minimal gas</Tooltip>
+                  Select a FIX field and create a cryptographic proof that can verify the field&apos;s value <Tooltip content="The proof allows efficient onchain verification of a specific field without decoding the entire SBE descriptor">onchain with minimal gas</Tooltip>
                 </p>
               </div>
 
               <LearnMore title="How Merkle Proofs Work">
                 <p style={{ marginBottom: '1rem' }}>
                   <strong>What&apos;s a Merkle Proof?</strong><br/>
-                  A Merkle proof lets you verify that a specific field exists in the onchain descriptor with a specific value, without needing to download and decode the entire CBOR data. This makes verification extremely gas-efficient.
+                  A Merkle proof lets you verify that a specific field exists in the onchain descriptor with a specific value, without needing to download and decode the entire SBE binary data. This makes verification extremely gas-efficient.
                 </p>
                 <p style={{ marginBottom: '1rem' }}>
                   <strong>How it works:</strong><br/>
-                  The full FIX descriptor is stored onchain as CBOR data, along with a Merkle root hash. To verify a field:
-                  <br/>• You provide the field value and its path in the CBOR structure
+                  The full FIX descriptor is stored onchain as SBE binary data, along with a Merkle root hash. To verify a field:
+                  <br/>• You provide the field value and its path in the data structure
                   <br/>• You provide a &ldquo;proof&rdquo; - a small set of sibling hashes from the Merkle tree
                   <br/>• The smart contract recomputes the Merkle root from this data
                   <br/>• If the recomputed root matches the stored root, the field is verified
@@ -3575,7 +3590,7 @@ export default function Page() {
                 </p>
                 <p>
                   <strong>What&apos;s a &ldquo;path&rdquo;?</strong><br/>
-                  The path is how we navigate the CBOR tree to find a field. For simple fields, the path is just the tag number: [15] means &ldquo;FIX tag 15.&rdquo; For nested group fields, paths include the group tag, entry index, and field tag.
+                  The path is how we navigate the data structure to find a field. For simple fields, the path is just the tag number: [15] means &ldquo;FIX tag 15.&rdquo; For nested group fields, paths include the group tag, entry index, and field tag.
                 </p>
               </LearnMore>
 
@@ -3988,7 +4003,7 @@ export default function Page() {
                       textTransform: 'uppercase',
                       letterSpacing: '0.05em'
                     }}>
-                      Path CBOR (hex)
+                      Field Path (hex)
       </div>
                     <textarea 
                       readOnly 

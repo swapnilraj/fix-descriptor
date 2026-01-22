@@ -18,9 +18,13 @@ export async function POST(request: NextRequest) {
       name,
       symbol,
       initialSupply,
-      cborHex,
+      sbeHex,
+      cborHex, // Legacy support
       root
     } = body;
+    
+    // Use sbeHex if provided, otherwise fall back to cborHex for backward compatibility
+    const dataHex = sbeHex || cborHex;
 
     // Validate inputs
     if (!name || !symbol || !initialSupply) {
@@ -30,9 +34,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!cborHex || !root) {
+    if (!dataHex || !root) {
       return NextResponse.json(
-        { error: 'Missing descriptor data (cborHex, root)' },
+        { error: 'Missing descriptor data (sbeHex or cborHex, root)' },
         { status: 400 }
       );
     }
@@ -98,16 +102,16 @@ export async function POST(request: NextRequest) {
     // Convert supply to wei (18 decimals)
     const supplyInWei = BigInt(initialSupply) * BigInt(10 ** 18);
 
-    // Ensure CBOR hex has 0x prefix
-    const cborHexData = cborHex.startsWith('0x')
-      ? cborHex as `0x${string}`
-      : `0x${cborHex}` as `0x${string}`;
+    // Ensure data hex has 0x prefix
+    const dataHexFormatted = dataHex.startsWith('0x')
+      ? dataHex as `0x${string}`
+      : `0x${dataHex}` as `0x${string}`;
 
     console.log('Deploying token with parameters:', {
       name,
       symbol,
       supply: supplyInWei.toString(),
-      cborLength: cborHexData.length,
+      dataLength: dataHexFormatted.length,
       root,
       factoryAddress
     });
@@ -121,7 +125,7 @@ export async function POST(request: NextRequest) {
         name,
         symbol,
         supplyInWei,
-        cborHexData,
+        dataHexFormatted,
         descriptor
       ]
     });
@@ -206,7 +210,7 @@ export async function GET() {
     dictionaryAddress: process.env.NEXT_PUBLIC_DICTIONARY_ADDRESS || null,
     instructions: {
       step1: 'Generate FIX descriptor using /api/preview',
-      step2: 'Deploy token using POST /api/deploy-token with { name, symbol, initialSupply, cborHex, root }',
+      step2: 'Deploy token using POST /api/deploy-token with { name, symbol, initialSupply, sbeHex, root }',
       step3: 'Backend handles wallet signing and gas fees automatically',
       step4: 'Receive tokenAddress and transactionHash in response'
     },

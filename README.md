@@ -29,6 +29,7 @@ fixdescriptorkit-evm/
 ├── apps/
 │   └── web/                            # Next.js web application
 ├── contracts/                          # Solidity smart contracts
+├── sbe-lambda-encoder/                 # AWS Lambda SBE encoder service
 └── DEPLOYMENT.md                      # Deployment guide
 ```
 
@@ -235,6 +236,24 @@ forge script script/DeployAssetToken.s.sol --rpc-url https://ethereum-sepolia-rp
 ### Deploy Web Application
 
 See [DEPLOYMENT.md](./DEPLOYMENT.md) for detailed Vercel deployment instructions.
+
+### Deploy SBE Lambda Encoder
+
+The SBE Lambda Encoder is an AWS Lambda function that encodes/decodes FIX messages using Simple Binary Encoding (SBE) with runtime code generation.
+
+```bash
+cd sbe-lambda-encoder
+
+# First-time deployment (interactive)
+sam build
+sam deploy --guided
+
+# Subsequent updates
+sam build
+sam deploy
+```
+
+See [sbe-lambda-encoder/README.md](./sbe-lambda-encoder/README.md) for complete deployment instructions, usage examples, and troubleshooting.
 
 ### CI (GitHub Actions) Submodules
 

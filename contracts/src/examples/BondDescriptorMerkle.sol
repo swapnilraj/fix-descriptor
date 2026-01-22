@@ -77,7 +77,6 @@ contract BondDescriptorMerkle is ERC20, Ownable, ERC165, IFixDescriptor {
             fixMajor: 4,
             fixMinor: 4,
             dictHash: dictHash,
-            dictionaryContract: address(0),
             fixRoot: merkleRoot,
             fixSBEPtr: sbePtr,
             fixSBELen: sbeLen,

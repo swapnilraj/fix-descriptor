@@ -34,19 +34,18 @@ contract AssetTokenTest is Test {
     }
 
     function testERC20SetFixDescriptor() public {
-        // Create mock CBOR data
-        bytes memory cborData = hex"a1186f6355534404"; // Simple CBOR map
-        address cborPtr = factory.deploy(cborData);
+        // Create mock SBE data
+        bytes memory sbeData = hex"a1186f6355534404"; // Simple SBE data
+        address sbePtr = factory.deploy(sbeData);
 
         // Create descriptor
         IFixDescriptor.FixDescriptor memory descriptor = IFixDescriptor.FixDescriptor({
             fixMajor: 4,
             fixMinor: 4,
             dictHash: keccak256("test-dict"),
-            dictionaryContract: address(0),
             fixRoot: bytes32(uint256(1)),
-            fixCBORPtr: cborPtr,
-            fixCBORLen: uint32(cborData.length),
+            fixSBEPtr: sbePtr,
+            fixSBELen: uint32(sbeData.length),
             fixURI: ""
         });
 
@@ -55,8 +54,8 @@ contract AssetTokenTest is Test {
         emit IFixDescriptor.FixDescriptorSet(
             descriptor.fixRoot,
             descriptor.dictHash,
-            descriptor.fixCBORPtr,
-            descriptor.fixCBORLen
+            descriptor.fixSBEPtr,
+            descriptor.fixSBELen
         );
         erc20Token.setFixDescriptor(descriptor);
 
@@ -66,24 +65,23 @@ contract AssetTokenTest is Test {
         assertEq(retrieved.fixMinor, 4);
         assertEq(retrieved.dictHash, keccak256("test-dict"));
         assertEq(retrieved.fixRoot, bytes32(uint256(1)));
-        assertEq(retrieved.fixCBORPtr, cborPtr);
-        assertEq(retrieved.fixCBORLen, uint32(cborData.length));
+        assertEq(retrieved.fixSBEPtr, sbePtr);
+        assertEq(retrieved.fixSBELen, uint32(sbeData.length));
     }
 
     function testERC721SetFixDescriptor() public {
-        // Create mock CBOR data
-        bytes memory cborData = hex"a1186f6355534404";
-        address cborPtr = factory.deploy(cborData);
+        // Create mock SBE data
+        bytes memory sbeData = hex"a1186f6355534404";
+        address sbePtr = factory.deploy(sbeData);
 
         // Create descriptor
         IFixDescriptor.FixDescriptor memory descriptor = IFixDescriptor.FixDescriptor({
             fixMajor: 4,
             fixMinor: 4,
             dictHash: keccak256("test-dict"),
-            dictionaryContract: address(0),
             fixRoot: bytes32(uint256(1)),
-            fixCBORPtr: cborPtr,
-            fixCBORLen: uint32(cborData.length),
+            fixSBEPtr: sbePtr,
+            fixSBELen: uint32(sbeData.length),
             fixURI: ""
         });
 
@@ -100,10 +98,9 @@ contract AssetTokenTest is Test {
             fixMajor: 4,
             fixMinor: 4,
             dictHash: bytes32(0),
-            dictionaryContract: address(0),
             fixRoot: bytes32(0),
-            fixCBORPtr: address(0),
-            fixCBORLen: 0,
+            fixSBEPtr: address(0),
+            fixSBELen: 0,
             fixURI: ""
         });
 
@@ -115,33 +112,31 @@ contract AssetTokenTest is Test {
 
     function testUpdateDescriptor() public {
         // Set initial descriptor
-        bytes memory cborData1 = hex"a1186f6355534404";
-        address cborPtr1 = factory.deploy(cborData1);
+        bytes memory sbeData1 = hex"a1186f6355534404";
+        address sbePtr1 = factory.deploy(sbeData1);
 
         IFixDescriptor.FixDescriptor memory descriptor1 = IFixDescriptor.FixDescriptor({
             fixMajor: 4,
             fixMinor: 4,
             dictHash: keccak256("dict1"),
-            dictionaryContract: address(0),
             fixRoot: bytes32(uint256(1)),
-            fixCBORPtr: cborPtr1,
-            fixCBORLen: uint32(cborData1.length),
+            fixSBEPtr: sbePtr1,
+            fixSBELen: uint32(sbeData1.length),
             fixURI: ""
         });
         erc20Token.setFixDescriptor(descriptor1);
 
         // Update descriptor
-        bytes memory cborData2 = hex"a2186f6355534404186f63555344";
-        address cborPtr2 = factory.deploy(cborData2);
+        bytes memory sbeData2 = hex"a2186f6355534404186f63555344";
+        address sbePtr2 = factory.deploy(sbeData2);
 
         IFixDescriptor.FixDescriptor memory descriptor2 = IFixDescriptor.FixDescriptor({
             fixMajor: 4,
             fixMinor: 4,
             dictHash: keccak256("dict2"),
-            dictionaryContract: address(0),
             fixRoot: bytes32(uint256(2)),
-            fixCBORPtr: cborPtr2,
-            fixCBORLen: uint32(cborData2.length),
+            fixSBEPtr: sbePtr2,
+            fixSBELen: uint32(sbeData2.length),
             fixURI: ""
         });
 
@@ -149,7 +144,7 @@ contract AssetTokenTest is Test {
         emit IFixDescriptor.FixDescriptorUpdated(
             bytes32(uint256(1)),
             bytes32(uint256(2)),
-            cborPtr2
+            sbePtr2
         );
         erc20Token.setFixDescriptor(descriptor2);
 

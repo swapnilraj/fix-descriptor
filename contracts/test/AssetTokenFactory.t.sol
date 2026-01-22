@@ -88,10 +88,9 @@ contract AssetTokenFactoryTest is Test {
             fixMajor: 4,
             fixMinor: 4,
             dictHash: keccak256("test-dict"),
-            dictionaryContract: address(0),
             fixRoot: bytes32(uint256(12345)),
-            fixCBORPtr: address(0), // Will be set by factory
-            fixCBORLen: 0,          // Will be set by factory
+            fixSBEPtr: address(0), // Will be set by factory
+            fixSBELen: 0,          // Will be set by factory
             fixURI: "ipfs://test"
         });
 
@@ -118,8 +117,8 @@ contract AssetTokenFactoryTest is Test {
         assertEq(retrieved.fixMinor, 4);
         assertEq(retrieved.dictHash, keccak256("test-dict"));
         assertEq(retrieved.fixRoot, bytes32(uint256(12345)));
-        assertEq(retrieved.fixCBORPtr, cborPtr);
-        assertEq(retrieved.fixCBORLen, uint32(cborData.length));
+        assertEq(retrieved.fixSBEPtr, cborPtr);
+        assertEq(retrieved.fixSBELen, uint32(cborData.length));
         assertEq(retrieved.fixURI, "ipfs://test");
     }
 
@@ -175,10 +174,9 @@ contract AssetTokenFactoryTest is Test {
             fixMajor: 4,
             fixMinor: 4,
             dictHash: bytes32(0),
-            dictionaryContract: address(0),
             fixRoot: bytes32(0),
-            fixCBORPtr: address(0),
-            fixCBORLen: 0,
+            fixSBEPtr: address(0),
+            fixSBELen: 0,
             fixURI: ""
         });
 

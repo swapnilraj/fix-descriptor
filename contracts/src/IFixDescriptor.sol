@@ -12,7 +12,6 @@ interface IFixDescriptor {
         uint16 fixMajor;           // FIX version major (e.g., 4)
         uint16 fixMinor;           // FIX version minor (e.g., 4)
         bytes32 dictHash;          // FIX dictionary/Orchestra hash
-        address dictionaryContract; // FixDictionary contract address for tag name lookups
         bytes32 fixRoot;           // Merkle root commitment
         address fixSBEPtr;         // SSTORE2 data contract address
         uint32 fixSBELen;          // SBE data length
