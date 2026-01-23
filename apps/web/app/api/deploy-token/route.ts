@@ -20,8 +20,7 @@ export async function POST(request: NextRequest) {
       initialSupply,
       sbeHex,
       cborHex, // Legacy support
-      root,
-      schemaURI
+      root
     } = body;
     
     // Use sbeHex if provided, otherwise fall back to cborHex for backward compatibility
@@ -46,7 +45,6 @@ export async function POST(request: NextRequest) {
     const privateKey = process.env.PRIVATE_KEY;
     const rpcUrl = process.env.NEXT_PUBLIC_RPC_URL;
     const factoryAddress = process.env.NEXT_PUBLIC_TOKEN_FACTORY_ADDRESS;
-    const dictionaryAddress = process.env.NEXT_PUBLIC_DICTIONARY_ADDRESS;
 
     if (!privateKey) {
       return NextResponse.json(
@@ -96,8 +94,7 @@ export async function POST(request: NextRequest) {
       fixRoot: root as `0x${string}`,
       fixSBEPtr: '0x0000000000000000000000000000000000000000' as `0x${string}`,
       fixSBELen: 0,
-      fixURI: '',
-      schemaURI: schemaURI || ''
+      fixURI: ''
     };
 
     // Convert supply to wei (18 decimals)

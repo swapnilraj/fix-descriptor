@@ -944,7 +944,6 @@ export default function Page() {
   const [tokenName, setTokenName] = useState('');
   const [tokenSymbol, setTokenSymbol] = useState('');
   const [tokenSupply, setTokenSupply] = useState('1000000');
-  const [schemaURI, setSchemaURI] = useState('');
   const [deployedTokenAddress, setDeployedTokenAddress] = useState<string | null>(null);
   const [onChainVerificationStatus, setOnChainVerificationStatus] = useState<'pending' | 'success' | 'failed' | null>(null);
 
@@ -1317,8 +1316,7 @@ export default function Page() {
           symbol: tokenSymbol,
           initialSupply: tokenSupply,
           sbeHex: preview.sbeHex,
-          root: preview.root,
-          schemaURI: schemaURI
+          root: preview.root
         })
       });
 
@@ -3659,41 +3657,6 @@ export default function Page() {
                               fontSize: '0.875rem'
                             }}
                           />
-                        </div>
-                      </div>
-
-                      <div>
-                        <label style={{ 
-                          display: 'block', 
-                          fontSize: '0.875rem', 
-                          marginBottom: '0.5rem',
-                          color: 'rgba(255,255,255,0.8)'
-                        }}>
-                          Schema URI (Optional)
-                        </label>
-                        <input
-                          type="text"
-                          value={schemaURI}
-                          onChange={(e) => setSchemaURI(e.target.value)}
-                          placeholder="https://example.com/schema.xml or ipfs://..."
-                          style={{
-                            width: '100%',
-                            padding: '0.75rem',
-                            background: 'rgba(0,0,0,0.3)',
-                            border: '1px solid rgba(255,255,255,0.1)',
-                            borderRadius: '6px',
-                            color: '#ffffff',
-                            fontSize: 'clamp(0.8rem, 2vw, 0.875rem)',
-                            boxSizing: 'border-box',
-                            minHeight: '44px'
-                          }}
-                        />
-                        <div style={{
-                          fontSize: '0.75rem',
-                          color: 'rgba(255,255,255,0.5)',
-                          marginTop: '0.25rem'
-                        }}>
-                          Link to the Orchestra/SBE schema used for encoding
                         </div>
                       </div>
 

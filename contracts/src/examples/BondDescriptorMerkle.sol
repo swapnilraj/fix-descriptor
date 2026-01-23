@@ -80,8 +80,7 @@ contract BondDescriptorMerkle is ERC20, Ownable, ERC165, IFixDescriptor {
             fixRoot: merkleRoot,
             fixSBEPtr: sbePtr,
             fixSBELen: sbeLen,
-            fixURI: "",
-            schemaURI: ""
+            fixURI: ""
         });
         _fixDescriptor.initialized = true;
 

@@ -91,8 +91,7 @@ contract AssetTokenFactoryTest is Test {
             fixRoot: bytes32(uint256(12345)),
             fixSBEPtr: address(0), // Will be set by factory
             fixSBELen: 0,          // Will be set by factory
-            fixURI: "ipfs://test",
-            schemaURI: ""
+            fixURI: "ipfs://test"
         });
 
         // Deploy with descriptor
@@ -178,8 +177,7 @@ contract AssetTokenFactoryTest is Test {
             fixRoot: bytes32(0),
             fixSBEPtr: address(0),
             fixSBELen: 0,
-            fixURI: "",
-            schemaURI: ""
+            fixURI: ""
         });
 
         // Deployer can set descriptor

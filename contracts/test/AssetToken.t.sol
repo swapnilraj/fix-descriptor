@@ -46,8 +46,7 @@ contract AssetTokenTest is Test {
             fixRoot: bytes32(uint256(1)),
             fixSBEPtr: sbePtr,
             fixSBELen: uint32(sbeData.length),
-            fixURI: "",
-            schemaURI: ""
+            fixURI: ""
         });
 
         // Set descriptor
@@ -83,8 +82,7 @@ contract AssetTokenTest is Test {
             fixRoot: bytes32(uint256(1)),
             fixSBEPtr: sbePtr,
             fixSBELen: uint32(sbeData.length),
-            fixURI: "",
-            schemaURI: ""
+            fixURI: ""
         });
 
         // Set descriptor
@@ -103,8 +101,7 @@ contract AssetTokenTest is Test {
             fixRoot: bytes32(0),
             fixSBEPtr: address(0),
             fixSBELen: 0,
-            fixURI: "",
-            schemaURI: ""
+            fixURI: ""
         });
 
         // Try to set descriptor from non-owner
@@ -125,8 +122,7 @@ contract AssetTokenTest is Test {
             fixRoot: bytes32(uint256(1)),
             fixSBEPtr: sbePtr1,
             fixSBELen: uint32(sbeData1.length),
-            fixURI: "",
-            schemaURI: ""
+            fixURI: ""
         });
         erc20Token.setFixDescriptor(descriptor1);
 
@@ -141,8 +137,7 @@ contract AssetTokenTest is Test {
             fixRoot: bytes32(uint256(2)),
             fixSBEPtr: sbePtr2,
             fixSBELen: uint32(sbeData2.length),
-            fixURI: "",
-            schemaURI: ""
+            fixURI: ""
         });
 
         vm.expectEmit(true, true, false, true);

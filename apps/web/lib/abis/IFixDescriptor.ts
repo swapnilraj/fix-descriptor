@@ -46,11 +46,6 @@ export const abi = [
             "name": "fixURI",
             "type": "string",
             "internalType": "string"
-          },
-          {
-            "name": "schemaURI",
-            "type": "string",
-            "internalType": "string"
           }
         ]
       }
