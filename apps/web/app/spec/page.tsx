@@ -707,8 +707,8 @@ export default function SpecPage() {
   fixMinor: 4,
   dictHash: 0x...,
   fixRoot: 0x7a3f... (Merkle root),
-  fixCBORPtr: 0x123... (SSTORE2 address),
-  fixCBORLen: 243
+  fixSBEPtr: 0x123... (SSTORE2 address),
+  fixSBELen: 243
 }`}</pre>
             </div>
 
@@ -1526,8 +1526,8 @@ export default function SpecPage() {
   bytes32 dictHash;           // FIX dictionary hash
   address dictionaryContract; // FixDictionary for tag lookups
   bytes32 fixRoot;            // Merkle root
-  address fixCBORPtr;         // SSTORE2 data address
-  uint32  fixCBORLen;         // CBOR length
+  address fixSBEPtr;         // SSTORE2 data address
+  uint32  fixSBELen;         // SBE length
   string  fixURI;             // optional mirror
 }`}</pre>
             </div>
@@ -1563,7 +1563,7 @@ export default function SpecPage() {
             </SubsectionHeading>
             <ul style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', marginBottom: 'clamp(1.5rem, 3vw, 2rem)', paddingLeft: 'clamp(1rem, 3vw, 1.5rem)', fontSize: 'clamp(0.9rem, 2vw, 1rem)' }}>
               <li style={{ marginBottom: '0.75rem' }}>The CBOR is deployed as the runtime bytecode of a minimal data contract (prefixed with a STOP byte)</li>
-              <li style={{ marginBottom: '0.75rem' }}>Anyone can retrieve bytes via <code style={{ background: 'rgba(255,255,255,0.1)', padding: '0.2rem 0.5rem', borderRadius: '3px', fontSize: '0.9em' }}>eth_getCode(fixCBORPtr)</code></li>
+                <li style={{ marginBottom: '0.75rem' }}>Anyone can retrieve bytes via <code style={{ background: 'rgba(255,255,255,0.1)', padding: '0.2rem 0.5rem', borderRadius: '3px', fontSize: '0.9em' }}>eth_getCode(fixSBEPtr)</code></li>
               <li>Optionally expose a chunk retrieval function using EXTCODECOPY</li>
             </ul>
 
@@ -1580,7 +1580,7 @@ export default function SpecPage() {
               marginBottom: '1rem'
             }}>
               <div style={{ color: 'rgba(255,255,255,0.8)', marginBottom: '0.75rem' }}>
-                event FixDescriptorSet(bytes32 fixRoot, bytes32 dictHash, address fixCBORPtr, uint32 fixCBORLen)
+                event FixDescriptorSet(bytes32 fixRoot, bytes32 dictHash, address fixSBEPtr, uint32 fixSBELen)
               </div>
               <div style={{ color: 'rgba(255,255,255,0.8)' }}>
                 event FixDescriptorUpdated(bytes32 oldRoot, bytes32 newRoot, address newPtr)
@@ -1927,7 +1927,7 @@ export default function SpecPage() {
               marginBottom: '2rem',
               overflowX: 'auto'
             }}>
-              <pre style={{ margin: 0, color: 'rgba(255,255,255,0.9)', lineHeight: '1.6' }}>{`function getFixCBORChunk(uint256 start, uint256 size)
+              <pre style={{ margin: 0, color: 'rgba(255,255,255,0.9)', lineHeight: '1.6' }}>{`function getFixSBEChunk(uint256 start, uint256 size)
     external view returns (bytes memory);`}</pre>
             </div>
 
@@ -2278,8 +2278,8 @@ export default function SpecPage() {
                 { num: 3, title: 'Serialize to CBOR', desc: 'Use canonical form - integer keys sorted, definite lengths (see Section 7)' },
                 { num: 4, title: 'Enumerate Leaves', desc: 'Compute pathCBOR for each present field; collect (pathCBOR, valueBytes) pairs (see Section 8.1-8.3)' },
                 { num: 5, title: 'Compute Merkle Root', desc: 'Sort leaves by pathCBOR; build binary Merkle tree using keccak256 (see Section 8.4)' },
-                { num: 6, title: 'Deploy CBOR', desc: 'Deploy as SSTORE2-style data contract; return fixCBORPtr and fixCBORLen (see Section 9.4)' },
-                { num: 7, title: 'Set Descriptor', desc: 'Store in the asset contract (not a registry): fixMajor, fixMinor, dictHash, fixRoot, fixCBORPtr, fixCBORLen, fixURI (see Section 9.2)' },
+                { num: 6, title: 'Deploy SBE', desc: 'Deploy as SSTORE2-style data contract; return fixSBEPtr and fixSBELen (see Section 9.4)' },
+                { num: 7, title: 'Set Descriptor', desc: 'Store in the asset contract (not a registry): fixMajor, fixMinor, dictHash, fixRoot, fixSBEPtr, fixSBELen, fixURI (see Section 9.2)' },
                 { num: 8, title: 'Emit Event', desc: 'Emit FixDescriptorSet event for indexing (see Section 9.5)' },
                 { num: 9, title: 'Produce Utilities', desc: 'Build proof generator and reader tools for fetching CBOR and generating proofs off-chain' }
               ].map((step) => (

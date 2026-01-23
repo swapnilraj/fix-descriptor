@@ -1653,7 +1653,7 @@ export default function Page() {
           abi: tokenAbi,
           functionName: 'getFixDescriptor',
           args: []
-        }) as { fixCBORLen: number; fixCBORPtr: string };
+        }) as { fixSBELen: number; fixSBEPtr: string };
       } catch (descriptorError) {
         const errorMsg = descriptorError instanceof Error ? descriptorError.message : 'Unknown error';
         if (errorMsg.includes('Descriptor not initialized')) {
@@ -1662,8 +1662,8 @@ export default function Page() {
         throw descriptorError;
       }
 
-      const sbeLength = Number(descriptor.fixCBORLen);
-      const sbePtr = descriptor.fixCBORPtr;
+      const sbeLength = Number(descriptor.fixSBELen);
+      const sbePtr = descriptor.fixSBEPtr;
 
       // Validate SBE data exists
       if (!sbePtr || sbePtr === '0x0000000000000000000000000000000000000000') {
@@ -1680,12 +1680,12 @@ export default function Page() {
         sbeBytes = await publicClient.readContract({
           address: deployedTokenAddress as `0x${string}`,
           abi: tokenAbi,
-          functionName: 'getFixCBORChunk',
+          functionName: 'getFixSBEChunk',
           args: [BigInt(0), BigInt(sbeLength)]
         }) as `0x${string}`;
       } catch (chunkError) {
         const errorMsg = chunkError instanceof Error ? chunkError.message : 'Unknown error';
-        if (errorMsg.includes('No CBOR data')) {
+        if (errorMsg.includes('No SBE data') || errorMsg.includes('SBE not deployed')) {
           throw new Error('The SBE data contract is empty. This can happen if the deployment failed or the data was not properly stored.');
         }
         throw chunkError;

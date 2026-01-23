@@ -88,6 +88,13 @@ contract AssetTokenFactory {
         // Deploy SBE data first
         sbePtr = dataFactory.deploy(sbeData);
 
+        // Ensure SSTORE2 payload is present and matches expected length
+        uint256 codeSize;
+        assembly {
+            codeSize := extcodesize(sbePtr)
+        }
+        require(codeSize == sbeData.length + 1, "SBE_INVALID_SIZE");
+
         // Update descriptor with the deployed SBE pointer
         descriptor.fixSBEPtr = sbePtr;
         descriptor.fixSBELen = uint32(sbeData.length);

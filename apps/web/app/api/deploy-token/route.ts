@@ -149,7 +149,7 @@ export async function POST(request: NextRequest) {
         dataHexFormatted,
         descriptor
       ],
-      gas: 5000000n
+      gas: BigInt(5_000_000)
     });
 
     console.log('Transaction submitted:', hash);

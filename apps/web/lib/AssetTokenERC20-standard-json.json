@@ -71,7 +71,7 @@
         ]
       }
     },
-    "evmVersion": "prague",
+    "evmVersion": "paris",
     "viaIR": true,
     "libraries": {}
   }
