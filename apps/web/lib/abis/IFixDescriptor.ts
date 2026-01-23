@@ -28,27 +28,27 @@ export const abi = [
             "internalType": "bytes32"
           },
           {
-            "name": "dictionaryContract",
-            "type": "address",
-            "internalType": "address"
-          },
-          {
             "name": "fixRoot",
             "type": "bytes32",
             "internalType": "bytes32"
           },
           {
-            "name": "fixCBORPtr",
+            "name": "fixSBEPtr",
             "type": "address",
             "internalType": "address"
           },
           {
-            "name": "fixCBORLen",
+            "name": "fixSBELen",
             "type": "uint32",
             "internalType": "uint32"
           },
           {
             "name": "fixURI",
+            "type": "string",
+            "internalType": "string"
+          },
+          {
+            "name": "schemaURI",
             "type": "string",
             "internalType": "string"
           }
@@ -72,23 +72,10 @@ export const abi = [
   },
   {
     "type": "function",
-    "name": "getHumanReadableDescriptor",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "string",
-        "internalType": "string"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
     "name": "verifyField",
     "inputs": [
       {
-        "name": "pathCBOR",
+        "name": "pathSBE",
         "type": "bytes",
         "internalType": "bytes"
       },
@@ -134,13 +121,13 @@ export const abi = [
         "internalType": "bytes32"
       },
       {
-        "name": "fixCBORPtr",
+        "name": "fixSBEPtr",
         "type": "address",
         "indexed": false,
         "internalType": "address"
       },
       {
-        "name": "fixCBORLen",
+        "name": "fixSBELen",
         "type": "uint32",
         "indexed": false,
         "internalType": "uint32"

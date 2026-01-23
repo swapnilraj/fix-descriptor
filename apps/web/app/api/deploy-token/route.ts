@@ -20,7 +20,8 @@ export async function POST(request: NextRequest) {
       initialSupply,
       sbeHex,
       cborHex, // Legacy support
-      root
+      root,
+      schemaURI
     } = body;
     
     // Use sbeHex if provided, otherwise fall back to cborHex for backward compatibility
@@ -96,6 +97,7 @@ export async function POST(request: NextRequest) {
       fixCBORPtr: '0x0000000000000000000000000000000000000000' as `0x${string}`,
       fixCBORLen: 0,
       fixURI: '',
+      schemaURI: schemaURI || '',
       dictionaryContract: (dictionaryAddress || '0x0000000000000000000000000000000000000000') as `0x${string}`
     };
 

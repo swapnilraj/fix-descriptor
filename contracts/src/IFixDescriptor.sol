@@ -16,6 +16,7 @@ interface IFixDescriptor {
         address fixSBEPtr;         // SSTORE2 data contract address
         uint32 fixSBELen;          // SBE data length
         string fixURI;             // Optional mirror URI (ipfs:// or https://)
+        string schemaURI;          // Orchestra/SBE schema URI (ipfs:// or https://)
     }
 
     /// @notice Emitted when descriptor is first set

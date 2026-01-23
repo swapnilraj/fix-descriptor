@@ -70,6 +70,91 @@ public class SbeSchemaParser {
     }
     
     /**
+     * Extract mapping of field ID to field name from SBE schema for a specific message.
+     * This allows direct mapping from FIX tag (e.g., 11) to SBE field name (e.g., "orderId")
+     * based on the field's id attribute: <field name="orderId" id="11" .../> within a specific message.
+     * 
+     * @param schemaXml SBE schema XML string
+     * @param messageId Message ID to extract fields from
+     * @return Map of field ID (as string) to field name
+     */
+    public static Map<String, String> extractFieldIdMappingForMessage(String schemaXml, Integer messageId) throws Exception {
+        Map<String, String> idToName = new HashMap<>();
+        
+        // Parse XML
+        DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+        factory.setNamespaceAware(false);
+        DocumentBuilder builder = factory.newDocumentBuilder();
+        Document doc = builder.parse(new ByteArrayInputStream(schemaXml.getBytes("UTF-8")));
+        
+        // If messageId is specified, find that specific message element
+        Element messageElement = null;
+        if (messageId != null) {
+            NodeList messageNodes = doc.getElementsByTagName("message");
+            if (messageNodes.getLength() == 0) {
+                messageNodes = doc.getElementsByTagName("sbe:message");
+            }
+            
+            for (int i = 0; i < messageNodes.getLength(); i++) {
+                Element msg = (Element) messageNodes.item(i);
+                String msgId = msg.getAttribute("id");
+                if (msgId != null && msgId.equals(String.valueOf(messageId))) {
+                    messageElement = msg;
+                    break;
+                }
+            }
+        }
+        
+        // Extract field id→name mappings from <field name="..." id="..."> elements
+        NodeList fieldNodes;
+        if (messageElement != null) {
+            // Get fields only from this specific message
+            fieldNodes = messageElement.getElementsByTagName("field");
+        } else {
+            // Get all fields from all messages
+            fieldNodes = doc.getElementsByTagName("field");
+            if (fieldNodes.getLength() == 0) {
+                fieldNodes = doc.getElementsByTagName("sbe:field");
+            }
+        }
+        
+        for (int i = 0; i < fieldNodes.getLength(); i++) {
+            Element field = (Element) fieldNodes.item(i);
+            String fieldId = field.getAttribute("id");
+            String fieldName = field.getAttribute("name");
+            
+            if (fieldId != null && !fieldId.isEmpty() && fieldName != null && !fieldName.isEmpty()) {
+                idToName.put(fieldId, fieldName);
+            }
+        }
+        
+        // Also extract data field id→name mappings from <data name="..." id="..."> elements
+        NodeList dataNodes;
+        if (messageElement != null) {
+            // Get data fields only from this specific message
+            dataNodes = messageElement.getElementsByTagName("data");
+        } else {
+            // Get all data fields from all messages
+            dataNodes = doc.getElementsByTagName("data");
+            if (dataNodes.getLength() == 0) {
+                dataNodes = doc.getElementsByTagName("sbe:data");
+            }
+        }
+        
+        for (int i = 0; i < dataNodes.getLength(); i++) {
+            Element field = (Element) dataNodes.item(i);
+            String fieldId = field.getAttribute("id");
+            String fieldName = field.getAttribute("name");
+            
+            if (fieldId != null && !fieldId.isEmpty() && fieldName != null && !fieldName.isEmpty()) {
+                idToName.put(fieldId, fieldName);
+            }
+        }
+        
+        return idToName;
+    }
+    
+    /**
      * Extract mapping of field name to field ID from SBE schema.
      * This is the reverse of extractFieldIdMapping, used for decoding.
      * 
@@ -77,6 +162,18 @@ public class SbeSchemaParser {
      * @return Map of field name to field ID (as string)
      */
     public static Map<String, String> extractFieldNameToIdMapping(String schemaXml) throws Exception {
+        return extractFieldNameToIdMapping(schemaXml, null);
+    }
+    
+    /**
+     * Extract mapping of field name to field ID from SBE schema for a specific message.
+     * This is the reverse of extractFieldIdMapping, used for decoding.
+     * 
+     * @param schemaXml SBE schema XML string
+     * @param messageId Optional message ID to extract fields from specific message only
+     * @return Map of field name to field ID (as string)
+     */
+    public static Map<String, String> extractFieldNameToIdMapping(String schemaXml, Integer messageId) throws Exception {
         Map<String, String> nameToId = new HashMap<>();
         
         // Parse XML
@@ -85,10 +182,35 @@ public class SbeSchemaParser {
         DocumentBuilder builder = factory.newDocumentBuilder();
         Document doc = builder.parse(new ByteArrayInputStream(schemaXml.getBytes("UTF-8")));
         
+        // If messageId is specified, find that specific message element
+        Element messageElement = null;
+        if (messageId != null) {
+            NodeList messageNodes = doc.getElementsByTagName("message");
+            if (messageNodes.getLength() == 0) {
+                messageNodes = doc.getElementsByTagName("sbe:message");
+            }
+            
+            for (int i = 0; i < messageNodes.getLength(); i++) {
+                Element msg = (Element) messageNodes.item(i);
+                String msgId = msg.getAttribute("id");
+                if (msgId != null && msgId.equals(String.valueOf(messageId))) {
+                    messageElement = msg;
+                    break;
+                }
+            }
+        }
+        
         // Extract field name→id mappings from <field name="..." id="..."> elements
-        NodeList fieldNodes = doc.getElementsByTagName("field");
-        if (fieldNodes.getLength() == 0) {
-            fieldNodes = doc.getElementsByTagName("sbe:field");
+        NodeList fieldNodes;
+        if (messageElement != null) {
+            // Get fields only from this specific message
+            fieldNodes = messageElement.getElementsByTagName("field");
+        } else {
+            // Get all fields from all messages
+            fieldNodes = doc.getElementsByTagName("field");
+            if (fieldNodes.getLength() == 0) {
+                fieldNodes = doc.getElementsByTagName("sbe:field");
+            }
         }
         
         for (int i = 0; i < fieldNodes.getLength(); i++) {
@@ -102,9 +224,16 @@ public class SbeSchemaParser {
         }
         
         // Also extract data field name→id mappings from <data name="..." id="..."> elements
-        NodeList dataNodes = doc.getElementsByTagName("data");
-        if (dataNodes.getLength() == 0) {
-            dataNodes = doc.getElementsByTagName("sbe:data");
+        NodeList dataNodes;
+        if (messageElement != null) {
+            // Get data fields only from this specific message
+            dataNodes = messageElement.getElementsByTagName("data");
+        } else {
+            // Get all data fields from all messages
+            dataNodes = doc.getElementsByTagName("data");
+            if (dataNodes.getLength() == 0) {
+                dataNodes = doc.getElementsByTagName("sbe:data");
+            }
         }
         
         for (int i = 0; i < dataNodes.getLength(); i++) {
@@ -118,6 +247,59 @@ public class SbeSchemaParser {
         }
         
         return nameToId;
+    }
+    
+    /**
+     * Extract ordered list of variable-length data field names for a specific message.
+     * This is needed because SBE requires reading variable-length fields in order.
+     * 
+     * @param schemaXml SBE schema XML string
+     * @param messageId Message ID to extract data fields from
+     * @return Ordered list of data field names
+     */
+    public static List<String> extractOrderedDataFields(String schemaXml, Integer messageId) throws Exception {
+        List<String> orderedDataFields = new ArrayList<>();
+        
+        // Parse XML
+        DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+        factory.setNamespaceAware(false);
+        DocumentBuilder builder = factory.newDocumentBuilder();
+        Document doc = builder.parse(new ByteArrayInputStream(schemaXml.getBytes("UTF-8")));
+        
+        // Find the specific message element
+        Element messageElement = null;
+        if (messageId != null) {
+            NodeList messageNodes = doc.getElementsByTagName("message");
+            if (messageNodes.getLength() == 0) {
+                messageNodes = doc.getElementsByTagName("sbe:message");
+            }
+            
+            for (int i = 0; i < messageNodes.getLength(); i++) {
+                Element msg = (Element) messageNodes.item(i);
+                String msgId = msg.getAttribute("id");
+                if (msgId != null && msgId.equals(String.valueOf(messageId))) {
+                    messageElement = msg;
+                    break;
+                }
+            }
+        }
+        
+        if (messageElement == null) {
+            // Return empty list if message not found
+            return orderedDataFields;
+        }
+        
+        // Extract data field names in document order
+        NodeList dataNodes = messageElement.getElementsByTagName("data");
+        for (int i = 0; i < dataNodes.getLength(); i++) {
+            Element field = (Element) dataNodes.item(i);
+            String fieldName = field.getAttribute("name");
+            if (fieldName != null && !fieldName.isEmpty()) {
+                orderedDataFields.add(fieldName);
+            }
+        }
+        
+        return orderedDataFields;
     }
     
     /**

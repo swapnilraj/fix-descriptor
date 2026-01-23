@@ -1,0 +1,5 @@
+{
+  "mode": "decode",
+  "encodedMessage": "040025000100000000000000040054455354",
+  "schema": "<?xml version=\"1.0\" encoding=\"UTF-8\"?><sbe:messageSchema xmlns:sbe=\"http://fixprotocol.io/2016/sbe\" package=\"com.example.sbe\" id=\"1\" version=\"0\" byteOrder=\"littleEndian\"><types><composite name=\"messageHeader\"><type name=\"blockLength\" primitiveType=\"uint16\"/><type name=\"templateId\" primitiveType=\"uint16\"/><type name=\"schemaId\" primitiveType=\"uint16\"/><type name=\"version\" primitiveType=\"uint16\"/></composite><composite name=\"varStringEncoding\"><type name=\"length\" primitiveType=\"uint16\"/><type name=\"varData\" primitiveType=\"uint8\" length=\"0\" characterEncoding=\"UTF-8\"/></composite></types><sbe:message name=\"TestMsg\" id=\"37\"><field name=\"Dummy\" id=\"999\" type=\"uint32\"/><data name=\"Symbol\" id=\"55\" type=\"varStringEncoding\"/></sbe:message></sbe:messageSchema>"
+}

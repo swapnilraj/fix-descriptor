@@ -944,22 +944,19 @@ export default function Page() {
   const [tokenName, setTokenName] = useState('');
   const [tokenSymbol, setTokenSymbol] = useState('');
   const [tokenSupply, setTokenSupply] = useState('1000000');
+  const [schemaURI, setSchemaURI] = useState('');
   const [deployedTokenAddress, setDeployedTokenAddress] = useState<string | null>(null);
   const [onChainVerificationStatus, setOnChainVerificationStatus] = useState<'pending' | 'success' | 'failed' | null>(null);
 
-  // CBOR fetching state
-  const [fetchedCBOR, setFetchedCBOR] = useState<string | null>(null);
+  // SBE fetching state
+  const [fetchedSBE, setFetchedSBE] = useState<string | null>(null);
   const [decodedFIX, setDecodedFIX] = useState<string | null>(null);
   const [decodedFIXNamed, setDecodedFIXNamed] = useState<string | null>(null);
-  const [fetchCBORStatus, setFetchCBORStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
-  const [fetchCBORError, setFetchCBORError] = useState<string | null>(null);
+  const [fetchSBEStatus, setFetchSBEStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [fetchSBEError, setFetchSBEError] = useState<string | null>(null);
   
   // Human-readable output state
-  const [decodeMode, setDecodeMode] = useState<'offchain' | 'onchain'>('offchain');
   const [offchainFormat, setOffchainFormat] = useState<'numeric' | 'named'>('numeric');
-  const [onchainReadable, setOnchainReadable] = useState<string | null>(null);
-  const [onchainReadableStatus, setOnchainReadableStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
-  const [onchainReadableError, setOnchainReadableError] = useState<string | null>(null);
 
 
   // Sticky progress indicator
@@ -1320,7 +1317,8 @@ export default function Page() {
           symbol: tokenSymbol,
           initialSupply: tokenSupply,
           sbeHex: preview.sbeHex,
-          root: preview.root
+          root: preview.root,
+          schemaURI: schemaURI
         })
       });
 
@@ -1354,35 +1352,27 @@ export default function Page() {
             Block: {blockNumber}
           </div>
           <div style={{ marginTop: '1rem', color: 'rgba(251, 191, 36, 0.9)' }}>
-            ⏳ Verifying contract on block explorer...
+            ⏳ Waiting for contract indexing, then verifying on block explorer...
           </div>
         </div>
       );
 
-      // Attempt to verify the contract on Etherscan
+      // Retry verification with visible progress - submit once, then retry if needed
       const factoryAddress = process.env.NEXT_PUBLIC_TOKEN_FACTORY_ADDRESS;
       const supplyInWei = BigInt(tokenSupply) * BigInt(10 ** 18);
+      const maxRetries = 10;
+      
+      // Create public client for checking block numbers
+      const publicClient = createPublicClient({
+        chain: chainFromEnv,
+        transport: http(process.env.NEXT_PUBLIC_RPC_URL)
+      });
+      
+      let currentBlockNumber = BigInt(blockNumber);
 
-      try {
-        const verifyResponse = await fetch('/api/verify-contract', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            contractAddress: tokenAddress,
-            tokenName,
-            tokenSymbol,
-            initialSupply: supplyInWei.toString(),
-            initialOwner: factoryAddress, // Factory was the initial owner
-            chainId: chainFromEnv.id,
-          }),
-        });
-
-        const verifyResult = await verifyResponse.json();
-
-        if (verifyResult.success) {
-          // Update with verification success
+      for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+          // Update UI with retry attempt
           setTxInfo(
             <div>
               <div style={{ marginBottom: '1rem', fontWeight: '600' }}>✅ Token deployed successfully!</div>
@@ -1392,20 +1382,136 @@ export default function Page() {
               </div>
               <div style={{ marginBottom: '0.5rem', color: 'rgba(34, 197, 94, 0.9)' }}>
                 ✓ SBE Data Deployed<br />
-                ✓ Descriptor Set<br />
-                ✓ Contract Verified
+                ✓ Descriptor Set
               </div>
               <div style={{ marginTop: '0.5rem' }}>
                 <span style={{ color: 'rgba(255,255,255,0.7)' }}>Transaction: </span>
                 <TransactionLink hash={transactionHash} chainId={chainFromEnv.id} />
               </div>
-              <div style={{ marginTop: '1rem', color: 'rgba(255,255,255,0.8)' }}>
-                You can now view the contract source code and verify proofs onchain!
+              <div style={{ marginTop: '0.5rem', fontSize: '0.875rem', color: 'rgba(255,255,255,0.6)' }}>
+                Block: {blockNumber}
+              </div>
+              <div style={{ marginTop: '1rem', color: 'rgba(251, 191, 36, 0.9)' }}>
+                ⏳ Verifying contract (attempt {attempt}/{maxRetries})...
               </div>
             </div>
           );
-        } else {
-          // Update with verification warning (deployment still successful)
+
+          const verifyResponse = await fetch('/api/verify-contract', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              contractAddress: tokenAddress,
+              tokenName,
+              tokenSymbol,
+              initialSupply: supplyInWei.toString(),
+              initialOwner: factoryAddress,
+              chainId: chainFromEnv.id,
+            }),
+          });
+
+          const verifyResult = await verifyResponse.json();
+
+          if (verifyResult.success) {
+            setTxInfo(
+              <div>
+                <div style={{ marginBottom: '1rem', fontWeight: '600' }}>✅ Token deployed successfully!</div>
+                <div style={{ marginBottom: '0.5rem' }}>
+                  <span style={{ color: 'rgba(255,255,255,0.7)' }}>Token Address: </span>
+                  <AddressLink address={tokenAddress} chainId={chainFromEnv.id} />
+                </div>
+                <div style={{ marginBottom: '0.5rem', color: 'rgba(34, 197, 94, 0.9)' }}>
+                  ✓ SBE Data Deployed<br />
+                  ✓ Descriptor Set<br />
+                  ✓ Contract Verified (attempt {attempt})
+                </div>
+                <div style={{ marginTop: '0.5rem' }}>
+                  <span style={{ color: 'rgba(255,255,255,0.7)' }}>Transaction: </span>
+                  <TransactionLink hash={transactionHash} chainId={chainFromEnv.id} />
+                </div>
+                <div style={{ marginTop: '1rem', color: 'rgba(255,255,255,0.8)' }}>
+                  You can now view the contract source code and verify proofs onchain!
+                </div>
+              </div>
+            );
+            break;
+          }
+
+          // Check if we should retry
+          if (attempt < maxRetries) {
+            const errorMsg = verifyResult.message || verifyResult.error || '';
+            
+            // Wait for next block before retry
+            setTxInfo(
+              <div>
+                <div style={{ marginBottom: '1rem', fontWeight: '600' }}>✅ Token deployed successfully!</div>
+                <div style={{ marginBottom: '0.5rem' }}>
+                  <span style={{ color: 'rgba(255,255,255,0.7)' }}>Token Address: </span>
+                  <AddressLink address={tokenAddress} chainId={chainFromEnv.id} />
+                </div>
+                <div style={{ marginBottom: '0.5rem', color: 'rgba(34, 197, 94, 0.9)' }}>
+                  ✓ SBE Data Deployed<br />
+                  ✓ Descriptor Set
+                </div>
+                <div style={{ marginTop: '0.5rem' }}>
+                  <span style={{ color: 'rgba(255,255,255,0.7)' }}>Transaction: </span>
+                  <TransactionLink hash={transactionHash} chainId={chainFromEnv.id} />
+                </div>
+                <div style={{ marginTop: '1rem', color: 'rgba(251, 191, 36, 0.9)' }}>
+                  ⏳ Waiting for new block... ({attempt}/{maxRetries})
+                </div>
+                <div style={{ marginTop: '0.5rem', fontSize: '0.875rem', color: 'rgba(255,255,255,0.5)' }}>
+                  Current block: {currentBlockNumber.toString()}
+                </div>
+                <div style={{ marginTop: '0.25rem', fontSize: '0.875rem', color: 'rgba(255,255,255,0.5)' }}>
+                  {errorMsg}
+                </div>
+              </div>
+            );
+            
+            // Wait for next block
+            const targetBlock = currentBlockNumber + BigInt(1);
+            let newBlock = currentBlockNumber;
+            
+            while (newBlock < targetBlock) {
+              await new Promise(resolve => setTimeout(resolve, 2000));
+              try {
+                newBlock = await publicClient.getBlockNumber();
+                if (newBlock > currentBlockNumber) {
+                  currentBlockNumber = newBlock;
+                  setTxInfo(
+                    <div>
+                      <div style={{ marginBottom: '1rem', fontWeight: '600' }}>✅ Token deployed successfully!</div>
+                      <div style={{ marginBottom: '0.5rem' }}>
+                        <span style={{ color: 'rgba(255,255,255,0.7)' }}>Token Address: </span>
+                        <AddressLink address={tokenAddress} chainId={chainFromEnv.id} />
+                      </div>
+                      <div style={{ marginBottom: '0.5rem', color: 'rgba(34, 197, 94, 0.9)' }}>
+                        ✓ SBE Data Deployed<br />
+                        ✓ Descriptor Set
+                      </div>
+                      <div style={{ marginTop: '0.5rem' }}>
+                        <span style={{ color: 'rgba(255,255,255,0.7)' }}>Transaction: </span>
+                        <TransactionLink hash={transactionHash} chainId={chainFromEnv.id} />
+                      </div>
+                      <div style={{ marginTop: '1rem', color: 'rgba(34, 197, 94, 0.9)' }}>
+                        ✓ New block {newBlock.toString()} - retrying verification...
+                      </div>
+                    </div>
+                  );
+                  break;
+                }
+              } catch (blockError) {
+                console.error('Error checking block number:', blockError);
+              }
+            }
+            
+            continue;
+          }
+
+          // Last attempt - show final failure
           setTxInfo(
             <div>
               <div style={{ marginBottom: '1rem', fontWeight: '600' }}>✅ Token deployed successfully!</div>
@@ -1418,7 +1524,7 @@ export default function Page() {
                 ✓ Descriptor Set
               </div>
               <div style={{ marginBottom: '0.5rem', color: 'rgba(251, 191, 36, 0.9)' }}>
-                ⚠ Verification pending or failed
+                ⚠ Verification failed after {attempt} attempt(s)
               </div>
               <div style={{ marginTop: '0.5rem' }}>
                 <span style={{ color: 'rgba(255,255,255,0.7)' }}>Transaction: </span>
@@ -1429,33 +1535,78 @@ export default function Page() {
               </div>
             </div>
           );
+          break;
+
+        } catch (verifyError) {
+          console.error(`Verification attempt ${attempt} error:`, verifyError);
+          
+          if (attempt < maxRetries) {
+            setTxInfo(
+              <div>
+                <div style={{ marginBottom: '1rem', fontWeight: '600' }}>✅ Token deployed successfully!</div>
+                <div style={{ marginBottom: '0.5rem' }}>
+                  <span style={{ color: 'rgba(255,255,255,0.7)' }}>Token Address: </span>
+                  <AddressLink address={tokenAddress} chainId={chainFromEnv.id} />
+                </div>
+                <div style={{ marginBottom: '0.5rem', color: 'rgba(34, 197, 94, 0.9)' }}>
+                  ✓ SBE Data Deployed<br />
+                  ✓ Descriptor Set
+                </div>
+                <div style={{ marginTop: '0.5rem' }}>
+                  <span style={{ color: 'rgba(255,255,255,0.7)' }}>Transaction: </span>
+                  <TransactionLink hash={transactionHash} chainId={chainFromEnv.id} />
+                </div>
+                <div style={{ marginTop: '1rem', color: 'rgba(251, 191, 36, 0.9)' }}>
+                  ⏳ Verification error, waiting for next block... ({attempt}/{maxRetries})
+                </div>
+              </div>
+            );
+            
+            // Wait for next block
+            const targetBlock = currentBlockNumber + BigInt(1);
+            let newBlock = currentBlockNumber;
+            
+            while (newBlock < targetBlock) {
+              await new Promise(resolve => setTimeout(resolve, 2000));
+              try {
+                newBlock = await publicClient.getBlockNumber();
+                if (newBlock > currentBlockNumber) {
+                  currentBlockNumber = newBlock;
+                  break;
+                }
+              } catch (blockError) {
+                console.error('Error checking block number:', blockError);
+              }
+            }
+            
+            continue;
+          }
+          
+          // Last attempt failed
+          setTxInfo(
+            <div>
+              <div style={{ marginBottom: '1rem', fontWeight: '600' }}>✅ Token deployed successfully!</div>
+              <div style={{ marginBottom: '0.5rem' }}>
+                <span style={{ color: 'rgba(255,255,255,0.7)' }}>Token Address: </span>
+                <AddressLink address={tokenAddress} chainId={chainFromEnv.id} />
+              </div>
+              <div style={{ marginBottom: '0.5rem', color: 'rgba(34, 197, 94, 0.9)' }}>
+                ✓ SBE Data Deployed<br />
+                ✓ Descriptor Set
+              </div>
+              <div style={{ marginBottom: '0.5rem', color: 'rgba(251, 191, 36, 0.9)' }}>
+                ⚠ Verification error after {maxRetries} attempts
+              </div>
+              <div style={{ marginTop: '0.5rem' }}>
+                <span style={{ color: 'rgba(255,255,255,0.7)' }}>Transaction: </span>
+                <TransactionLink hash={transactionHash} chainId={chainFromEnv.id} />
+              </div>
+              <div style={{ marginTop: '1rem', fontSize: '0.9rem', color: 'rgba(255,255,255,0.6)' }}>
+                Contract verification failed. You can verify manually on the block explorer.
+              </div>
+            </div>
+          );
         }
-      } catch (verifyError) {
-        console.error('Verification error:', verifyError);
-        // Still show success for deployment, just note verification issue
-        setTxInfo(
-          <div>
-            <div style={{ marginBottom: '1rem', fontWeight: '600' }}>✅ Token deployed successfully!</div>
-            <div style={{ marginBottom: '0.5rem' }}>
-              <span style={{ color: 'rgba(255,255,255,0.7)' }}>Token Address: </span>
-              <AddressLink address={tokenAddress} chainId={chainFromEnv.id} />
-            </div>
-            <div style={{ marginBottom: '0.5rem', color: 'rgba(34, 197, 94, 0.9)' }}>
-              ✓ SBE Data Deployed<br />
-              ✓ Descriptor Set
-            </div>
-            <div style={{ marginBottom: '0.5rem', color: 'rgba(251, 191, 36, 0.9)' }}>
-              ⚠ Verification failed
-            </div>
-            <div style={{ marginTop: '0.5rem' }}>
-              <span style={{ color: 'rgba(255,255,255,0.7)' }}>Transaction: </span>
-              <TransactionLink hash={transactionHash} chainId={chainFromEnv.id} />
-            </div>
-            <div style={{ marginTop: '1rem', fontSize: '0.9rem', color: 'rgba(255,255,255,0.6)' }}>
-              Contract verification failed. You can verify manually on the block explorer.
-            </div>
-          </div>
-        );
       }
 
       setShowTokenDeploy(false);
@@ -1476,16 +1627,16 @@ export default function Page() {
     }
   }
 
-  async function fetchCBORFromContract() {
+  async function fetchSBEFromContract() {
     if (!deployedTokenAddress) {
-      setFetchCBORError('Please deploy a token first');
+      setFetchSBEError('Please deploy a token first');
       return;
     }
 
     try {
-      setFetchCBORStatus('loading');
-      setFetchCBORError(null);
-      setFetchedCBOR(null);
+      setFetchSBEStatus('loading');
+      setFetchSBEError(null);
+      setFetchedSBE(null);
       setDecodedFIX(null);
 
       const publicClient = createPublicClient({
@@ -1496,7 +1647,7 @@ export default function Page() {
       type Abi = readonly unknown[];
       const tokenAbi: Abi = AssetTokenAbi;
 
-      // First get the descriptor to know the CBOR length and validate it exists
+      // First get the descriptor to know the SBE data length and validate it exists
       let descriptor;
       try {
         descriptor = await publicClient.readContract({
@@ -1513,44 +1664,48 @@ export default function Page() {
         throw descriptorError;
       }
 
-      const cborLength = Number(descriptor.fixCBORLen);
-      const cborPtr = descriptor.fixCBORPtr;
+      const sbeLength = Number(descriptor.fixCBORLen);
+      const sbePtr = descriptor.fixCBORPtr;
 
-      // Validate CBOR data exists
-      if (!cborPtr || cborPtr === '0x0000000000000000000000000000000000000000') {
-        throw new Error('CBOR data pointer is not set. The descriptor was not properly deployed.');
+      // Validate SBE data exists
+      if (!sbePtr || sbePtr === '0x0000000000000000000000000000000000000000') {
+        throw new Error('SBE data pointer is not set. The descriptor was not properly deployed.');
       }
 
-      if (cborLength === 0) {
-        throw new Error('CBOR length is 0. The descriptor is empty.');
+      if (sbeLength === 0) {
+        throw new Error('SBE length is 0. The descriptor is empty.');
       }
 
-      // Fetch the CBOR data in one call
-      let cborBytes;
+      // Fetch the SBE data in one call
+      let sbeBytes;
       try {
-        cborBytes = await publicClient.readContract({
+        sbeBytes = await publicClient.readContract({
           address: deployedTokenAddress as `0x${string}`,
           abi: tokenAbi,
           functionName: 'getFixCBORChunk',
-          args: [BigInt(0), BigInt(cborLength)]
+          args: [BigInt(0), BigInt(sbeLength)]
         }) as `0x${string}`;
       } catch (chunkError) {
         const errorMsg = chunkError instanceof Error ? chunkError.message : 'Unknown error';
         if (errorMsg.includes('No CBOR data')) {
-          throw new Error('The CBOR data contract is empty. This can happen if the deployment failed or the data was not properly stored.');
+          throw new Error('The SBE data contract is empty. This can happen if the deployment failed or the data was not properly stored.');
         }
         throw chunkError;
       }
 
-      setFetchedCBOR(cborBytes);
+      setFetchedSBE(sbeBytes);
+
+      if (!fullSbeSchema) {
+        throw new Error('No SBE schema available. Please load an Orchestra schema first.');
+      }
 
       // Decode SBE via API endpoint
-      const decodeResponse = await fetch('/api/decode-cbor', {
+      const decodeResponse = await fetch('/api/decode-sbe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-          cborHex: cborBytes,
-          schema: schemaInput
+          encodedMessage: sbeBytes,
+          schema: fullSbeSchema
         })
       });
 
@@ -1560,63 +1715,43 @@ export default function Page() {
       }
 
       const decodeResult = await decodeResponse.json();
-      setDecodedFIX(decodeResult.fixMessage);
-      setDecodedFIXNamed(decodeResult.fixMessage); // SBE doesn't have named version yet
-      setFetchCBORStatus('success');
+      
+      if (!decodeResult.success) {
+        throw new Error(`SBE decoding failed: ${decodeResult.error || 'Unknown error'}`);
+      }
+
+      // Filter out zero values from the decoded message
+      const filteredMessage = decodeResult.fixMessage
+        .split('|')
+        .filter((pair: string) => {
+          const [, value] = pair.split('=');
+          return value !== '0' && value !== '0.0' && value !== '0.00';
+        })
+        .join('|');
+
+      // Convert numeric tags to tag names for the named version
+      const namedMessage = filteredMessage
+        .split('|')
+        .map((pair: string) => {
+          const [tag, value] = pair.split('=');
+          const tagInfo = FIX_TAGS[tag];
+          if (tagInfo) {
+            return `${tagInfo.name}=${value}`;
+          }
+          return pair; // Keep original if tag not found
+        })
+        .join('|');
+
+      setDecodedFIX(filteredMessage);
+      setDecodedFIXNamed(namedMessage);
+      setFetchSBEStatus('success');
       setCurrentStep(7); // Update step indicator to show retrieval complete
 
     } catch (error) {
-      console.error('Failed to fetch CBOR:', error);
+      console.error('Failed to fetch SBE:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      setFetchCBORError(errorMessage);
-      setFetchCBORStatus('error');
-    }
-  }
-
-  async function fetchHumanReadable() {
-    if (!deployedTokenAddress) {
-      setOnchainReadableError('Please deploy a token first');
-      return;
-    }
-
-    try {
-      setOnchainReadableStatus('loading');
-      setOnchainReadableError(null);
-      setOnchainReadable(null);
-
-      const publicClient = createPublicClient({
-        chain: chainFromEnv,
-        transport: http()
-      });
-
-      type Abi = readonly unknown[];
-      const tokenAbi: Abi = AssetTokenAbi;
-
-      // Call getHumanReadableDescriptor on the token contract
-      const readable = await publicClient.readContract({
-        address: deployedTokenAddress as `0x${string}`,
-        abi: tokenAbi,
-        functionName: 'getHumanReadableDescriptor',
-        args: []
-      }) as string;
-
-      setOnchainReadable(readable);
-      setOnchainReadableStatus('success');
-
-    } catch (error) {
-      console.error('Failed to fetch human-readable descriptor:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      
-      // Provide helpful error messages
-      let userFriendlyError = errorMessage;
-      if (errorMessage.includes('Dictionary not set')) {
-        userFriendlyError = 'This token was not deployed with a FIX Dictionary. Please deploy a new token using the "Quick Deploy Token" button after setting NEXT_PUBLIC_DICTIONARY_ADDRESS in your environment.';
-      } else if (errorMessage.includes('Descriptor not initialized')) {
-        userFriendlyError = 'The token descriptor has not been initialized. Please deploy a new token with the "Quick Deploy Token" button.';
-      }
-      
-      setOnchainReadableError(userFriendlyError);
-      setOnchainReadableStatus('error');
+      setFetchSBEError(errorMessage);
+      setFetchSBEStatus('error');
     }
   }
 
@@ -3527,6 +3662,41 @@ export default function Page() {
                         </div>
                       </div>
 
+                      <div>
+                        <label style={{ 
+                          display: 'block', 
+                          fontSize: '0.875rem', 
+                          marginBottom: '0.5rem',
+                          color: 'rgba(255,255,255,0.8)'
+                        }}>
+                          Schema URI (Optional)
+                        </label>
+                        <input
+                          type="text"
+                          value={schemaURI}
+                          onChange={(e) => setSchemaURI(e.target.value)}
+                          placeholder="https://example.com/schema.xml or ipfs://..."
+                          style={{
+                            width: '100%',
+                            padding: '0.75rem',
+                            background: 'rgba(0,0,0,0.3)',
+                            border: '1px solid rgba(255,255,255,0.1)',
+                            borderRadius: '6px',
+                            color: '#ffffff',
+                            fontSize: 'clamp(0.8rem, 2vw, 0.875rem)',
+                            boxSizing: 'border-box',
+                            minHeight: '44px'
+                          }}
+                        />
+                        <div style={{
+                          fontSize: '0.75rem',
+                          color: 'rgba(255,255,255,0.5)',
+                          marginTop: '0.25rem'
+                        }}>
+                          Link to the Orchestra/SBE schema used for encoding
+                        </div>
+                      </div>
+
                       <button
                         onClick={deployWithFactory}
                         disabled={!tokenName || !tokenSymbol || !tokenSupply || loading}
@@ -4299,31 +4469,30 @@ export default function Page() {
                 }}>
                   <button
                     onClick={() => {
-                      fetchCBORFromContract();
-                      fetchHumanReadable();
+                      fetchSBEFromContract();
                     }}
-                    disabled={fetchCBORStatus === 'loading' || onchainReadableStatus === 'loading'}
+                    disabled={fetchSBEStatus === 'loading'}
                     style={{
-                      background: fetchCBORStatus === 'loading' ?
+                      background: fetchSBEStatus === 'loading' ?
                         'rgba(59, 130, 246, 0.2)' :
-                        fetchCBORStatus === 'success' ?
+                        fetchSBEStatus === 'success' ?
                         'rgba(34, 197, 94, 0.15)' :
-                        fetchCBORStatus === 'error' ?
+                        fetchSBEStatus === 'error' ?
                         'rgba(239, 68, 68, 0.15)' :
                         'rgba(255, 255, 255, 0.1)',
-                      color: fetchCBORStatus === 'loading' ?
+                      color: fetchSBEStatus === 'loading' ?
                         'rgba(59, 130, 246, 0.9)' :
-                        fetchCBORStatus === 'success' ?
+                        fetchSBEStatus === 'success' ?
                         'rgba(34, 197, 94, 0.9)' :
-                        fetchCBORStatus === 'error' ?
+                        fetchSBEStatus === 'error' ?
                         'rgba(239, 68, 68, 0.9)' :
                         'rgba(255, 255, 255, 0.9)',
                       border: `1px solid ${
-                        fetchCBORStatus === 'loading' ?
+                        fetchSBEStatus === 'loading' ?
                         'rgba(59, 130, 246, 0.3)' :
-                        fetchCBORStatus === 'success' ?
+                        fetchSBEStatus === 'success' ?
                         'rgba(34, 197, 94, 0.3)' :
-                        fetchCBORStatus === 'error' ?
+                        fetchSBEStatus === 'error' ?
                         'rgba(239, 68, 68, 0.3)' :
                         'rgba(255, 255, 255, 0.2)'
                       }`,
@@ -4331,20 +4500,20 @@ export default function Page() {
                       padding: '0.875rem 1.5rem',
                       fontSize: 'clamp(0.85rem, 2vw, 0.9rem)',
                       fontWeight: '600',
-                      cursor: fetchCBORStatus === 'loading' ? 'not-allowed' : 'pointer',
+                      cursor: fetchSBEStatus === 'loading' ? 'not-allowed' : 'pointer',
                       width: '100%',
                       transition: 'all 0.2s',
                       marginBottom: '1.5rem',
                       minHeight: '44px'
                     }}
                   >
-                    {fetchCBORStatus === 'loading' ? '⏳ Fetching from Contract...' :
-                     fetchCBORStatus === 'success' ? '✅ Fetch Again' :
-                     fetchCBORStatus === 'error' ? '🔄 Retry' :
+                    {fetchSBEStatus === 'loading' ? '⏳ Fetching from Contract...' :
+                     fetchSBEStatus === 'success' ? '✅ Fetch Again' :
+                     fetchSBEStatus === 'error' ? '🔄 Retry' :
                      '📡 Fetch FIX Message from Contract'}
                   </button>
 
-                  {fetchCBORError && (
+                  {fetchSBEError && (
                     <div style={{
                       padding: '1rem',
                       background: 'rgba(239, 68, 68, 0.1)',
@@ -4354,11 +4523,11 @@ export default function Page() {
                       fontSize: '0.875rem',
                       marginBottom: '1.5rem'
                     }}>
-                      ❌ Error: {fetchCBORError}
+                      ❌ Error: {fetchSBEError}
                     </div>
                   )}
 
-                  {fetchedCBOR && (
+                  {fetchedSBE && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                       <div>
                         <div style={{
@@ -4369,11 +4538,11 @@ export default function Page() {
                           textTransform: 'uppercase',
                           letterSpacing: '0.05em'
                         }}>
-                          Raw CBOR (Hex)
+                          Raw SBE (Hex)
                         </div>
-                        <textarea
+                        <textarea 
                           readOnly
-                          value={fetchedCBOR}
+                          value={fetchedSBE || ''}
                           rows={4}
                           style={{
                             width: '100%',
@@ -4396,72 +4565,12 @@ export default function Page() {
                           marginTop: '0.5rem',
                           lineHeight: '1.5'
                         }}>
-                          This is the canonical CBOR encoding retrieved from the contract&apos;s SSTORE2 data pointer
+                          This is the SBE encoding retrieved from the contract&apos;s SSTORE2 data pointer
                         </div>
                       </div>
 
-                      {(decodedFIX || onchainReadable) && (
+                      {decodedFIX && (
                         <div>
-                          {/* Toggle buttons for decode mode */}
-                          <div style={{
-                            display: 'flex',
-                            gap: '0.5rem',
-                            marginBottom: '1rem',
-                            padding: '0.5rem',
-                            background: 'rgba(255,255,255,0.03)',
-                            borderRadius: '8px',
-                            border: '1px solid rgba(255,255,255,0.1)'
-                          }}>
-                            <button
-                              onClick={() => setDecodeMode('offchain')}
-                              style={{
-                                flex: 1,
-                                padding: '0.625rem 1rem',
-                                background: decodeMode === 'offchain' 
-                                  ? 'rgba(59, 130, 246, 0.2)' 
-                                  : 'transparent',
-                                border: decodeMode === 'offchain'
-                                  ? '1px solid rgba(59, 130, 246, 0.4)'
-                                  : '1px solid rgba(255,255,255,0.1)',
-                                borderRadius: '6px',
-                                color: decodeMode === 'offchain'
-                                  ? 'rgba(59, 130, 246, 0.9)'
-                                  : 'rgba(255,255,255,0.6)',
-                                fontSize: 'clamp(0.8rem, 2vw, 0.875rem)',
-                                fontWeight: '600',
-                                cursor: 'pointer',
-                                transition: 'all 0.2s',
-                                minHeight: '44px'
-                              }}
-                            >
-                              🔧 Off-chain Decoded
-                            </button>
-                            <button
-                              onClick={() => setDecodeMode('onchain')}
-                              style={{
-                                flex: 1,
-                                padding: '0.625rem 1rem',
-                                background: decodeMode === 'onchain' 
-                                  ? 'rgba(34, 197, 94, 0.2)' 
-                                  : 'transparent',
-                                border: decodeMode === 'onchain'
-                                  ? '1px solid rgba(34, 197, 94, 0.4)'
-                                  : '1px solid rgba(255,255,255,0.1)',
-                                borderRadius: '6px',
-                                color: decodeMode === 'onchain'
-                                  ? 'rgba(34, 197, 94, 0.9)'
-                                  : 'rgba(255,255,255,0.6)',
-                                fontSize: 'clamp(0.8rem, 2vw, 0.875rem)',
-                                fontWeight: '600',
-                                cursor: 'pointer',
-                                transition: 'all 0.2s',
-                                minHeight: '44px'
-                              }}
-                            >
-                              ⛓️ On-chain Human-Readable
-                            </button>
-                          </div>
-
                           <div style={{
                             fontSize: '0.8rem',
                             color: 'rgba(255,255,255,0.5)',
@@ -4470,10 +4579,10 @@ export default function Page() {
                             textTransform: 'uppercase',
                             letterSpacing: '0.05em'
                           }}>
-                            {decodeMode === 'offchain' ? 'Decoded FIX Message (Off-chain)' : 'Human-Readable Descriptor (On-chain)'}
+                            Decoded FIX Message (Off-chain)
                           </div>
                           {/* Off-chain decoded view */}
-                          {decodeMode === 'offchain' && decodedFIX && (
+                          {decodedFIX && (
                             <>
                               {/* Sub-toggle for numeric vs named */}
                               <div style={{
@@ -4563,71 +4672,6 @@ export default function Page() {
                                   ? 'Decoded off-chain using fixparser library. Shows numeric tags (e.g., "55=AAPL").'
                                   : 'Decoded off-chain with tag names from TypeScript FIX_44_DICTIONARY package. Shows human-readable names (e.g., "Symbol=AAPL"). Dictionary source: npm package (off-chain).'}
                               </div>
-                            </>
-                          )}
-
-                          {/* On-chain human-readable view */}
-                          {decodeMode === 'onchain' && (
-                            <>
-                              {onchainReadableStatus === 'loading' && (
-                                <div style={{
-                                  padding: '2rem',
-                                  background: 'rgba(59, 130, 246, 0.1)',
-                                  border: '1px solid rgba(59, 130, 246, 0.2)',
-                                  borderRadius: '8px',
-                                  textAlign: 'center',
-                                  color: 'rgba(59, 130, 246, 0.9)',
-                                  fontSize: '0.875rem'
-                                }}>
-                                  ⏳ Fetching human-readable output from blockchain...
-                                </div>
-                              )}
-
-                              {onchainReadableStatus === 'error' && onchainReadableError && (
-                                <div style={{
-                                  padding: '1rem',
-                                  background: 'rgba(239, 68, 68, 0.1)',
-                                  border: '1px solid rgba(239, 68, 68, 0.3)',
-                                  borderRadius: '8px',
-                                  color: 'rgba(239, 68, 68, 0.9)',
-                                  fontSize: '0.875rem'
-                                }}>
-                                  ❌ {onchainReadableError}
-                                </div>
-                              )}
-
-                              {onchainReadableStatus === 'success' && onchainReadable && (
-                                <>
-                                  <textarea
-                                    readOnly
-                                    value={onchainReadable}
-                                    rows={6}
-                                    style={{
-                                      width: '100%',
-                                      padding: '1rem',
-                                      borderRadius: '8px',
-                                      border: '1px solid rgba(34, 197, 94, 0.2)',
-                                      background: 'rgba(34, 197, 94, 0.05)',
-                                      color: 'rgba(34, 197, 94, 0.9)',
-                                      fontFamily: 'ui-monospace, monospace',
-                                      fontSize: 'clamp(0.8rem, 2vw, 0.875rem)',
-                                      resize: 'vertical',
-                                      lineHeight: '1.6',
-                                      fontWeight: '500',
-                                      boxSizing: 'border-box',
-                                      wordBreak: 'break-word'
-                                    }}
-                                  />
-                                  <div style={{
-                                    fontSize: 'clamp(0.7rem, 1.5vw, 0.75rem)',
-                                    color: 'rgba(255,255,255,0.4)',
-                                    marginTop: '0.5rem',
-                                    lineHeight: '1.5'
-                                  }}>
-                                    Generated entirely on-chain by calling getHumanReadableDescriptor(). Tag names from on-chain FixDictionary contract. Fully trustless and composable with other smart contracts.
-                                  </div>
-                                </>
-                              )}
                             </>
                           )}
                         </div>
