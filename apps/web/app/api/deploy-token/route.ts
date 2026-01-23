@@ -94,11 +94,10 @@ export async function POST(request: NextRequest) {
       fixMinor: 4,
       dictHash: dictHash,
       fixRoot: root as `0x${string}`,
-      fixCBORPtr: '0x0000000000000000000000000000000000000000' as `0x${string}`,
-      fixCBORLen: 0,
+      fixSBEPtr: '0x0000000000000000000000000000000000000000' as `0x${string}`,
+      fixSBELen: 0,
       fixURI: '',
-      schemaURI: schemaURI || '',
-      dictionaryContract: (dictionaryAddress || '0x0000000000000000000000000000000000000000') as `0x${string}`
+      schemaURI: schemaURI || ''
     };
 
     // Convert supply to wei (18 decimals)
