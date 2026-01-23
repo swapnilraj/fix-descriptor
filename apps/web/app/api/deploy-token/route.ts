@@ -86,7 +86,7 @@ export async function POST(request: NextRequest) {
     // Dictionary hash for DEMO_FIX_SCHEMA
     const dictHash = '0xb24215c985384ddaa6767272d452780aa4352201a1df669564cde3905cb6a215' as `0x${string}`;
 
-    // Prepare descriptor
+    // Prepare descriptor (factory will set fixSBEPtr and fixSBELen)
     const descriptor = {
       fixMajor: 4,
       fixMinor: 4,
@@ -114,6 +114,29 @@ export async function POST(request: NextRequest) {
       factoryAddress
     });
 
+    // Simulate the transaction first to get better error messages
+    try {
+      await publicClient.simulateContract({
+        address: factoryAddress as `0x${string}`,
+        abi: TokenFactoryAbi,
+        functionName: 'deployWithDescriptor',
+        args: [
+          name,
+          symbol,
+          supplyInWei,
+          dataHexFormatted,
+          descriptor
+        ],
+        account: account.address
+      });
+    } catch (simError: any) {
+      console.error('Simulation failed:', simError);
+      return NextResponse.json(
+        { error: `Deployment would fail: ${simError.message}` },
+        { status: 400 }
+      );
+    }
+
     // Deploy the token
     const hash = await walletClient.writeContract({
       address: factoryAddress as `0x${string}`,
@@ -125,7 +148,8 @@ export async function POST(request: NextRequest) {
         supplyInWei,
         dataHexFormatted,
         descriptor
-      ]
+      ],
+      gas: 5000000n
     });
 
     console.log('Transaction submitted:', hash);
