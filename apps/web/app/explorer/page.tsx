@@ -602,6 +602,9 @@ export default function Page() {
   const [schemaInput, setSchemaInput] = useState('');
   const [availableMessageTypes, setAvailableMessageTypes] = useState<Array<{ name: string; msgType: string }>>([]);
   const [selectedMessageType, setSelectedMessageType] = useState('SecurityDefinition');
+  const [isParsedSchemaCollapsed, setIsParsedSchemaCollapsed] = useState(true);
+  const [isMessageBuilderCollapsed, setIsMessageBuilderCollapsed] = useState(true);
+  const [isGeneratedSchemaCollapsed, setIsGeneratedSchemaCollapsed] = useState(true);
   const [parsedOrchestra, setParsedOrchestra] = useState<{
     messageName: string;
     messageId: string;
@@ -2611,43 +2614,79 @@ export default function Page() {
 
           {/* Generated SBE Schema Preview - Full Schema with All Messages */}
           {fullSbeSchema && (
-            <div style={{ marginBottom: '1.5rem' }}>
-              <div style={{
-                fontSize: '0.875rem',
-                color: 'rgba(255,255,255,0.5)',
-                marginBottom: '0.75rem',
-                fontWeight: '500',
-                textTransform: 'uppercase',
-                letterSpacing: '0.05em'
-              }}>
-                🔄 Generated SBE Schema (All Messages)
-              </div>
-              <div style={{
-                fontSize: '0.75rem',
-                color: 'rgba(255,255,255,0.4)',
-                marginBottom: '0.5rem'
-              }}>
-                This schema contains all message types from the Orchestra file and will be sent to the encoder.
-              </div>
-              <textarea 
-                readOnly 
-                value={fullSbeSchema} 
-                rows={15}
-                className="custom-scrollbar"
+            <div style={{
+              marginBottom: '1.5rem',
+              border: '1px solid rgba(255,255,255,0.1)',
+              borderRadius: '8px',
+              background: 'rgba(255,255,255,0.03)',
+              overflow: 'hidden'
+            }}>
+              <button
+                onClick={() => setIsGeneratedSchemaCollapsed(!isGeneratedSchemaCollapsed)}
                 style={{
                   width: '100%',
-                  padding: '1rem',
-                  borderRadius: '8px',
-                  border: '1px solid rgba(34, 197, 94, 0.2)',
-                  background: 'rgba(34, 197, 94, 0.03)',
-                  color: 'rgba(34, 197, 94, 0.9)',
-                  fontFamily: 'ui-monospace, monospace',
-                  fontSize: '0.75rem',
-                  lineHeight: '1.5',
-                  resize: 'vertical',
-                  boxSizing: 'border-box'
+                  padding: '1rem 1.25rem',
+                  background: 'none',
+                  border: 'none',
+                  color: 'inherit',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  fontSize: '1rem',
+                  fontWeight: '500',
+                  textAlign: 'left',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em'
                 }}
-              />
+              >
+                <span style={{ color: 'rgba(255,255,255,0.9)' }}>🔄 Generated SBE Schema (All Messages)</span>
+                <svg 
+                  width="20" 
+                  height="20" 
+                  viewBox="0 0 24 24" 
+                  fill="none" 
+                  stroke="rgba(255,255,255,0.5)" 
+                  strokeWidth="2"
+                  style={{
+                    transition: 'transform 0.2s',
+                    transform: isGeneratedSchemaCollapsed ? 'rotate(0deg)' : 'rotate(90deg)'
+                  }}
+                >
+                  <polyline points="9 18 15 12 9 6" />
+                </svg>
+              </button>
+              {!isGeneratedSchemaCollapsed && (
+                <div style={{ padding: '0 1.25rem 1.25rem 1.25rem' }}>
+                  <div style={{
+                    fontSize: '0.9rem',
+                    color: 'rgba(255,255,255,0.75)',
+                    marginBottom: '0.75rem',
+                    lineHeight: '1.6'
+                  }}>
+                    This schema contains all message types from the Orchestra file and will be sent to the encoder.
+                  </div>
+                  <textarea 
+                    readOnly 
+                    value={fullSbeSchema} 
+                    rows={15}
+                    className="custom-scrollbar"
+                    style={{
+                      width: '100%',
+                      padding: '1rem',
+                      borderRadius: '8px',
+                      border: '1px solid rgba(34, 197, 94, 0.2)',
+                      background: 'rgba(34, 197, 94, 0.03)',
+                      color: 'rgba(34, 197, 94, 0.9)',
+                      fontFamily: 'ui-monospace, monospace',
+                      fontSize: '0.75rem',
+                      lineHeight: '1.5',
+                      resize: 'vertical',
+                      boxSizing: 'border-box'
+                    }}
+                  />
+                </div>
+              )}
             </div>
           )}
 
@@ -2724,162 +2763,223 @@ export default function Page() {
           )}
 
           {parsedOrchestra && (
-            <div style={{ marginBottom: '1.5rem' }}>
-              <div style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                marginBottom: '0.75rem'
-              }}>
-                <div style={{
-                  fontSize: '0.875rem',
-                  color: 'rgba(255,255,255,0.5)',
-                  fontWeight: '500'
-                }}>
-                  📋 Parsed Orchestra Schema
-                </div>
-                {allMessages.length > 1 && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)' }}>
-                      Component:
-                    </span>
-                    <select
-                      value={selectedMessageIndex}
-                      onChange={(e) => setSelectedMessageIndex(Number(e.target.value))}
-                      style={{
-                        background: 'rgba(255,255,255,0.05)',
-                        border: '1px solid rgba(255,255,255,0.2)',
-                        borderRadius: '6px',
-                        color: 'rgba(255,255,255,0.9)',
-                        padding: '0.375rem 0.75rem',
-                        fontSize: '0.8rem',
-                        cursor: 'pointer',
-                        maxWidth: '300px'
-                      }}
-                    >
-                      {allMessages.map((msg, idx) => (
-                        <option key={idx} value={idx} style={{ background: '#1a1a1a' }}>
-                          {msg.name} (Category: {msg.msgType}, ID: {msg.id})
-                        </option>
-                      ))}
-                    </select>
-                    <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.3)' }}>
-                      {selectedMessageIndex + 1}/{allMessages.length}
-                    </span>
-                  </div>
-                )}
-              </div>
-              <div style={{
-                border: '1px solid rgba(255,255,255,0.1)',
-                borderRadius: '8px',
-                background: 'rgba(255,255,255,0.03)',
-                padding: '1rem'
-              }}>
+            <div style={{
+              marginBottom: '1.5rem',
+              border: '1px solid rgba(255,255,255,0.1)',
+              borderRadius: '8px',
+              background: 'rgba(255,255,255,0.03)',
+              overflow: 'hidden'
+            }}>
+              <button
+                onClick={() => setIsParsedSchemaCollapsed(!isParsedSchemaCollapsed)}
+                style={{
+                  width: '100%',
+                  padding: '1rem 1.25rem',
+                  background: 'none',
+                  border: 'none',
+                  color: 'inherit',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  fontSize: '1rem',
+                  fontWeight: '500',
+                  textAlign: 'left',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em'
+                }}
+              >
                 <div style={{
                   display: 'flex',
-                  gap: '2rem',
-                  marginBottom: '1rem',
-                  paddingBottom: '0.75rem',
-                  borderBottom: '1px solid rgba(255,255,255,0.1)'
+                  alignItems: 'center',
+                  gap: '0.75rem',
+                  flex: 1
                 }}>
-                  <div>
-                    <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.75rem' }}>Component:</span>
-                    <div style={{ fontWeight: '600', color: 'rgba(168, 85, 247, 0.9)' }}>
-                      {parsedOrchestra.messageName}
-                    </div>
-                  </div>
-                  <div>
-                    <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.75rem' }}>Category:</span>
-                    <div style={{ fontWeight: '600', color: 'rgba(251, 191, 36, 0.9)' }}>
-                      {parsedOrchestra.msgType}
-                    </div>
-                  </div>
-                  <div>
-                    <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.75rem' }}>ID:</span>
-                    <div style={{ fontWeight: '600', color: 'rgba(96, 165, 250, 0.9)' }}>
-                      {parsedOrchestra.messageId}
-                    </div>
-                  </div>
-                  <div>
-                    <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.75rem' }}>Fields:</span>
-                    <div style={{ fontWeight: '600', color: 'rgba(34, 197, 94, 0.9)' }}>
-                      {parsedOrchestra.fields.length}
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="custom-scrollbar pr-4" style={{
-                  maxHeight: '200px',
-                  overflowY: 'auto'
-                }}>
-                  {parsedOrchestra.fields
-                    .sort((a, b) => parseInt(a.id) - parseInt(b.id))
-                    .map((field, idx) => (
-                    <div
-                      key={idx}
-                      style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        padding: '0.5rem 0',
-                        borderBottom: idx < parsedOrchestra.fields.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none',
-                        fontSize: '0.875rem'
-                      }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flex: 1 }}>
-                        <span style={{
-                          fontFamily: 'ui-monospace, monospace',
-                          fontWeight: '600',
-                          color: 'rgba(96, 165, 250, 0.9)',
-                          minWidth: '2rem'
-                        }}>
-                          {field.id}
-                        </span>
-                        <span style={{
+                  <span style={{ color: 'rgba(255,255,255,0.9)' }}>📋 Parsed Orchestra Schema</span>
+                  {allMessages.length > 1 && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }} onClick={(e) => e.stopPropagation()}>
+                      <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)' }}>
+                        Component:
+                      </span>
+                      <select
+                        value={selectedMessageIndex}
+                        onChange={(e) => setSelectedMessageIndex(Number(e.target.value))}
+                        style={{
+                          background: 'rgba(255,255,255,0.05)',
+                          border: '1px solid rgba(255,255,255,0.2)',
+                          borderRadius: '6px',
                           color: 'rgba(255,255,255,0.9)',
-                          fontWeight: '500'
-                        }}>
-                          {field.name}
-                        </span>
-                      </div>
-                      <div style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.5rem',
-                        color: 'rgba(255,255,255,0.5)',
-                        fontSize: '0.8rem',
-                        fontFamily: 'ui-monospace, monospace'
-                      }}>
-                        <span>{field.type}</span>
-                        <span style={{ color: 'rgba(255,255,255,0.3)' }}>→</span>
-                        <span style={{ color: 'rgba(34, 197, 94, 0.7)' }}>SBE</span>
+                          padding: '0.375rem 0.75rem',
+                          fontSize: '0.8rem',
+                          cursor: 'pointer',
+                          maxWidth: '300px'
+                        }}
+                      >
+                        {allMessages.map((msg, idx) => (
+                          <option key={idx} value={idx} style={{ background: '#1a1a1a' }}>
+                            {msg.name} (Category: {msg.msgType}, ID: {msg.id})
+                          </option>
+                        ))}
+                      </select>
+                      <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.3)' }}>
+                        {selectedMessageIndex + 1}/{allMessages.length}
+                      </span>
+                    </div>
+                  )}
+                </div>
+                <svg 
+                  width="20" 
+                  height="20" 
+                  viewBox="0 0 24 24" 
+                  fill="none" 
+                  stroke="rgba(255,255,255,0.5)" 
+                  strokeWidth="2"
+                  style={{
+                    transition: 'transform 0.2s',
+                    transform: isParsedSchemaCollapsed ? 'rotate(0deg)' : 'rotate(90deg)',
+                    flexShrink: 0
+                  }}
+                >
+                  <polyline points="9 18 15 12 9 6" />
+                </svg>
+              </button>
+              {!isParsedSchemaCollapsed && (
+                <div style={{
+                  padding: '0 1.25rem 1.25rem 1.25rem'
+                }}>
+                  <div style={{
+                    display: 'flex',
+                    gap: '2rem',
+                    marginBottom: '1rem',
+                    paddingBottom: '0.75rem',
+                    borderBottom: '1px solid rgba(255,255,255,0.1)'
+                  }}>
+                    <div>
+                      <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.75rem' }}>Component:</span>
+                      <div style={{ fontWeight: '600', color: 'rgba(168, 85, 247, 0.9)' }}>
+                        {parsedOrchestra.messageName}
                       </div>
                     </div>
+                    <div>
+                      <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.75rem' }}>Category:</span>
+                      <div style={{ fontWeight: '600', color: 'rgba(251, 191, 36, 0.9)' }}>
+                        {parsedOrchestra.msgType}
+                      </div>
+                    </div>
+                    <div>
+                      <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.75rem' }}>ID:</span>
+                      <div style={{ fontWeight: '600', color: 'rgba(96, 165, 250, 0.9)' }}>
+                        {parsedOrchestra.messageId}
+                      </div>
+                    </div>
+                    <div>
+                      <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.75rem' }}>Fields:</span>
+                      <div style={{ fontWeight: '600', color: 'rgba(34, 197, 94, 0.9)' }}>
+                        {parsedOrchestra.fields.length}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="custom-scrollbar pr-4" style={{
+                    maxHeight: '200px',
+                    overflowY: 'auto'
+                  }}>
+                    {parsedOrchestra.fields
+                      .sort((a, b) => parseInt(a.id) - parseInt(b.id))
+                      .map((field, idx) => (
+                      <div
+                        key={idx}
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          padding: '0.5rem 0',
+                          borderBottom: idx < parsedOrchestra.fields.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none',
+                          fontSize: '0.875rem'
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flex: 1 }}>
+                          <span style={{
+                            fontFamily: 'ui-monospace, monospace',
+                            fontWeight: '600',
+                            color: 'rgba(96, 165, 250, 0.9)',
+                            minWidth: '2rem'
+                          }}>
+                            {field.id}
+                          </span>
+                          <span style={{
+                            color: 'rgba(255,255,255,0.9)',
+                            fontWeight: '500'
+                          }}>
+                            {field.name}
+                          </span>
+                        </div>
+                        <div style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.5rem',
+                          color: 'rgba(255,255,255,0.5)',
+                          fontSize: '0.8rem',
+                          fontFamily: 'ui-monospace, monospace'
+                        }}>
+                          <span>{field.type}</span>
+                          <span style={{ color: 'rgba(255,255,255,0.3)' }}>→</span>
+                          <span style={{ color: 'rgba(34, 197, 94, 0.7)' }}>SBE</span>
+                        </div>
+                      </div>
                   ))}
                 </div>
-              </div>
+                </div>
+              )}
             </div>
           )}
 
           {/* Message Builder */}
           {parsedOrchestra && parsedOrchestra.fields.filter(f => !['8', '9', '10', '35'].includes(f.id)).length > 0 && (
-            <div style={{ marginBottom: '1.5rem' }}>
-              <div style={{
-                fontSize: '0.875rem',
-                color: 'rgba(255,255,255,0.5)',
-                marginBottom: '0.75rem',
-                fontWeight: '500',
-                textTransform: 'uppercase',
-                letterSpacing: '0.05em'
-              }}>
-                📝 Message Builder
-              </div>
-              <div style={{
-                border: '1px solid rgba(255,255,255,0.1)',
-                borderRadius: '8px',
-                background: 'rgba(255,255,255,0.03)',
-                padding: '1rem'
-              }}>
-                <p style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.6)', marginBottom: '1rem' }}>
+            <div style={{
+              marginBottom: '1.5rem',
+              border: '1px solid rgba(255,255,255,0.1)',
+              borderRadius: '8px',
+              background: 'rgba(255,255,255,0.03)',
+              overflow: 'hidden'
+            }}>
+              <button
+                onClick={() => setIsMessageBuilderCollapsed(!isMessageBuilderCollapsed)}
+                style={{
+                  width: '100%',
+                  padding: '1rem 1.25rem',
+                  background: 'none',
+                  border: 'none',
+                  color: 'inherit',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  fontSize: '1rem',
+                  fontWeight: '500',
+                  textAlign: 'left',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em'
+                }}
+              >
+                <span style={{ color: 'rgba(255,255,255,0.9)' }}>📝 Message Builder</span>
+                <svg 
+                  width="20" 
+                  height="20" 
+                  viewBox="0 0 24 24" 
+                  fill="none" 
+                  stroke="rgba(255,255,255,0.5)" 
+                  strokeWidth="2"
+                  style={{
+                    transition: 'transform 0.2s',
+                    transform: isMessageBuilderCollapsed ? 'rotate(0deg)' : 'rotate(90deg)'
+                  }}
+                >
+                  <polyline points="9 18 15 12 9 6" />
+                </svg>
+              </button>
+              {!isMessageBuilderCollapsed && (
+                <div style={{ padding: '0 1.25rem 1.25rem 1.25rem' }}>
+                <p style={{ fontSize: '0.9rem', color: 'rgba(255,255,255,0.75)', marginBottom: '1rem', lineHeight: '1.7' }}>
                   Fill in the business fields. Message updates automatically as you type.
                 </p>
                 <div className="custom-scrollbar" style={{ 
@@ -2967,7 +3067,8 @@ export default function Page() {
                 >
                   Clear All Fields
                 </button>
-              </div>
+                </div>
+              )}
             </div>
           )}
 
