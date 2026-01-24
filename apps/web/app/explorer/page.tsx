@@ -947,6 +947,13 @@ export default function Page() {
   const [schemaURI, setSchemaURI] = useState('');
   const [deployedTokenAddress, setDeployedTokenAddress] = useState<string | null>(null);
   const [onChainVerificationStatus, setOnChainVerificationStatus] = useState<'pending' | 'success' | 'failed' | null>(null);
+  
+  // Background verification state
+  const [verificationNotification, setVerificationNotification] = useState<{
+    message: string;
+    type: 'info' | 'success' | 'warning' | 'error';
+    show: boolean;
+  } | null>(null);
 
   // SBE fetching state
   const [fetchedSBE, setFetchedSBE] = useState<string | null>(null);
@@ -1290,6 +1297,126 @@ export default function Page() {
     }
   }
 
+  // Background verification function that runs independently
+  async function verifyContractInBackground(
+    tokenAddress: string,
+    transactionHash: string,
+    blockNumber: string
+  ) {
+    const factoryAddress = process.env.NEXT_PUBLIC_TOKEN_FACTORY_ADDRESS;
+    const supplyInWei = BigInt(tokenSupply) * BigInt(10 ** 18);
+    const maxRetries = 10;
+    
+    // Create public client for checking block numbers
+    const publicClient = createPublicClient({
+      chain: chainFromEnv,
+      transport: http(process.env.NEXT_PUBLIC_RPC_URL)
+    });
+    
+    let currentBlockNumber = BigInt(blockNumber);
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        const verifyResponse = await fetch('/api/verify-contract', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            contractAddress: tokenAddress,
+            tokenName,
+            tokenSymbol,
+            initialSupply: supplyInWei.toString(),
+            initialOwner: factoryAddress,
+            chainId: chainFromEnv.id,
+          }),
+        });
+
+        const verifyResult = await verifyResponse.json();
+
+        if (verifyResult.success) {
+          setVerificationNotification({
+            message: `✅ Contract verified successfully on block explorer!`,
+            type: 'success',
+            show: true
+          });
+          // Auto-hide after 10 seconds
+          setTimeout(() => {
+            setVerificationNotification(null);
+          }, 10000);
+          return;
+        }
+
+        // Check if we should retry
+        if (attempt < maxRetries) {
+          // Wait for next block before retry
+          const targetBlock = currentBlockNumber + BigInt(1);
+          let newBlock = currentBlockNumber;
+          
+          while (newBlock < targetBlock) {
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            try {
+              newBlock = await publicClient.getBlockNumber();
+              if (newBlock > currentBlockNumber) {
+                currentBlockNumber = newBlock;
+                break;
+              }
+            } catch (blockError) {
+              console.error('Error checking block number:', blockError);
+            }
+          }
+          
+          continue;
+        }
+
+        // Last attempt failed
+        setVerificationNotification({
+          message: `⚠ Contract verification failed after ${maxRetries} attempts. You can verify manually on the block explorer.`,
+          type: 'warning',
+          show: true
+        });
+        // Auto-hide after 15 seconds
+        setTimeout(() => {
+          setVerificationNotification(null);
+        }, 15000);
+
+      } catch (verifyError) {
+        console.error(`Verification attempt ${attempt} error:`, verifyError);
+        
+        if (attempt < maxRetries) {
+          // Wait for next block
+          const targetBlock = currentBlockNumber + BigInt(1);
+          let newBlock = currentBlockNumber;
+          
+          while (newBlock < targetBlock) {
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            try {
+              newBlock = await publicClient.getBlockNumber();
+              if (newBlock > currentBlockNumber) {
+                currentBlockNumber = newBlock;
+                break;
+              }
+            } catch (blockError) {
+              console.error('Error checking block number:', blockError);
+            }
+          }
+          
+          continue;
+        }
+        
+        // Last attempt failed
+        setVerificationNotification({
+          message: `⚠ Contract verification error. You can verify manually on the block explorer.`,
+          type: 'error',
+          show: true
+        });
+        // Auto-hide after 15 seconds
+        setTimeout(() => {
+          setVerificationNotification(null);
+        }, 15000);
+      }
+    }
+  }
 
   async function deployWithFactory() {
     if (!preview) {
@@ -1332,7 +1459,7 @@ export default function Page() {
 
       setDeployedTokenAddress(tokenAddress);
 
-      // Show initial success message
+      // Show deployment success message
       setTxInfo(
         <div>
           <div style={{ marginBottom: '1rem', fontWeight: '600' }}>✅ Token deployed successfully!</div>
@@ -1351,265 +1478,27 @@ export default function Page() {
           <div style={{ marginTop: '0.5rem', fontSize: '0.875rem', color: 'rgba(255,255,255,0.6)' }}>
             Block: {blockNumber}
           </div>
-          <div style={{ marginTop: '1rem', color: 'rgba(251, 191, 36, 0.9)' }}>
-            ⏳ Waiting for contract indexing, then verifying on block explorer...
+          <div style={{ marginTop: '1rem', color: 'rgba(255,255,255,0.8)' }}>
+            Contract verification will continue in the background...
           </div>
         </div>
       );
 
-      // Retry verification with visible progress - submit once, then retry if needed
-      const factoryAddress = process.env.NEXT_PUBLIC_TOKEN_FACTORY_ADDRESS;
-      const supplyInWei = BigInt(tokenSupply) * BigInt(10 ** 18);
-      const maxRetries = 10;
-      
-      // Create public client for checking block numbers
-      const publicClient = createPublicClient({
-        chain: chainFromEnv,
-        transport: http(process.env.NEXT_PUBLIC_RPC_URL)
+      // Start background verification (non-blocking)
+      setVerificationNotification({
+        message: '⏳ Verifying contract on block explorer...',
+        type: 'info',
+        show: true
       });
       
-      let currentBlockNumber = BigInt(blockNumber);
+      // Run verification in background - don't await
+      verifyContractInBackground(tokenAddress, transactionHash, blockNumber);
 
-      for (let attempt = 1; attempt <= maxRetries; attempt++) {
-        try {
-          // Update UI with retry attempt
-          setTxInfo(
-            <div>
-              <div style={{ marginBottom: '1rem', fontWeight: '600' }}>✅ Token deployed successfully!</div>
-              <div style={{ marginBottom: '0.5rem' }}>
-                <span style={{ color: 'rgba(255,255,255,0.7)' }}>Token Address: </span>
-                <AddressLink address={tokenAddress} chainId={chainFromEnv.id} />
-              </div>
-              <div style={{ marginBottom: '0.5rem', color: 'rgba(34, 197, 94, 0.9)' }}>
-                ✓ SBE Data Deployed<br />
-                ✓ Descriptor Set
-              </div>
-              <div style={{ marginTop: '0.5rem' }}>
-                <span style={{ color: 'rgba(255,255,255,0.7)' }}>Transaction: </span>
-                <TransactionLink hash={transactionHash} chainId={chainFromEnv.id} />
-              </div>
-              <div style={{ marginTop: '0.5rem', fontSize: '0.875rem', color: 'rgba(255,255,255,0.6)' }}>
-                Block: {blockNumber}
-              </div>
-              <div style={{ marginTop: '1rem', color: 'rgba(251, 191, 36, 0.9)' }}>
-                ⏳ Verifying contract (attempt {attempt}/{maxRetries})...
-              </div>
-            </div>
-          );
-
-          const verifyResponse = await fetch('/api/verify-contract', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              contractAddress: tokenAddress,
-              tokenName,
-              tokenSymbol,
-              initialSupply: supplyInWei.toString(),
-              initialOwner: factoryAddress,
-              chainId: chainFromEnv.id,
-            }),
-          });
-
-          const verifyResult = await verifyResponse.json();
-
-          if (verifyResult.success) {
-            setTxInfo(
-              <div>
-                <div style={{ marginBottom: '1rem', fontWeight: '600' }}>✅ Token deployed successfully!</div>
-                <div style={{ marginBottom: '0.5rem' }}>
-                  <span style={{ color: 'rgba(255,255,255,0.7)' }}>Token Address: </span>
-                  <AddressLink address={tokenAddress} chainId={chainFromEnv.id} />
-                </div>
-                <div style={{ marginBottom: '0.5rem', color: 'rgba(34, 197, 94, 0.9)' }}>
-                  ✓ SBE Data Deployed<br />
-                  ✓ Descriptor Set<br />
-                  ✓ Contract Verified (attempt {attempt})
-                </div>
-                <div style={{ marginTop: '0.5rem' }}>
-                  <span style={{ color: 'rgba(255,255,255,0.7)' }}>Transaction: </span>
-                  <TransactionLink hash={transactionHash} chainId={chainFromEnv.id} />
-                </div>
-                <div style={{ marginTop: '1rem', color: 'rgba(255,255,255,0.8)' }}>
-                  You can now view the contract source code and verify proofs onchain!
-                </div>
-              </div>
-            );
-            break;
-          }
-
-          // Check if we should retry
-          if (attempt < maxRetries) {
-            const errorMsg = verifyResult.message || verifyResult.error || '';
-            
-            // Wait for next block before retry
-            setTxInfo(
-              <div>
-                <div style={{ marginBottom: '1rem', fontWeight: '600' }}>✅ Token deployed successfully!</div>
-                <div style={{ marginBottom: '0.5rem' }}>
-                  <span style={{ color: 'rgba(255,255,255,0.7)' }}>Token Address: </span>
-                  <AddressLink address={tokenAddress} chainId={chainFromEnv.id} />
-                </div>
-                <div style={{ marginBottom: '0.5rem', color: 'rgba(34, 197, 94, 0.9)' }}>
-                  ✓ SBE Data Deployed<br />
-                  ✓ Descriptor Set
-                </div>
-                <div style={{ marginTop: '0.5rem' }}>
-                  <span style={{ color: 'rgba(255,255,255,0.7)' }}>Transaction: </span>
-                  <TransactionLink hash={transactionHash} chainId={chainFromEnv.id} />
-                </div>
-                <div style={{ marginTop: '1rem', color: 'rgba(251, 191, 36, 0.9)' }}>
-                  ⏳ Waiting for new block... ({attempt}/{maxRetries})
-                </div>
-                <div style={{ marginTop: '0.5rem', fontSize: '0.875rem', color: 'rgba(255,255,255,0.5)' }}>
-                  Current block: {currentBlockNumber.toString()}
-                </div>
-                <div style={{ marginTop: '0.25rem', fontSize: '0.875rem', color: 'rgba(255,255,255,0.5)' }}>
-                  {errorMsg}
-                </div>
-              </div>
-            );
-            
-            // Wait for next block
-            const targetBlock = currentBlockNumber + BigInt(1);
-            let newBlock = currentBlockNumber;
-            
-            while (newBlock < targetBlock) {
-              await new Promise(resolve => setTimeout(resolve, 2000));
-              try {
-                newBlock = await publicClient.getBlockNumber();
-                if (newBlock > currentBlockNumber) {
-                  currentBlockNumber = newBlock;
-                  setTxInfo(
-                    <div>
-                      <div style={{ marginBottom: '1rem', fontWeight: '600' }}>✅ Token deployed successfully!</div>
-                      <div style={{ marginBottom: '0.5rem' }}>
-                        <span style={{ color: 'rgba(255,255,255,0.7)' }}>Token Address: </span>
-                        <AddressLink address={tokenAddress} chainId={chainFromEnv.id} />
-                      </div>
-                      <div style={{ marginBottom: '0.5rem', color: 'rgba(34, 197, 94, 0.9)' }}>
-                        ✓ SBE Data Deployed<br />
-                        ✓ Descriptor Set
-                      </div>
-                      <div style={{ marginTop: '0.5rem' }}>
-                        <span style={{ color: 'rgba(255,255,255,0.7)' }}>Transaction: </span>
-                        <TransactionLink hash={transactionHash} chainId={chainFromEnv.id} />
-                      </div>
-                      <div style={{ marginTop: '1rem', color: 'rgba(34, 197, 94, 0.9)' }}>
-                        ✓ New block {newBlock.toString()} - retrying verification...
-                      </div>
-                    </div>
-                  );
-                  break;
-                }
-              } catch (blockError) {
-                console.error('Error checking block number:', blockError);
-              }
-            }
-            
-            continue;
-          }
-
-          // Last attempt - show final failure
-          setTxInfo(
-            <div>
-              <div style={{ marginBottom: '1rem', fontWeight: '600' }}>✅ Token deployed successfully!</div>
-              <div style={{ marginBottom: '0.5rem' }}>
-                <span style={{ color: 'rgba(255,255,255,0.7)' }}>Token Address: </span>
-                <AddressLink address={tokenAddress} chainId={chainFromEnv.id} />
-              </div>
-              <div style={{ marginBottom: '0.5rem', color: 'rgba(34, 197, 94, 0.9)' }}>
-                ✓ SBE Data Deployed<br />
-                ✓ Descriptor Set
-              </div>
-              <div style={{ marginBottom: '0.5rem', color: 'rgba(251, 191, 36, 0.9)' }}>
-                ⚠ Verification failed after {attempt} attempt(s)
-              </div>
-              <div style={{ marginTop: '0.5rem' }}>
-                <span style={{ color: 'rgba(255,255,255,0.7)' }}>Transaction: </span>
-                <TransactionLink hash={transactionHash} chainId={chainFromEnv.id} />
-              </div>
-              <div style={{ marginTop: '1rem', fontSize: '0.9rem', color: 'rgba(255,255,255,0.6)' }}>
-                {verifyResult.message || verifyResult.error || 'Verification failed - you can verify manually on the block explorer'}
-              </div>
-            </div>
-          );
-          break;
-
-        } catch (verifyError) {
-          console.error(`Verification attempt ${attempt} error:`, verifyError);
-          
-          if (attempt < maxRetries) {
-            setTxInfo(
-              <div>
-                <div style={{ marginBottom: '1rem', fontWeight: '600' }}>✅ Token deployed successfully!</div>
-                <div style={{ marginBottom: '0.5rem' }}>
-                  <span style={{ color: 'rgba(255,255,255,0.7)' }}>Token Address: </span>
-                  <AddressLink address={tokenAddress} chainId={chainFromEnv.id} />
-                </div>
-                <div style={{ marginBottom: '0.5rem', color: 'rgba(34, 197, 94, 0.9)' }}>
-                  ✓ SBE Data Deployed<br />
-                  ✓ Descriptor Set
-                </div>
-                <div style={{ marginTop: '0.5rem' }}>
-                  <span style={{ color: 'rgba(255,255,255,0.7)' }}>Transaction: </span>
-                  <TransactionLink hash={transactionHash} chainId={chainFromEnv.id} />
-                </div>
-                <div style={{ marginTop: '1rem', color: 'rgba(251, 191, 36, 0.9)' }}>
-                  ⏳ Verification error, waiting for next block... ({attempt}/{maxRetries})
-                </div>
-              </div>
-            );
-            
-            // Wait for next block
-            const targetBlock = currentBlockNumber + BigInt(1);
-            let newBlock = currentBlockNumber;
-            
-            while (newBlock < targetBlock) {
-              await new Promise(resolve => setTimeout(resolve, 2000));
-              try {
-                newBlock = await publicClient.getBlockNumber();
-                if (newBlock > currentBlockNumber) {
-                  currentBlockNumber = newBlock;
-                  break;
-                }
-              } catch (blockError) {
-                console.error('Error checking block number:', blockError);
-              }
-            }
-            
-            continue;
-          }
-          
-          // Last attempt failed
-          setTxInfo(
-            <div>
-              <div style={{ marginBottom: '1rem', fontWeight: '600' }}>✅ Token deployed successfully!</div>
-              <div style={{ marginBottom: '0.5rem' }}>
-                <span style={{ color: 'rgba(255,255,255,0.7)' }}>Token Address: </span>
-                <AddressLink address={tokenAddress} chainId={chainFromEnv.id} />
-              </div>
-              <div style={{ marginBottom: '0.5rem', color: 'rgba(34, 197, 94, 0.9)' }}>
-                ✓ SBE Data Deployed<br />
-                ✓ Descriptor Set
-              </div>
-              <div style={{ marginBottom: '0.5rem', color: 'rgba(251, 191, 36, 0.9)' }}>
-                ⚠ Verification error after {maxRetries} attempts
-              </div>
-              <div style={{ marginTop: '0.5rem' }}>
-                <span style={{ color: 'rgba(255,255,255,0.7)' }}>Transaction: </span>
-                <TransactionLink hash={transactionHash} chainId={chainFromEnv.id} />
-              </div>
-              <div style={{ marginTop: '1rem', fontSize: '0.9rem', color: 'rgba(255,255,255,0.6)' }}>
-                Contract verification failed. You can verify manually on the block explorer.
-              </div>
-            </div>
-          );
-        }
-      }
-
-      setShowTokenDeploy(false);
+      // Close modal after short delay to show success message
+      setTimeout(() => {
+        setShowTokenDeploy(false);
+      }, 2000);
+      
       setCurrentStep(5); // Update step indicator to show deployment complete
       
       // Reset form
@@ -1970,6 +1859,63 @@ export default function Page() {
   return (
     <div style={{ minHeight: '100vh', background: '#0a0a0a', color: '#ffffff' }}>
       <Navigation currentPage="explorer" />
+      
+      {/* Background Verification Notification */}
+      {verificationNotification?.show && (
+        <div style={{
+          position: 'fixed',
+          top: '80px',
+          right: '20px',
+          zIndex: 1000,
+          maxWidth: '400px',
+          padding: '1rem 1.5rem',
+          background: verificationNotification.type === 'success' 
+            ? 'rgba(34, 197, 94, 0.95)' 
+            : verificationNotification.type === 'warning' || verificationNotification.type === 'error'
+            ? 'rgba(251, 191, 36, 0.95)'
+            : 'rgba(59, 130, 246, 0.95)',
+          border: `1px solid ${
+            verificationNotification.type === 'success' 
+              ? 'rgba(34, 197, 94, 1)' 
+              : verificationNotification.type === 'warning' || verificationNotification.type === 'error'
+              ? 'rgba(251, 191, 36, 1)'
+              : 'rgba(59, 130, 246, 1)'
+          }`,
+          borderRadius: '8px',
+          boxShadow: '0 10px 40px rgba(0,0,0,0.4)',
+          color: '#ffffff',
+          fontSize: '0.875rem',
+          fontWeight: '500',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: '1rem',
+          transition: 'opacity 0.3s ease-out'
+        }}>
+          <span>{verificationNotification.message}</span>
+          <button
+            onClick={() => setVerificationNotification(null)}
+            style={{
+              background: 'rgba(255,255,255,0.2)',
+              border: '1px solid rgba(255,255,255,0.3)',
+              borderRadius: '4px',
+              color: '#ffffff',
+              padding: '0.25rem 0.5rem',
+              fontSize: '0.75rem',
+              cursor: 'pointer',
+              flexShrink: 0
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'rgba(255,255,255,0.3)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'rgba(255,255,255,0.2)';
+            }}
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
       
       {/* Introduction Section */}
       <div style={{ maxWidth: '1400px', margin: '0 auto', padding: 'clamp(2rem, 4vw, 3rem) clamp(1rem, 3vw, 2rem)' }}>
