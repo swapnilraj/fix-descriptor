@@ -6,6 +6,7 @@ import CollapsibleSection from '@/components/CollapsibleSection';
 import MessageTypeSelector from '@/components/MessageTypeSelector';
 import ParsedSchemaSection from '@/components/ParsedSchemaSection';
 import MessageBuilderSection from '@/components/MessageBuilderSection';
+import ExampleSelector from '@/components/ExampleSelector';
 import { abi as AssetTokenAbi } from '@/lib/abis/AssetTokenERC20';
 import { chainFromEnv } from '@/lib/viemClient';
 import { createPublicClient, http } from 'viem';
@@ -934,7 +935,6 @@ export default function Page() {
   
   // Refs for sections
   const introRef = useRef<HTMLDivElement>(null);
-  const examplesRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLDivElement>(null);
   const resultsRef = useRef<HTMLDivElement>(null);
   const deployRef = useRef<HTMLDivElement>(null);
@@ -1176,21 +1176,6 @@ export default function Page() {
     window.addEventListener('resize', measure);
     return () => window.removeEventListener('resize', measure);
   }, [steps.length]);
-
-  function loadExample(key: keyof typeof EXAMPLES) {
-    const fixMessage = EXAMPLES[key].fix;
-    setFixRaw(fixMessage);
-    setPreview(null);
-    setProof(null);
-    setCurrentStep(0);
-
-    // The useEffect for fixRaw will handle parsing and populating messageBuilderValues
-
-    // Auto-scroll to input section
-    setTimeout(() => {
-      scrollToSection(inputRef);
-    }, 100);
-  }
 
 
   async function doPreview() {
@@ -1982,7 +1967,7 @@ export default function Page() {
                 </div>
               </div>
               <button
-                onClick={() => scrollToSection(examplesRef)}
+                onClick={() => scrollToSection(inputRef)}
                 style={{
                   padding: '1rem',
                   background: 'rgba(59, 130, 246, 0.1)',
@@ -2006,7 +1991,7 @@ export default function Page() {
                   Interactive
                 </div>
                 <div style={{ fontSize: '1rem', fontWeight: '500', color: 'rgba(255,255,255,0.95)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  Jump to Examples
+                  Get Started
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <polyline points="6 9 12 15 18 9" />
                   </svg>
@@ -2475,61 +2460,6 @@ export default function Page() {
 
       {/* Main Content */}
       <div style={{ maxWidth: '1400px', margin: '0 auto', padding: 'clamp(2rem, 4vw, 3rem) clamp(1rem, 3vw, 2rem)' }}>
-        
-        {/* Examples Section */}
-        <section ref={examplesRef} style={{ marginBottom: '4rem' }}>
-          <div style={{ marginBottom: '2rem' }}>
-            <h2 style={{ 
-              fontSize: 'clamp(1.25rem, 3vw, 1.5rem)', 
-              fontWeight: '500',
-              marginBottom: '0.5rem',
-              letterSpacing: '-0.01em'
-            }}>
-              Examples
-            </h2>
-            <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 'clamp(0.875rem, 2vw, 0.95rem)' }}>
-              Start with a pre-configured FIX message
-            </p>
-          </div>
-          
-          <div style={{ 
-            display: 'grid', 
-            gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))', 
-            gap: 'clamp(0.75rem, 2vw, 1rem)' 
-          }}>
-            {Object.entries(EXAMPLES).map(([key, example]) => (
-              <button
-                key={key}
-                onClick={() => loadExample(key as keyof typeof EXAMPLES)}
-                style={{
-                  background: 'rgba(255,255,255,0.05)',
-                  border: '1px solid rgba(255,255,255,0.1)',
-                  borderRadius: '8px',
-                  padding: '1.5rem',
-                  cursor: 'pointer',
-                  textAlign: 'left',
-                  transition: 'all 0.2s',
-                  color: 'inherit'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = 'rgba(255,255,255,0.08)';
-                  e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
-                  e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)';
-                }}
-              >
-                <div style={{ fontWeight: '500', marginBottom: '0.5rem', fontSize: 'clamp(0.95rem, 2.5vw, 1rem)' }}>
-                  {example.name}
-                </div>
-                <div style={{ fontSize: 'clamp(0.8rem, 2vw, 0.875rem)', color: 'rgba(255,255,255,0.5)', lineHeight: '1.5' }}>
-                  {example.description}
-                </div>
-          </button>
-            ))}
-        </div>
-        </section>
 
         {/* Input Section */}
         <section ref={inputRef} style={{ marginBottom: '4rem' }}>
@@ -2704,6 +2634,13 @@ export default function Page() {
             }}>
               FIX Message
             </div>
+            
+            {/* Example Selector */}
+            <ExampleSelector 
+              examples={EXAMPLES}
+              onSelectExample={setFixRaw}
+            />
+
             <LearnMore title="Understanding FIX Messages">
               <p style={{ marginBottom: '1rem' }}>
                 <strong>What is FIX?</strong><br/>
