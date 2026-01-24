@@ -111,8 +111,8 @@ public class FixEncoderHandler implements RequestHandler<Map<String, Object>, Ma
         }
         context.getLogger().log("Using SBE messageId (templateId): " + messageId);
         
-        // Map FIX tags directly to SBE fields using schema field IDs
-        Map<String, Object> fields = mapFixToSbeByFieldId(fixFields, schemaXml, context);
+        // Map FIX tags directly to SBE fields using schema field IDs for this specific message
+        Map<String, Object> fields = mapFixToSbeByFieldId(fixFields, schemaXml, messageId, context);
         
         // Generate schema hash for caching
         String schemaHash = hashSchema(schemaXml);
@@ -121,16 +121,8 @@ public class FixEncoderHandler implements RequestHandler<Map<String, Object>, Ma
         // Get or generate encoder class
         Class<?> encoderClass = getOrGenerateEncoderClass(schemaXml, schemaHash, messageId, context);
         
-        // Encode message using generated class
-        byte[] encodedMessage = encodeMessage(encoderClass, fields, context);
-        
-        // Generate SBE message header
-        byte[] header = generateSbeHeader(encoderClass, messageId, context);
-        
-        // Combine header + message for complete SBE message
-        byte[] completeMessage = new byte[header.length + encodedMessage.length];
-        System.arraycopy(header, 0, completeMessage, 0, header.length);
-        System.arraycopy(encodedMessage, 0, completeMessage, header.length, encodedMessage.length);
+        // Encode message using generated class (SBE handles header + body)
+        byte[] completeMessage = encodeMessage(encoderClass, messageId, fields, schemaXml, context);
         
         // Prepare response
         response.put("success", true);
@@ -143,10 +135,10 @@ public class FixEncoderHandler implements RequestHandler<Map<String, Object>, Ma
         response.put("encodedBytes", completeMessage.length);
         response.put("encodedBase64", Base64.getEncoder().encodeToString(completeMessage));
         response.put("encodedHex", bytesToHex(completeMessage));
-        response.put("headerHex", bytesToHex(header));
-        response.put("bodyHex", bytesToHex(encodedMessage));
+        response.put("headerHex", bytesToHex(java.util.Arrays.copyOfRange(completeMessage, 0, 8)));
+        response.put("bodyHex", bytesToHex(java.util.Arrays.copyOfRange(completeMessage, 8, completeMessage.length)));
         
-        context.getLogger().log("Successfully encoded message: " + encodedMessage.length + " bytes");
+        context.getLogger().log("Successfully encoded message: " + completeMessage.length + " bytes (header: 8, body: " + (completeMessage.length - 8) + ")");
         return response;
     }
     
@@ -194,7 +186,7 @@ public class FixEncoderHandler implements RequestHandler<Map<String, Object>, Ma
         Map<String, Object> decodedFields = decodeMessage(decoderClass, messageBytes, schemaXml, context);
         
         // Convert SBE fields back to FIX message format
-        String fixMessage = convertSbeToFixMessage(decodedFields, schemaXml, context);
+        String fixMessage = convertSbeToFixMessage(decodedFields, schemaXml, messageId, context);
         
         // Prepare response
         response.put("success", true);
@@ -411,22 +403,40 @@ public class FixEncoderHandler implements RequestHandler<Map<String, Object>, Ma
      * Generate SBE message header (8 bytes)
      * Header format: blockLength (2), templateId (2), schemaId (2), version (2)
      */
-    private byte[] generateSbeHeader(Class<?> encoderClass, Integer messageId, Context context) throws Exception {
+    private byte[] generateSbeHeader(Class<?> encoderClass, Integer messageId, String schemaXml, Context context) throws Exception {
         byte[] header = new byte[8];
         java.nio.ByteBuffer buffer = java.nio.ByteBuffer.wrap(header).order(java.nio.ByteOrder.LITTLE_ENDIAN);
         
-        // Get metadata from encoder class using static methods
+        // Get metadata from schema XML
         try {
-            Method blockLengthMethod = encoderClass.getMethod("sbeBlockLength");
-            int blockLength = (int) blockLengthMethod.invoke(null);
+            // Parse schema XML to get blockLength and other metadata
+            org.w3c.dom.Document doc = javax.xml.parsers.DocumentBuilderFactory.newInstance()
+                .newDocumentBuilder()
+                .parse(new org.xml.sax.InputSource(new java.io.StringReader(schemaXml)));
             
-            Method schemaIdMethod = encoderClass.getMethod("sbeSchemaId");
-            int schemaId = (int) schemaIdMethod.invoke(null);
+            org.w3c.dom.Element root = doc.getDocumentElement();
+            int schemaId = Integer.parseInt(root.getAttribute("id"));
+            int schemaVersion = Integer.parseInt(root.getAttribute("version"));
             
-            Method schemaVersionMethod = encoderClass.getMethod("sbeSchemaVersion");
-            int schemaVersion = (int) schemaVersionMethod.invoke(null);
+            // Find the message with this ID and get its blockLength
+            org.w3c.dom.NodeList messages = doc.getElementsByTagName("message");
+            int blockLength = 0;
+            for (int i = 0; i < messages.getLength(); i++) {
+                org.w3c.dom.Element msg = (org.w3c.dom.Element) messages.item(i);
+                if (Integer.parseInt(msg.getAttribute("id")) == messageId) {
+                    // blockLength is defined in the message element
+                    String blockLengthAttr = msg.getAttribute("blockLength");
+                    if (blockLengthAttr != null && !blockLengthAttr.isEmpty()) {
+                        blockLength = Integer.parseInt(blockLengthAttr);
+                    } else {
+                        // If not specified, calculate from fixed-length fields
+                        blockLength = calculateBlockLengthFromMessage(msg, context);
+                    }
+                    break;
+                }
+            }
             
-            context.getLogger().log("SBE Header: blockLength=" + blockLength + ", templateId=" + messageId + 
+            context.getLogger().log("SBE Header from schema: blockLength=" + blockLength + ", templateId=" + messageId + 
                                    ", schemaId=" + schemaId + ", version=" + schemaVersion);
             
             // Write header (little endian)
@@ -436,9 +446,10 @@ public class FixEncoderHandler implements RequestHandler<Map<String, Object>, Ma
             buffer.putShort(6, (short) schemaVersion);
             
         } catch (Exception e) {
-            context.getLogger().log("Warning: Could not get SBE metadata from encoder class: " + e.getMessage());
+            context.getLogger().log("Warning: Could not get SBE metadata from schema: " + e.getMessage());
+            e.printStackTrace();
             // Fallback: use messageId and defaults
-            buffer.putShort(0, (short) 0);  // blockLength will be calculated
+            buffer.putShort(0, (short) 0);
             buffer.putShort(2, (short) messageId.intValue());
             buffer.putShort(4, (short) 1);  // default schemaId
             buffer.putShort(6, (short) 0);  // default version
@@ -450,53 +461,127 @@ public class FixEncoderHandler implements RequestHandler<Map<String, Object>, Ma
     /**
      * Encode message using generated encoder class via reflection
      */
-    private byte[] encodeMessage(Class<?> encoderClass, Map<String, Object> fields, Context context) throws Exception {
+    private byte[] encodeMessage(Class<?> encoderClass, Integer messageId, Map<String, Object> fields, String schemaXml, Context context) throws Exception {
         // Create buffer (use Agrona UnsafeBuffer for SBE)
         // Increased from 4096 to 16384 to support larger schemas with all FIX fields
         byte[] bufferArray = new byte[16384];
         org.agrona.concurrent.UnsafeBuffer buffer = new org.agrona.concurrent.UnsafeBuffer(bufferArray);
         
+        // Load MessageHeaderEncoder class
+        ClassLoader classLoader = encoderClass.getClassLoader();
+        Class<?> messageHeaderEncoderClass = classLoader.loadClass("com.example.sbe.MessageHeaderEncoder");
+        Object messageHeaderEncoder = messageHeaderEncoderClass.getDeclaredConstructor().newInstance();
+        
+        // Wrap MessageHeaderEncoder at offset 0 to write the header
+        Method headerWrapMethod = messageHeaderEncoderClass.getMethod("wrap", org.agrona.MutableDirectBuffer.class, int.class);
+        headerWrapMethod.invoke(messageHeaderEncoder, buffer, 0);
+        
+        // Get blockLength, schemaId, and version from the encoder class or schema
+        int blockLength = 0;
+        int schemaId = 1;
+        int schemaVersion = 0;
+        
+        try {
+            Method blockLengthMethod = encoderClass.getMethod("sbeBlockLength");
+            Object blockLengthObj = blockLengthMethod.invoke(null);
+            if (blockLengthObj != null) {
+                blockLength = (int) blockLengthObj;
+            }
+            
+            Method schemaIdMethod = encoderClass.getMethod("sbeSchemaId");
+            Object schemaIdObj = schemaIdMethod.invoke(null);
+            if (schemaIdObj != null) {
+                schemaId = (int) schemaIdObj;
+            }
+            
+            Method schemaVersionMethod = encoderClass.getMethod("sbeSchemaVersion");
+            Object schemaVersionObj = schemaVersionMethod.invoke(null);
+            if (schemaVersionObj != null) {
+                schemaVersion = (int) schemaVersionObj;
+            }
+            
+            context.getLogger().log("SBE metadata from encoder class: blockLength=" + blockLength + 
+                                   ", schemaId=" + schemaId + ", version=" + schemaVersion);
+        } catch (Exception e) {
+            context.getLogger().log("Warning: Could not get SBE metadata from encoder class: " + e.getMessage());
+        }
+        
+        // If blockLength is 0 or failed, calculate from schema
+        if (blockLength == 0) {
+            context.getLogger().log("Calculating blockLength from schema XML...");
+            blockLength = calculateBlockLengthFromSchema(schemaXml, messageId, context);
+            context.getLogger().log("Calculated blockLength from schema: " + blockLength);
+        }
+        
+        // Encode the header using MessageHeaderEncoder
+        Method blockLengthSetMethod = messageHeaderEncoderClass.getMethod("blockLength", int.class);
+        blockLengthSetMethod.invoke(messageHeaderEncoder, blockLength);
+        
+        Method templateIdSetMethod = messageHeaderEncoderClass.getMethod("templateId", int.class);
+        templateIdSetMethod.invoke(messageHeaderEncoder, messageId.intValue());
+        
+        Method schemaIdSetMethod = messageHeaderEncoderClass.getMethod("schemaId", int.class);
+        schemaIdSetMethod.invoke(messageHeaderEncoder, schemaId);
+        
+        Method versionSetMethod = messageHeaderEncoderClass.getMethod("version", int.class);
+        versionSetMethod.invoke(messageHeaderEncoder, schemaVersion);
+        
+        Method encodedLengthMethod = messageHeaderEncoderClass.getMethod("encodedLength");
+        int headerLength = (int) encodedLengthMethod.invoke(messageHeaderEncoder);
+        
+        context.getLogger().log("Encoded SBE header: blockLength=" + blockLength + ", templateId=" + messageId + 
+                               ", schemaId=" + schemaId + ", version=" + schemaVersion + ", headerLength=" + headerLength);
+        
         // Create encoder instance
         Object encoder = encoderClass.getDeclaredConstructor().newInstance();
         
-        // Wrap buffer (SBE encoders have wrap(MutableDirectBuffer, int) method)
+        // Wrap buffer at offset after header (SBE encoders have wrap(MutableDirectBuffer, int) method)
         Method wrapMethod = encoderClass.getMethod("wrap", org.agrona.MutableDirectBuffer.class, int.class);
-        wrapMethod.invoke(encoder, buffer, 0);
+        wrapMethod.invoke(encoder, buffer, headerLength);
         
-        // Set each field using reflection
-        for (Map.Entry<String, Object> entry : fields.entrySet()) {
-            String fieldName = entry.getKey();
-            Object value = entry.getValue();
+        // SBE requires: 1) Set ALL fixed fields first IN SCHEMA ORDER, 2) Then variable fields IN SCHEMA ORDER
+        // Get ordered field lists from schema
+        java.util.List<String> schemaFixedFieldOrder = SbeSchemaParser.extractOrderedFixedFields(schemaXml, messageId);
+        java.util.List<String> schemaVariableFieldOrder = SbeSchemaParser.extractOrderedDataFields(schemaXml, messageId);
+        
+        context.getLogger().log("Schema defines " + schemaFixedFieldOrder.size() + " fixed fields and " + 
+                               schemaVariableFieldOrder.size() + " variable fields in order");
+        
+        // First, encode all fixed-length fields in schema order
+        int fixedFieldsEncoded = 0;
+        for (String schemaFieldName : schemaFixedFieldOrder) {
+            // Check if user provided a value for this field
+            Object value = null;
+            String matchedKey = null;
+            
+            for (String key : fields.keySet()) {
+                if (key.equalsIgnoreCase(schemaFieldName) || 
+                    toCamelCase(key).equalsIgnoreCase(toCamelCase(schemaFieldName))) {
+                    value = fields.get(key);
+                    matchedKey = key;
+                    break;
+                }
+            }
+            
+            if (value == null) {
+                // Skip fields we don't have values for
+                continue;
+            }
+            
+            String fieldName = schemaFieldName;
             
             try {
                 // Find setter method (typically fieldName(Type value))
                 Method[] methods = encoderClass.getMethods();
                 boolean fieldSet = false;
                 
-                // Debug: log all methods with this field name
-                context.getLogger().log("Looking for setter methods for field: " + fieldName);
-                
                 // Generate possible method name variations
                 String camelCaseFieldName = toCamelCase(fieldName);
                 String pascalCaseFieldName = capitalize(fieldName);
                 
-                for (Method m : methods) {
-                    String methodName = m.getName();
-                    if (methodName.equals(fieldName) || 
-                        methodName.equals(camelCaseFieldName) ||
-                        methodName.equals("put" + pascalCaseFieldName) ||
-                        methodName.equals("put" + camelCaseFieldName)) {
-                        context.getLogger().log("  Found method: " + methodName + " with " + m.getParameterCount() + " params: " + java.util.Arrays.toString(m.getParameterTypes()));
-                    }
-                }
-                
+                // Handle fixed-length fields (single parameter setter)
                 for (Method method : methods) {
                     String methodName = method.getName();
-                    // Try multiple naming variations:
-                    // 1. fieldName as-is (e.g., "couponRate")
-                    // 2. camelCase (e.g., "couponRate" from "CouponRate")
-                    // 3. putFieldName (e.g., "putSymbol")
-                    // 4. putCamelCase (e.g., "putCouponRate")
                     if (!methodName.equals(fieldName) && 
                         !methodName.equals(camelCaseFieldName) &&
                         !methodName.equals("put" + pascalCaseFieldName) &&
@@ -504,55 +589,107 @@ public class FixEncoderHandler implements RequestHandler<Map<String, Object>, Ma
                         continue;
                     }
                     
-                    // Handle variable-length data fields (byte[], int, int) or (DirectBuffer, int, int)
-                    if (method.getParameterCount() == 3) {
-                        Class<?>[] paramTypes = method.getParameterTypes();
-                        // Check if it's a variable data field: (byte[], srcOffset, length)
-                        if (paramTypes[0] == byte[].class && paramTypes[1] == int.class && paramTypes[2] == int.class) {
-                            byte[] bytes = value.toString().getBytes(StandardCharsets.UTF_8);
-                            method.invoke(encoder, bytes, 0, bytes.length);
-                            context.getLogger().log("Set variable field " + fieldName + " = " + value + " (" + bytes.length + " bytes)");
-                            fieldSet = true;
-                            break;
-                        }
-                    }
                     // Handle fixed-length fields (single parameter)
-                    else if (method.getParameterCount() == 1) {
+                    if (method.getParameterCount() == 1) {
                         Class<?> paramType = method.getParameterTypes()[0];
                         
-                        // Special handling for CharSequence (String) fields
-                        if (CharSequence.class.isAssignableFrom(paramType)) {
-                            method.invoke(encoder, value.toString());
-                            context.getLogger().log("Set string field " + fieldName + " = " + value);
-                            fieldSet = true;
-                            break;
-                        }
-                        
-                        // Handle numeric fields
+                        // Convert value to correct type
                         Object convertedValue = convertValue(value, paramType);
                         method.invoke(encoder, convertedValue);
-                        context.getLogger().log("Set fixed field " + fieldName + " = " + convertedValue);
+                        context.getLogger().log("  Encoded fixed field (schema order): " + fieldName + " = " + convertedValue);
                         fieldSet = true;
+                        fixedFieldsEncoded++;
                         break;
                     }
                 }
                 
                 if (!fieldSet) {
-                    context.getLogger().log("Warning: Could not find setter for field " + fieldName);
+                    context.getLogger().log("  Warning: Could not find setter for fixed field " + fieldName);
                 }
             } catch (Exception e) {
-                context.getLogger().log("Warning: Could not set field " + fieldName + ": " + e.getMessage());
+                context.getLogger().log("  Warning: Could not set fixed field " + fieldName + ": " + e.getMessage());
                 e.printStackTrace();
             }
         }
         
-        // Get encoded length
-        Method encodedLengthMethod = encoderClass.getMethod("encodedLength");
-        int length = (int) encodedLengthMethod.invoke(encoder);
+        context.getLogger().log("Encoded " + fixedFieldsEncoded + " fixed fields in schema order");
         
-        // Extract encoded bytes
-        byte[] result = new byte[length];
-        buffer.getBytes(0, result, 0, length);
+        // Now encode ALL variable-length fields in schema order (SBE requires ALL fields, not just provided ones)
+        // Fields not provided get encoded with length=0 (empty)
+        int variableFieldsEncoded = 0;
+        
+        for (String schemaFieldName : schemaVariableFieldOrder) {
+            // Check if we have a value for this field
+            Object value = null;
+            String matchedKey = null;
+            
+            for (String key : fields.keySet()) {
+                if (key.equalsIgnoreCase(schemaFieldName) || 
+                    toCamelCase(key).equalsIgnoreCase(toCamelCase(schemaFieldName))) {
+                    value = fields.get(key);
+                    matchedKey = key;
+                    break;
+                }
+            }
+            
+            try {
+                Method[] methods = encoderClass.getMethods();
+                boolean fieldSet = false;
+                String camelCaseFieldName = toCamelCase(schemaFieldName);
+                String pascalCaseFieldName = capitalize(schemaFieldName);
+                
+                for (Method method : methods) {
+                    String methodName = method.getName();
+                    if (!methodName.equals(schemaFieldName) && 
+                        !methodName.equals(camelCaseFieldName) &&
+                        !methodName.equals("put" + pascalCaseFieldName) &&
+                        !methodName.equals("put" + camelCaseFieldName)) {
+                        continue;
+                    }
+                    
+                    // Handle variable-length data fields (byte[], int, int)
+                    if (method.getParameterCount() == 3) {
+                        Class<?>[] paramTypes = method.getParameterTypes();
+                        if (paramTypes[0] == byte[].class && paramTypes[1] == int.class && paramTypes[2] == int.class) {
+                            // Encode with actual value or empty (length=0) if not provided
+                            byte[] bytes = value != null ? value.toString().getBytes(StandardCharsets.UTF_8) : new byte[0];
+                            method.invoke(encoder, bytes, 0, bytes.length);
+                            if (value != null) {
+                                context.getLogger().log("  Encoded variable field (schema order): " + schemaFieldName + " = " + value + " (" + bytes.length + " bytes)");
+                            } else {
+                                context.getLogger().log("  Encoded variable field (schema order): " + schemaFieldName + " = <empty> (0 bytes)");
+                            }
+                            fieldSet = true;
+                            variableFieldsEncoded++;
+                            break;
+                        }
+                    }
+                }
+                
+                if (!fieldSet) {
+                    context.getLogger().log("  Warning: Could not find variable setter for " + schemaFieldName);
+                }
+            } catch (Exception e) {
+                context.getLogger().log("  Warning: Could not set variable field " + schemaFieldName + ": " + e.getMessage());
+                e.printStackTrace();
+            }
+        }
+        
+        context.getLogger().log("Encoded " + variableFieldsEncoded + " variable fields in schema order (including empty fields)");
+        
+        // Get encoded length from the encoder (this is the body length)
+        Method bodyEncodedLengthMethod = encoderClass.getMethod("encodedLength");
+        int bodyLength = (int) bodyEncodedLengthMethod.invoke(encoder);
+        
+        // Total message length = header + body
+        int totalLength = headerLength + bodyLength;
+        
+        context.getLogger().log("Encoded message: header=" + headerLength + " bytes, body=" + bodyLength + 
+                               " bytes, total=" + totalLength + " bytes");
+        
+        // Extract encoded bytes (header + body)
+        byte[] result = new byte[totalLength];
+        buffer.getBytes(0, result, 0, totalLength);
         
         return result;
     }
@@ -626,13 +763,14 @@ public class FixEncoderHandler implements RequestHandler<Map<String, Object>, Ma
      * SBE field with id="11" maps to FIX tag 11.
      */
     private Map<String, Object> mapFixToSbeByFieldId(Map<String, String> fixFields, 
-                                                      String schemaXml, 
+                                                      String schemaXml,
+                                                      Integer messageId, 
                                                       Context context) throws Exception {
         Map<String, Object> sbeFields = new HashMap<>();
         
-        // Extract field ID to name mapping from SBE schema
-        Map<String, String> tagToFieldName = SbeSchemaParser.extractFieldIdMapping(schemaXml);
-        context.getLogger().log("Schema defines " + tagToFieldName.size() + " field mappings");
+        // Extract field ID to name mapping from SBE schema for this specific message
+        Map<String, String> tagToFieldName = SbeSchemaParser.extractFieldIdMappingForMessage(schemaXml, messageId);
+        context.getLogger().log("Schema defines " + tagToFieldName.size() + " field mappings for message ID " + messageId);
         
         // Map FIX tags to SBE fields
         for (Map.Entry<String, String> entry : fixFields.entrySet()) {
@@ -689,6 +827,26 @@ public class FixEncoderHandler implements RequestHandler<Map<String, Object>, Ma
     }
     
     /**
+     * Extract blockLength from SBE message header
+     */
+    private int extractBlockLengthFromHeader(byte[] messageBytes, Context context) throws Exception {
+        if (messageBytes.length < 8) {
+            throw new IllegalArgumentException("Message too short to contain SBE header");
+        }
+        
+        // SBE header format (little endian):
+        // [0-1]: blockLength (uint16)
+        // [2-3]: templateId (uint16)
+        // [4-5]: schemaId (uint16)
+        // [6-7]: version (uint16)
+        
+        // Read blockLength from bytes 0-1 (little endian)
+        int blockLength = (messageBytes[0] & 0xFF) | ((messageBytes[1] & 0xFF) << 8);
+        context.getLogger().log("Extracted blockLength from header: " + blockLength);
+        return blockLength;
+    }
+    
+    /**
      * Extract messageId (templateId) from SBE message header
      */
     private Integer extractMessageIdFromHeader(byte[] messageBytes, Context context) throws Exception {
@@ -706,6 +864,20 @@ public class FixEncoderHandler implements RequestHandler<Map<String, Object>, Ma
         int templateId = (messageBytes[2] & 0xFF) | ((messageBytes[3] & 0xFF) << 8);
         context.getLogger().log("Extracted templateId from header: " + templateId);
         return templateId;
+    }
+    
+    /**
+     * Extract version from SBE message header
+     */
+    private int extractVersionFromHeader(byte[] messageBytes, Context context) throws Exception {
+        if (messageBytes.length < 8) {
+            throw new IllegalArgumentException("Message too short to contain SBE header");
+        }
+        
+        // Read version from bytes 6-7 (little endian)
+        int version = (messageBytes[6] & 0xFF) | ((messageBytes[7] & 0xFF) << 8);
+        context.getLogger().log("Extracted version from header: " + version);
+        return version;
     }
     
     /**
@@ -728,48 +900,40 @@ public class FixEncoderHandler implements RequestHandler<Map<String, Object>, Ma
         Class<?> unsafeBufferClass = Class.forName("org.agrona.concurrent.UnsafeBuffer");
         Object buffer = unsafeBufferClass.getDeclaredConstructor(byte[].class).newInstance(messageBytes);
         
-        // SBE decoders use wrap(buffer, offset, actingBlockLength, actingVersion)
-        // actingBlockLength is the size of FIXED fields only (not including variable data)
-        // For our schema: orderId (8) + quantity (8) + price (8) = 24 bytes
-        // Variable data (symbol) comes after the fixed block
+        // Extract blockLength, messageId, and version from the SBE header
+        int blockLength = extractBlockLengthFromHeader(messageBytes, context);
+        Integer messageId = extractMessageIdFromHeader(messageBytes, context);
+        int version = extractVersionFromHeader(messageBytes, context);
         
-        // Calculate block length by counting fixed-size fields in schema
-        int blockLength = calculateBlockLength(schemaXml, context);
-        context.getLogger().log("Calculated block length: " + blockLength + " bytes");
+        // SBE decoders use wrap(buffer, offset, actingBlockLength, actingVersion)
+        // The blockLength and version come from the message header
+        // After the header (8 bytes), the next blockLength bytes contain fixed-length fields
+        // Then come the variable-length fields
         
         try {
-            // Try the full wrap method with block length and version
+            // Try the full wrap method with block length and version from header
             Method wrapMethod = actualDecoderClass.getMethod("wrap",
                 Class.forName("org.agrona.DirectBuffer"), int.class, int.class, int.class);
-            wrapMethod.invoke(decoder, buffer, 0, blockLength, 0);
-            context.getLogger().log("Wrapped decoder with blockLength=" + blockLength);
+            wrapMethod.invoke(decoder, buffer, 8, blockLength, version);
+            context.getLogger().log("Wrapped decoder at offset 8 with blockLength=" + blockLength + ", version=" + version);
         } catch (NoSuchMethodException e) {
             // Fallback to simpler wrap if available
             Method wrapMethod = actualDecoderClass.getMethod("wrap",
                 Class.forName("org.agrona.DirectBuffer"), int.class);
-            wrapMethod.invoke(decoder, buffer, 0);
-            context.getLogger().log("Wrapped decoder with simple signature");
+            wrapMethod.invoke(decoder, buffer, 8);
+            context.getLogger().log("Wrapped decoder at offset 8 with simple signature");
         }
         
-        // Get field name to ID mapping to identify actual data fields
-        Map<String, String> nameToId = SbeSchemaParser.extractFieldNameToIdMapping(schemaXml);
-        Set<String> dataFieldNames = nameToId.keySet();
+        // Get separate lists of fixed and variable fields from schema
+        java.util.List<String> fixedFieldNames = SbeSchemaParser.extractOrderedFixedFields(schemaXml, messageId);
+        java.util.List<String> variableFieldNames = SbeSchemaParser.extractOrderedDataFields(schemaXml, messageId);
         
-        context.getLogger().log("Expected data fields: " + dataFieldNames);
+        context.getLogger().log("Fixed fields to decode: " + fixedFieldNames);
+        context.getLogger().log("Variable fields to decode: " + variableFieldNames);
         
-        // Debug: log all decoder methods
-        Method[] allMethods = actualDecoderClass.getDeclaredMethods();
-        for (String fieldName : dataFieldNames) {
-            context.getLogger().log("Methods for field '" + fieldName + "':");
-            for (Method m : allMethods) {
-                if (m.getName().toLowerCase().contains(fieldName.toLowerCase())) {
-                    context.getLogger().log("  - " + m.getName() + "(" + java.util.Arrays.toString(m.getParameterTypes()) + ")");
-                }
-            }
-        }
-        
-        // First, decode all fixed-length fields
-        for (String fieldName : dataFieldNames) {
+        // First, decode only fixed-length fields from the fixed block
+        context.getLogger().log("=== Decoding fixed-length fields ===");
+        for (String fieldName : fixedFieldNames) {
             try {
                 // Try camelCase version of field name
                 String camelFieldName = toCamelCase(fieldName);
@@ -812,9 +976,10 @@ public class FixEncoderHandler implements RequestHandler<Map<String, Object>, Ma
 
         }
         
-        // Then, decode variable-length data fields
-        for (String fieldName : dataFieldNames) {
-            // Check if this field has a length method (indicating it's variable-length)
+        // Then, decode only variable-length data fields from the variable data section
+        context.getLogger().log("=== Decoding variable-length fields ===");
+        for (String fieldName : variableFieldNames) {
+            // Variable fields have a length method
             try {
                 String camelFieldName = toCamelCase(fieldName);
                 Method lengthMethod = null;
@@ -827,31 +992,45 @@ public class FixEncoderHandler implements RequestHandler<Map<String, Object>, Ma
                     try {
                         lengthMethod = actualDecoderClass.getMethod(fieldName + "Length");
                     } catch (NoSuchMethodException e2) {
-                        // Not a variable-length field
+                        context.getLogger().log("  No length method for field: " + fieldName + ", skipping");
                         continue;
                     }
                 }
                 
-                int length = (int) lengthMethod.invoke(decoder);
-                context.getLogger().log("  Variable field " + fieldName + " has length: " + length);
+                // Try to get the length - if we're past the message end, this will throw IndexOutOfBoundsException
+                int length;
+                try {
+                    length = (int) lengthMethod.invoke(decoder);
+                    context.getLogger().log("  Variable field " + fieldName + " has length: " + length);
+                } catch (java.lang.reflect.InvocationTargetException e) {
+                    Throwable cause = e.getCause();
+                    if (cause instanceof IndexOutOfBoundsException) {
+                        context.getLogger().log("  Reached end of message at field " + fieldName + ", stopping variable field decoding");
+                        break;  // Stop decoding variable fields
+                    }
+                    throw e;  // Re-throw other exceptions
+                }
                 
-                if (length > 0) {
-                    // Find the getter method: getFieldName(byte[], int, int)
-                    try {
-                        Method getMethod = actualDecoderClass.getMethod("get" + capitalize(fieldName), 
-                            byte[].class, int.class, int.class);
-                        byte[] bytes = new byte[length];
-                        int bytesRead = (int) getMethod.invoke(decoder, bytes, 0, bytes.length);
+                // MUST call getter for ALL fields (even empty) to advance decoder position
+                try {
+                    Method getMethod = actualDecoderClass.getMethod("get" + capitalize(fieldName), 
+                        byte[].class, int.class, int.class);
+                    byte[] bytes = new byte[Math.max(length, 0)];
+                    int bytesRead = (int) getMethod.invoke(decoder, bytes, 0, bytes.length);
+                    
+                    if (length > 0) {
                         String value = new String(bytes, 0, bytesRead, StandardCharsets.UTF_8);
                         fields.put(fieldName, value);
                         context.getLogger().log("  Decoded variable field: " + fieldName + " = " + value + " (" + bytesRead + " bytes)");
-                    } catch (NoSuchMethodException e) {
-                        context.getLogger().log("  Could not find getter for variable field: " + fieldName);
-                        e.printStackTrace();
-                    } catch (Exception e) {
-                        context.getLogger().log("  Error calling getter for variable field " + fieldName + ": " + e.getMessage());
-                        e.printStackTrace();
+                    } else {
+                        context.getLogger().log("  Decoded variable field: " + fieldName + " = <empty> (0 bytes)");
                     }
+                } catch (NoSuchMethodException e) {
+                    context.getLogger().log("  Could not find getter for variable field: " + fieldName);
+                    e.printStackTrace();
+                } catch (Exception e) {
+                    context.getLogger().log("  Error calling getter for variable field " + fieldName + ": " + e.getMessage());
+                    e.printStackTrace();
                 }
             } catch (Exception e) {
                 context.getLogger().log("  Error decoding variable field " + fieldName + ": " + e.getClass().getSimpleName() + " - " + e.getMessage());
@@ -866,9 +1045,9 @@ public class FixEncoderHandler implements RequestHandler<Map<String, Object>, Ma
      * Convert SBE fields back to FIX message format (tag=value|tag=value)
      */
     private String convertSbeToFixMessage(Map<String, Object> sbeFields, String schemaXml, 
-                                           Context context) throws Exception {
+                                           Integer messageId, Context context) throws Exception {
         // Get field name to ID mapping (reverse of what we use for encoding)
-        Map<String, String> nameToId = SbeSchemaParser.extractFieldNameToIdMapping(schemaXml);
+        Map<String, String> nameToId = SbeSchemaParser.extractFieldNameToIdMapping(schemaXml, messageId);
         
         StringBuilder fixMessage = new StringBuilder();
         boolean first = true;
@@ -876,6 +1055,20 @@ public class FixEncoderHandler implements RequestHandler<Map<String, Object>, Ma
         for (Map.Entry<String, Object> entry : sbeFields.entrySet()) {
             String fieldName = entry.getKey();
             Object value = entry.getValue();
+            
+            // Skip null, empty, or zero values
+            if (value == null) {
+                continue;
+            }
+            if (value instanceof String && ((String) value).isEmpty()) {
+                continue;
+            }
+            if (value instanceof Number) {
+                double numValue = ((Number) value).doubleValue();
+                if (numValue == 0.0 || numValue == 0) {
+                    continue;
+                }
+            }
             
             // Look up FIX tag from field name
             String fixTag = nameToId.get(fieldName);
@@ -927,6 +1120,108 @@ public class FixEncoderHandler implements RequestHandler<Map<String, Object>, Ma
     /**
      * Calculate the block length (size of fixed fields) from schema
      */
+    private java.util.List<String> getVariableFieldOrder(String schemaXml, Integer messageId, Context context) throws Exception {
+        java.util.List<String> variableFields = new java.util.ArrayList<>();
+        
+        // Parse schema XML
+        javax.xml.parsers.DocumentBuilderFactory factory = javax.xml.parsers.DocumentBuilderFactory.newInstance();
+        factory.setNamespaceAware(false);
+        javax.xml.parsers.DocumentBuilder builder = factory.newDocumentBuilder();
+        org.w3c.dom.Document doc = builder.parse(new java.io.ByteArrayInputStream(schemaXml.getBytes("UTF-8")));
+        
+        // Find the message with this ID
+        org.w3c.dom.NodeList messages = doc.getElementsByTagName("message");
+        if (messages.getLength() == 0) {
+            messages = doc.getElementsByTagName("sbe:message");
+        }
+        
+        for (int i = 0; i < messages.getLength(); i++) {
+            org.w3c.dom.Element msg = (org.w3c.dom.Element) messages.item(i);
+            if (Integer.parseInt(msg.getAttribute("id")) == messageId) {
+                // Get all child <data> elements (variable-length fields) in order
+                org.w3c.dom.NodeList children = msg.getChildNodes();
+                
+                for (int j = 0; j < children.getLength(); j++) {
+                    if (children.item(j).getNodeType() != org.w3c.dom.Node.ELEMENT_NODE) continue;
+                    
+                    org.w3c.dom.Element child = (org.w3c.dom.Element) children.item(j);
+                    String nodeName = child.getNodeName();
+                    
+                    // Only get <data> elements (variable-length fields)
+                    if (nodeName.equals("data") || nodeName.equals("sbe:data")) {
+                        String fieldName = child.getAttribute("name");
+                        variableFields.add(fieldName);
+                        context.getLogger().log("  Variable field in schema order: " + fieldName);
+                    }
+                }
+                break;
+            }
+        }
+        
+        return variableFields;
+    }
+    
+    private int calculateBlockLengthFromSchema(String schemaXml, Integer messageId, Context context) throws Exception {
+        // Parse schema XML
+        javax.xml.parsers.DocumentBuilderFactory factory = javax.xml.parsers.DocumentBuilderFactory.newInstance();
+        factory.setNamespaceAware(false);
+        javax.xml.parsers.DocumentBuilder builder = factory.newDocumentBuilder();
+        org.w3c.dom.Document doc = builder.parse(new java.io.ByteArrayInputStream(schemaXml.getBytes("UTF-8")));
+        
+        // Find the message with this ID
+        org.w3c.dom.NodeList messages = doc.getElementsByTagName("message");
+        if (messages.getLength() == 0) {
+            messages = doc.getElementsByTagName("sbe:message");
+        }
+        
+        for (int i = 0; i < messages.getLength(); i++) {
+            org.w3c.dom.Element msg = (org.w3c.dom.Element) messages.item(i);
+            if (Integer.parseInt(msg.getAttribute("id")) == messageId) {
+                return calculateBlockLengthFromMessage(msg, context);
+            }
+        }
+        
+        context.getLogger().log("Warning: Could not find message " + messageId + " in schema");
+        return 0;
+    }
+    
+    private int calculateBlockLengthFromMessage(org.w3c.dom.Element messageElement, Context context) {
+        int blockLength = 0;
+        
+        // Get all child <field> elements (not <data> elements, which are variable)
+        org.w3c.dom.NodeList children = messageElement.getChildNodes();
+        
+        for (int i = 0; i < children.getLength(); i++) {
+            if (children.item(i).getNodeType() != org.w3c.dom.Node.ELEMENT_NODE) continue;
+            
+            org.w3c.dom.Element child = (org.w3c.dom.Element) children.item(i);
+            String nodeName = child.getNodeName();
+            
+            // Only count <field> elements, not <data> (variable length)
+            if (nodeName.equals("field") || nodeName.equals("sbe:field")) {
+                String type = child.getAttribute("type");
+                
+                // Map SBE types to sizes
+                int fieldSize = 0;
+                if (type.equals("uint8") || type.equals("int8") || type.equals("char")) {
+                    fieldSize = 1;
+                } else if (type.equals("uint16") || type.equals("int16")) {
+                    fieldSize = 2;
+                } else if (type.equals("uint32") || type.equals("int32") || type.equals("float")) {
+                    fieldSize = 4;
+                } else if (type.equals("uint64") || type.equals("int64") || type.equals("double")) {
+                    fieldSize = 8;
+                }
+                
+                blockLength += fieldSize;
+                context.getLogger().log("  Fixed field " + child.getAttribute("name") + " (" + type + ") = " + fieldSize + " bytes");
+            }
+        }
+        
+        context.getLogger().log("Calculated blockLength for message: " + blockLength + " bytes");
+        return blockLength;
+    }
+    
     private int calculateBlockLength(String schemaXml, Context context) throws Exception {
         // Parse schema to count fixed field sizes
         // uint64 = 8 bytes, int64 = 8 bytes, etc.
@@ -997,5 +1292,6 @@ public class FixEncoderHandler implements RequestHandler<Map<String, Object>, Ma
         return sb.toString();
     }
 }
+
 
 

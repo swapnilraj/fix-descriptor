@@ -250,6 +250,59 @@ public class SbeSchemaParser {
     }
     
     /**
+     * Extract ordered list of fixed-length field names for a specific message.
+     * These are <field> elements (not <data> elements).
+     * 
+     * @param schemaXml SBE schema XML string
+     * @param messageId Message ID to extract fields from
+     * @return Ordered list of fixed field names
+     */
+    public static List<String> extractOrderedFixedFields(String schemaXml, Integer messageId) throws Exception {
+        List<String> orderedFixedFields = new ArrayList<>();
+        
+        // Parse XML
+        DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+        factory.setNamespaceAware(false);
+        DocumentBuilder builder = factory.newDocumentBuilder();
+        Document doc = builder.parse(new ByteArrayInputStream(schemaXml.getBytes("UTF-8")));
+        
+        // Find the specific message element
+        Element messageElement = null;
+        if (messageId != null) {
+            NodeList messageNodes = doc.getElementsByTagName("message");
+            if (messageNodes.getLength() == 0) {
+                messageNodes = doc.getElementsByTagName("sbe:message");
+            }
+            
+            for (int i = 0; i < messageNodes.getLength(); i++) {
+                Element msg = (Element) messageNodes.item(i);
+                String msgId = msg.getAttribute("id");
+                if (msgId != null && msgId.equals(String.valueOf(messageId))) {
+                    messageElement = msg;
+                    break;
+                }
+            }
+        }
+        
+        if (messageElement == null) {
+            // Return empty list if message not found
+            return orderedFixedFields;
+        }
+        
+        // Extract field names in document order (only <field> elements, not <data>)
+        NodeList fieldNodes = messageElement.getElementsByTagName("field");
+        for (int i = 0; i < fieldNodes.getLength(); i++) {
+            Element field = (Element) fieldNodes.item(i);
+            String fieldName = field.getAttribute("name");
+            if (fieldName != null && !fieldName.isEmpty()) {
+                orderedFixedFields.add(fieldName);
+            }
+        }
+        
+        return orderedFixedFields;
+    }
+    
+    /**
      * Extract ordered list of variable-length data field names for a specific message.
      * This is needed because SBE requires reading variable-length fields in order.
      * 

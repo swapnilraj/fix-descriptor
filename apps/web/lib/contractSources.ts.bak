@@ -1156,7 +1156,7 @@ export const ASSET_TOKEN_CONTRACT_NAME = 'src/AssetTokenERC20.sol:AssetTokenERC2
  * Compiler version used to compile the contract
  * Must match exactly with the version used in Foundry
  */
-export const COMPILER_VERSION = 'v0.8.30+commit.73712a01';
+export const COMPILER_VERSION = 'v0.8.20+commit.a1b79de6';
 
 /**
  * Optimization settings

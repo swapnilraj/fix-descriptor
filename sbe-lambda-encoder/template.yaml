@@ -5,7 +5,7 @@ Description: SBE Lambda Encoder with Runtime Code Generation
 Globals:
   Function:
     Timeout: 300
-    MemorySize: 2048
+    MemorySize: 3008
 
 Resources:
   SbeEncoderFunction:
@@ -13,7 +13,7 @@ Resources:
     Properties:
       PackageType: Image
       ImageUri: sbe-encoder:latest
-      MemorySize: 2048
+      MemorySize: 3008
       Timeout: 300
       EphemeralStorage:
         Size: 2048
