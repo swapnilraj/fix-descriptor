@@ -20,7 +20,8 @@ export async function POST(request: NextRequest) {
       initialSupply,
       sbeHex,
       cborHex, // Legacy support
-      root
+      root,
+      schemaURI
     } = body;
     
     // Use sbeHex if provided, otherwise fall back to cborHex for backward compatibility
@@ -94,7 +95,7 @@ export async function POST(request: NextRequest) {
       fixRoot: root as `0x${string}`,
       fixSBEPtr: '0x0000000000000000000000000000000000000000' as `0x${string}`,
       fixSBELen: 0,
-      fixURI: ''
+      schemaURI: schemaURI || ''
     };
 
     // Convert supply to wei (18 decimals)
@@ -232,7 +233,7 @@ export async function GET() {
     dictionaryAddress: process.env.NEXT_PUBLIC_DICTIONARY_ADDRESS || null,
     instructions: {
       step1: 'Generate FIX descriptor using /api/preview',
-      step2: 'Deploy token using POST /api/deploy-token with { name, symbol, initialSupply, sbeHex, root }',
+      step2: 'Deploy token using POST /api/deploy-token with { name, symbol, initialSupply, sbeHex, root, schemaURI (optional) }',
       step3: 'Backend handles wallet signing and gas fees automatically',
       step4: 'Receive tokenAddress and transactionHash in response'
     },

@@ -220,7 +220,7 @@ IFixDescriptor.FixDescriptor memory descriptor = IFixDescriptor.FixDescriptor({
     fixRoot: merkleRoot,
     fixSBEPtr: sbePtr,
     fixSBELen: uint32(sbeBytes.length),
-    fixURI: "ipfs://..."
+    schemaURI: "ipfs://..."
 });
 
 // Deploy token

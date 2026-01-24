@@ -115,7 +115,7 @@ export const abi = [
             "internalType": "uint32"
           },
           {
-            "name": "fixURI",
+            "name": "schemaURI",
             "type": "string",
             "internalType": "string"
           }

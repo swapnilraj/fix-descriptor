@@ -15,7 +15,7 @@ interface IFixDescriptor {
         bytes32 fixRoot;           // Merkle root commitment
         address fixSBEPtr;         // SSTORE2 data contract address
         uint32 fixSBELen;          // SBE data length
-        string fixURI;             // Optional mirror URI (ipfs:// or https://)
+        string schemaURI;          // Optional SBE schema URI (ipfs:// or https://)
     }
 
     /// @notice Emitted when descriptor is first set

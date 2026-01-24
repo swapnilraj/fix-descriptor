@@ -91,7 +91,7 @@ contract AssetTokenFactoryTest is Test {
             fixRoot: bytes32(uint256(12345)),
             fixSBEPtr: address(0), // Will be set by factory
             fixSBELen: 0,          // Will be set by factory
-            fixURI: "ipfs://test"
+            schemaURI: "ipfs://test"
         });
 
         // Deploy with descriptor
@@ -119,7 +119,7 @@ contract AssetTokenFactoryTest is Test {
         assertEq(retrieved.fixRoot, bytes32(uint256(12345)));
         assertEq(retrieved.fixSBEPtr, cborPtr);
         assertEq(retrieved.fixSBELen, uint32(cborData.length));
-        assertEq(retrieved.fixURI, "ipfs://test");
+        assertEq(retrieved.schemaURI, "ipfs://test");
     }
 
     function testPaginatedTokenList() public {
@@ -177,7 +177,7 @@ contract AssetTokenFactoryTest is Test {
             fixRoot: bytes32(0),
             fixSBEPtr: address(0),
             fixSBELen: 0,
-            fixURI: ""
+            schemaURI: ""
         });
 
         // Deployer can set descriptor

@@ -45,6 +45,7 @@ contract BondDescriptorMerkle is ERC20, Ownable, ERC165, IFixDescriptor {
      * @param sbeDescriptor SBE-encoded FIX descriptor to store via SSTORE2
      * @param merkleRoot Merkle root commitment for the descriptor
      * @param dictHash FIX dictionary/Orchestra hash
+     * @param schemaURI Optional SBE schema URI (ipfs:// or https://)
      */
     constructor(
         string memory name,
@@ -53,7 +54,8 @@ contract BondDescriptorMerkle is ERC20, Ownable, ERC165, IFixDescriptor {
         address initialOwner,
         bytes memory sbeDescriptor,
         bytes32 merkleRoot,
-        bytes32 dictHash
+        bytes32 dictHash,
+        string memory schemaURI
     ) ERC20(name, symbol) Ownable(initialOwner) {
         _mint(initialOwner, initialSupply);
 
@@ -61,7 +63,7 @@ contract BondDescriptorMerkle is ERC20, Ownable, ERC165, IFixDescriptor {
         address sbePtr = SSTORE2.write(sbeDescriptor);
 
         // Initialize FIX descriptor with Merkle root
-        _initializeDescriptor(sbePtr, uint32(sbeDescriptor.length), merkleRoot, dictHash);
+        _initializeDescriptor(sbePtr, uint32(sbeDescriptor.length), merkleRoot, dictHash, schemaURI);
     }
 
     /**
@@ -71,7 +73,8 @@ contract BondDescriptorMerkle is ERC20, Ownable, ERC165, IFixDescriptor {
         address sbePtr,
         uint32 sbeLen,
         bytes32 merkleRoot,
-        bytes32 dictHash
+        bytes32 dictHash,
+        string memory schemaURI
     ) private {
         _fixDescriptor.descriptor = FixDescriptor({
             fixMajor: 4,
@@ -80,7 +83,7 @@ contract BondDescriptorMerkle is ERC20, Ownable, ERC165, IFixDescriptor {
             fixRoot: merkleRoot,
             fixSBEPtr: sbePtr,
             fixSBELen: sbeLen,
-            fixURI: ""
+            schemaURI: schemaURI
         });
         _fixDescriptor.initialized = true;
 

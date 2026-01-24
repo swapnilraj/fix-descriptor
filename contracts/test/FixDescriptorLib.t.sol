@@ -47,7 +47,7 @@ contract FixDescriptorLibTest is Test {
             fixRoot: sampleRoot,
             fixSBEPtr: sbePtr,
             fixSBELen: uint32(sampleSBE.length),
-            fixURI: ""
+            schemaURI: ""
         });
 
         // Expect FixDescriptorSet event
@@ -81,7 +81,7 @@ contract FixDescriptorLibTest is Test {
             fixRoot: sampleRoot,
             fixSBEPtr: sbePtr1,
             fixSBELen: uint32(sampleSBE.length),
-            fixURI: ""
+            schemaURI: ""
         });
 
         testToken.setDescriptor(descriptor1);
@@ -98,7 +98,7 @@ contract FixDescriptorLibTest is Test {
             fixRoot: newRoot,
             fixSBEPtr: sbePtr2,
             fixSBELen: uint32(newSBE.length),
-            fixURI: ""
+            schemaURI: ""
         });
 
         // Expect FixDescriptorUpdated event
@@ -130,7 +130,7 @@ contract FixDescriptorLibTest is Test {
             fixRoot: sampleRoot,
             fixSBEPtr: sbePtr,
             fixSBELen: uint32(sampleSBE.length),
-            fixURI: ""
+            schemaURI: ""
         });
 
         testToken.setDescriptor(descriptor);
@@ -157,7 +157,7 @@ contract FixDescriptorLibTest is Test {
             fixRoot: sampleRoot,
             fixSBEPtr: sbePtr,
             fixSBELen: uint32(testData.length),
-            fixURI: ""
+            schemaURI: ""
         });
 
         testToken.setDescriptor(descriptor);
@@ -194,7 +194,7 @@ contract FixDescriptorLibTest is Test {
             fixRoot: sampleRoot,
             fixSBEPtr: address(0), // No SBE deployed
             fixSBELen: 0,
-            fixURI: ""
+            schemaURI: ""
         });
 
         testToken.setDescriptor(descriptor);
@@ -214,7 +214,7 @@ contract FixDescriptorLibTest is Test {
             fixRoot: sampleRoot,
             fixSBEPtr: sbePtr,
             fixSBELen: uint32(sampleSBE.length),
-            fixURI: ""
+            schemaURI: ""
         });
 
         testToken.setDescriptor(descriptor);
@@ -247,7 +247,7 @@ contract FixDescriptorLibTest is Test {
             fixRoot: testRoot,
             fixSBEPtr: sbePtr,
             fixSBELen: uint32(sampleSBE.length),
-            fixURI: ""
+            schemaURI: ""
         });
 
         testToken.setDescriptor(descriptor);
@@ -282,7 +282,7 @@ contract FixDescriptorLibTest is Test {
             fixRoot: root,
             fixSBEPtr: sbePtr,
             fixSBELen: sbeLen,
-            fixURI: ""
+            schemaURI: ""
         });
 
         testToken.setDescriptor(descriptor);

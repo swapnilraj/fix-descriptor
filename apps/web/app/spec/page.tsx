@@ -1525,7 +1525,7 @@ export default function SpecPage() {
   bytes32 fixRoot;            // Merkle root
   address fixSBEPtr;          // SSTORE2 data address
   uint32  fixSBELen;          // SBE length
-  string  fixURI;             // optional mirror
+  string  schemaURI;          // optional SBE schema URI
 }`}</pre>
             </div>
 
@@ -2013,7 +2013,7 @@ export default function SpecPage() {
                 { num: 4, title: 'Enumerate Leaves', desc: 'Compute pathSBE for each present field; collect (pathSBE, valueBytes) pairs (see Section 8.1-8.3)' },
                 { num: 5, title: 'Compute Merkle Root', desc: 'Sort leaves by pathSBE; build binary Merkle tree using keccak256 (see Section 8.4)' },
                 { num: 6, title: 'Deploy SBE', desc: 'Deploy as SSTORE2-style data contract; return fixSBEPtr and fixSBELen (see Section 9.4)' },
-                { num: 7, title: 'Set Descriptor', desc: 'Store in the asset contract (not a registry): fixMajor, fixMinor, dictHash, fixRoot, fixSBEPtr, fixSBELen, fixURI (see Section 9.2)' },
+                { num: 7, title: 'Set Descriptor', desc: 'Store in the asset contract (not a registry): fixMajor, fixMinor, dictHash, fixRoot, fixSBEPtr, fixSBELen, schemaURI (see Section 9.2)' },
                 { num: 8, title: 'Emit Event', desc: 'Emit FixDescriptorSet event for indexing (see Section 9.5)' },
                 { num: 9, title: 'Produce Utilities', desc: 'Build proof generator and reader tools for fetching SBE data and generating proofs off-chain' }
               ].map((step) => (

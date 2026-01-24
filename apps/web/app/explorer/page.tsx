@@ -944,6 +944,7 @@ export default function Page() {
   const [tokenName, setTokenName] = useState('');
   const [tokenSymbol, setTokenSymbol] = useState('');
   const [tokenSupply, setTokenSupply] = useState('1000000');
+  const [schemaURI, setSchemaURI] = useState('');
   const [deployedTokenAddress, setDeployedTokenAddress] = useState<string | null>(null);
   const [onChainVerificationStatus, setOnChainVerificationStatus] = useState<'pending' | 'success' | 'failed' | null>(null);
 
@@ -1316,7 +1317,8 @@ export default function Page() {
           symbol: tokenSymbol,
           initialSupply: tokenSupply,
           sbeHex: preview.sbeHex,
-          root: preview.root
+          root: preview.root,
+          schemaURI: schemaURI
         })
       });
 
@@ -3658,6 +3660,34 @@ export default function Page() {
                             }}
                           />
                         </div>
+                      </div>
+
+                      <div>
+                        <label style={{ 
+                          display: 'block', 
+                          fontSize: '0.875rem', 
+                          marginBottom: '0.5rem',
+                          color: 'rgba(255,255,255,0.8)'
+                        }}>
+                          Schema URI (optional)
+                        </label>
+                        <input
+                          type="text"
+                          value={schemaURI}
+                          onChange={(e) => setSchemaURI(e.target.value)}
+                          placeholder="ipfs://... or https://..."
+                          style={{
+                            width: '100%',
+                            padding: '0.75rem',
+                            background: 'rgba(0,0,0,0.3)',
+                            border: '1px solid rgba(255,255,255,0.1)',
+                            borderRadius: '6px',
+                            color: '#ffffff',
+                            fontSize: 'clamp(0.8rem, 2vw, 0.875rem)',
+                            boxSizing: 'border-box',
+                            minHeight: '44px'
+                          }}
+                        />
                       </div>
 
                       <button
