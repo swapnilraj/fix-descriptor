@@ -924,6 +924,7 @@ export default function Page() {
   const [pathInput, setPathInput] = useState('');
   const [proof, setProof] = useState<ProofResult>(null);
   const [txInfo, setTxInfo] = useState<React.ReactNode>('');
+  const [proofVerificationInfo, setProofVerificationInfo] = useState<React.ReactNode>('');
   const [currentStep, setCurrentStep] = useState<number>(0);
   const [loading, setLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState<string>('');
@@ -1325,7 +1326,7 @@ export default function Page() {
 
         if (verifyResult.success) {
           setVerificationNotification({
-            message: `✅ Contract verified successfully on block explorer!`,
+            message: `✅ Contract source code verified on Etherscan!`,
             type: 'success',
             show: true
           });
@@ -1360,7 +1361,7 @@ export default function Page() {
 
         // Last attempt failed
         setVerificationNotification({
-          message: `⚠ Contract verification failed after ${maxRetries} attempts. You can verify manually on the block explorer.`,
+          message: `⚠ Contract source code verification on Etherscan failed after ${maxRetries} attempts. You can verify manually on the block explorer.`,
           type: 'warning',
           show: true
         });
@@ -1395,7 +1396,7 @@ export default function Page() {
         
         // Last attempt failed
         setVerificationNotification({
-          message: `⚠ Contract verification error. You can verify manually on the block explorer.`,
+          message: `⚠ Contract source code verification on Etherscan encountered an error. You can verify manually on the block explorer.`,
           type: 'error',
           show: true
         });
@@ -1468,14 +1469,14 @@ export default function Page() {
             Block: {blockNumber}
           </div>
           <div style={{ marginTop: '1rem', color: 'rgba(255,255,255,0.8)' }}>
-            Contract verification will continue in the background...
+            Contract source code verification on Etherscan will continue in the background...
           </div>
         </div>
       );
 
       // Start background verification (non-blocking)
       setVerificationNotification({
-        message: '⏳ Verifying contract on block explorer...',
+        message: '⏳ Verifying contract source code on Etherscan...',
         type: 'info',
         show: true
       });
@@ -1664,7 +1665,7 @@ export default function Page() {
         const errorMsg = rootError instanceof Error ? rootError.message : 'Unknown error';
         if (errorMsg.includes('Descriptor not initialized')) {
           setOnChainVerificationStatus('failed');
-          setTxInfo(`❌ Descriptor Not Initialized\n\nThe token at ${deployedTokenAddress} does not have a descriptor set yet.\n\nThis can happen if:\n- The token was deployed without a descriptor\n- The descriptor setup transaction failed\n- You're using a different token\n\nTry deploying a new token using the "Quick Deploy Token" button.`);
+          setProofVerificationInfo(`❌ Descriptor Not Initialized\n\nThe token at ${deployedTokenAddress} does not have a descriptor set yet.\n\nThis can happen if:\n- The token was deployed without a descriptor\n- The descriptor setup transaction failed\n- You're using a different token\n\nTry deploying a new token using the "Quick Deploy Token" button.`);
           return;
         }
         throw rootError;
@@ -1686,9 +1687,9 @@ export default function Page() {
       if (isValid) {
         setOnChainVerificationStatus('success');
         setCurrentStep(6); // Update step indicator to show verification complete
-        setTxInfo(
+        setProofVerificationInfo(
           <div>
-            <div style={{ marginBottom: '1rem', fontWeight: '600' }}>✅ Onchain Verification SUCCESSFUL!</div>
+            <div style={{ marginBottom: '1rem', fontWeight: '600' }}>✅ Merkle Proof Verified Onchain!</div>
             <div style={{ marginBottom: '0.5rem' }}>
               <span style={{ color: 'rgba(255,255,255,0.7)' }}>Token Address: </span>
               <AddressLink address={deployedTokenAddress} chainId={chainFromEnv.id} />
@@ -1716,7 +1717,7 @@ export default function Page() {
         );
       } else {
         setOnChainVerificationStatus('failed');
-        setTxInfo(`❌ Onchain Verification FAILED!\n\nThe proof did not match the committed Merkle root.\n\nDescriptor Root: ${descriptorRoot}\nYour Proof Root: ${preview?.root}\n\nThis could mean:\n- The proof is for a different descriptor\n- The value was modified\n- The path is incorrect\n- The proof is invalid`);
+        setProofVerificationInfo(`❌ Merkle Proof Verification FAILED!\n\nThe proof did not match the committed Merkle root.\n\nDescriptor Root: ${descriptorRoot}\nYour Proof Root: ${preview?.root}\n\nThis could mean:\n- The proof is for a different descriptor\n- The value was modified\n- The path is incorrect\n- The proof is invalid`);
       }
       
     } catch (error) {
@@ -1726,11 +1727,11 @@ export default function Page() {
       
       // Provide helpful error messages
       if (errorMessage.includes('returned no data')) {
-        setTxInfo(`❌ Contract Call Failed\n\nThe contract at ${deployedTokenAddress} returned no data.\n\nPossible causes:\n- The address is not a valid AssetToken contract\n- The contract doesn't implement IFixDescriptor\n- The network is incorrect\n\nPlease ensure you deployed the token using the "Quick Deploy Token" button.`);
+        setProofVerificationInfo(`❌ Contract Call Failed\n\nThe contract at ${deployedTokenAddress} returned no data.\n\nPossible causes:\n- The address is not a valid AssetToken contract\n- The contract doesn't implement IFixDescriptor\n- The network is incorrect\n\nPlease ensure you deployed the token using the "Quick Deploy Token" button.`);
       } else if (errorMessage.includes('Descriptor not initialized')) {
-        setTxInfo(`❌ Descriptor Not Initialized\n\nThe token has not been set up with a FIX descriptor yet.`);
+        setProofVerificationInfo(`❌ Descriptor Not Initialized\n\nThe token has not been set up with a FIX descriptor yet.`);
       } else {
-        setTxInfo(`❌ Onchain verification error:\n\n${errorMessage}`);
+        setProofVerificationInfo(`❌ Merkle proof verification error:\n\n${errorMessage}`);
       }
     } finally {
       setLoading(false);
@@ -4005,6 +4006,24 @@ export default function Page() {
                          onChainVerificationStatus === 'failed' ? '🔄 Try Again' :
                          '🔗 Verify Proof Onchain'}
                       </button>
+                      
+                      {proofVerificationInfo && (
+                        <div style={{
+                          marginTop: '1rem',
+                          padding: '1rem',
+                          background: onChainVerificationStatus === 'success' ? 'rgba(34, 197, 94, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                          border: `1px solid ${onChainVerificationStatus === 'success' ? 'rgba(34, 197, 94, 0.2)' : 'rgba(239, 68, 68, 0.2)'}`,
+                          borderRadius: '6px',
+                          fontSize: 'clamp(0.8rem, 2vw, 0.875rem)',
+                          color: onChainVerificationStatus === 'success' ? 'rgba(34, 197, 94, 0.9)' : 'rgba(239, 68, 68, 0.9)',
+                          wordBreak: 'break-all',
+                          fontFamily: 'ui-monospace, monospace',
+                          lineHeight: '1.6',
+                          whiteSpace: 'pre-wrap'
+                        }}>
+                          {proofVerificationInfo}
+                        </div>
+                      )}
                       
                       <div style={{
                         fontSize: 'clamp(0.7rem, 1.5vw, 0.75rem)',
