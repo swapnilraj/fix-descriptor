@@ -1,6 +1,7 @@
 "use client";
 import { useState } from 'react';
 import Tooltip from './Tooltip';
+import { FaEdit } from 'react-icons/fa';
 
 interface Field {
   id: string;
@@ -85,7 +86,10 @@ export default function MessageBuilderSection({
           letterSpacing: '0.05em'
         }}
       >
-        <span style={{ color: 'rgba(255,255,255,0.9)' }}>📝 Message Builder</span>
+        <span style={{ color: 'rgba(255,255,255,0.9)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <FaEdit size={18} />
+          Message Builder
+        </span>
         <svg 
           width="20" 
           height="20" 

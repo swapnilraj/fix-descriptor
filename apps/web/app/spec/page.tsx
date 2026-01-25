@@ -1858,8 +1858,10 @@ export default function SpecPage() {
                 One-Time Deployment Costs
               </div>
               <div style={{ fontFamily: 'ui-monospace, monospace', fontSize: '0.875rem', color: 'rgba(255,255,255,0.7)', lineHeight: '1.8' }}>
-                <div style={{ marginBottom: '0.5rem' }}>Asset token deployment: <span style={{ color: 'rgba(251, 191, 36, 0.9)' }}>~2,500,000 gas</span></div>
-                <div style={{ marginBottom: '0.5rem' }}>SBE data storage (per descriptor): <span style={{ color: 'rgba(251, 191, 36, 0.9)' }}>~200 gas/byte + ~32k overhead</span></div>
+                <div style={{ marginBottom: '0.5rem' }}>ERC20 Asset token deployment: <span style={{ color: 'rgba(251, 191, 36, 0.9)' }}>~1,324,447 gas</span></div>
+                <div style={{ marginBottom: '0.5rem' }}>ERC721 Asset token deployment: <span style={{ color: 'rgba(251, 191, 36, 0.9)' }}>~1,649,225 gas</span></div>
+                <div style={{ marginBottom: '0.5rem' }}>Factory deployment: <span style={{ color: 'rgba(251, 191, 36, 0.9)' }}>~2,142,209 gas</span></div>
+                <div style={{ marginBottom: '0.5rem' }}>SBE data storage (SSTORE2): <span style={{ color: 'rgba(251, 191, 36, 0.9)' }}>~200 gas/byte + ~32k overhead</span></div>
                 <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
                   Note: Actual costs vary by descriptor size
                 </div>
@@ -1919,7 +1921,7 @@ export default function SpecPage() {
                     fontSize: '0.75rem',
                     fontWeight: 600
                   }}>low</span>
-                  <span>Simple descriptor (5 fields): ~180,000 gas</span>
+                  <span>Verify field (depth 2-3): ~12,000-14,000 gas</span>
                 </div>
                 <div style={{ marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                   <span style={{
@@ -1932,7 +1934,7 @@ export default function SpecPage() {
                     fontSize: '0.75rem',
                     fontWeight: 600
                   }}>medium</span>
-                  <span>Medium descriptor (12 fields): ~250,000 gas</span>
+                  <span>Verify field (depth 4-6): ~15,000-20,000 gas</span>
                 </div>
                 <div style={{ marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                   <span style={{
@@ -1945,10 +1947,10 @@ export default function SpecPage() {
                     fontSize: '0.75rem',
                     fontWeight: 600
                   }}>high</span>
-                  <span>Complex descriptor (25+ fields): ~500,000 gas</span>
+                  <span>Verify field (depth 8-10): ~23,000-27,000 gas</span>
                 </div>
                 <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid rgba(59, 130, 246, 0.1)', fontSize: '0.8rem', color: 'rgba(255,255,255,0.5)' }}>
-                  Per-tag lookup cost: ~4,400 gas (O(1) constant time)
+                  Measured: depth 0=9,706 gas, depth 2=11,975, depth 4=15,372, depth 6=19,980, depth 8=23,523, depth 10=26,849. Cost scales at ~1,700 gas per proof step.
                 </div>
               </div>
             </div>
@@ -1972,7 +1974,8 @@ export default function SpecPage() {
               </div>
               <ul style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', margin: 0, paddingLeft: '1.5rem', fontSize: '0.9rem' }}>
                 <li style={{ marginBottom: '0.5rem' }}>~200 gas per byte + ~32k deployment overhead</li>
-                <li style={{ marginBottom: '0.5rem' }}><strong>Example:</strong> 243-byte descriptor ≈ 80k gas</li>
+                <li style={{ marginBottom: '0.5rem' }}><strong>Measured:</strong> 57,859-59,131 gas for data contract deployment (via DataContractFactory)</li>
+                <li style={{ marginBottom: '0.5rem' }}><strong>Example:</strong> 243-byte descriptor ≈ 80k gas total</li>
                 <li>3-4x cheaper than traditional storage slots</li>
               </ul>
             </div>
@@ -1985,12 +1988,13 @@ export default function SpecPage() {
               marginBottom: '2rem'
             }}>
               <div style={{ fontFamily: 'ui-monospace, monospace', fontSize: '0.9rem', marginBottom: '0.75rem', color: 'rgba(255,255,255,0.9)' }}>
-                Descriptor Struct Storage + Verification
+                Descriptor Operations
               </div>
               <ul style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', margin: 0, paddingLeft: '1.5rem', fontSize: '0.9rem' }}>
-                <li style={{ marginBottom: '0.5rem' }}>FixDescriptor struct: ~60-80k gas (3-4 slots)</li>
-                <li style={{ marginBottom: '0.5rem' }}><strong>Total deployment:</strong> ~140-160k gas (typical)</li>
-                <li><strong>verifyField() call:</strong> ~30-40k gas (depth 4-6)</li>
+                <li style={{ marginBottom: '0.5rem' }}><strong>setFixDescriptor():</strong> 24,844-141,874 gas (varies by initialization state)</li>
+                <li style={{ marginBottom: '0.5rem' }}><strong>getFixDescriptor():</strong> ~14,825-14,896 gas (view function)</li>
+                <li style={{ marginBottom: '0.5rem' }}><strong>getFixRoot():</strong> ~2,671-4,719 gas (view function)</li>
+                <li><strong>verifyFieldProof():</strong> ~7,259 gas (single leaf tree, varies with proof depth)</li>
               </ul>
             </div>
           </section>
@@ -2002,14 +2006,14 @@ export default function SpecPage() {
             </SectionHeading>
 
             <p style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', marginBottom: '1.5rem' }}>
-              Given a FIX descriptor message, follow this implementation flow:
+              Given a FIX descriptor message and Orchestra XML schema, follow this implementation flow:
             </p>
 
             <div style={{ display: 'grid', gap: 'clamp(0.75rem, 2vw, 1rem)', marginBottom: 'clamp(1.5rem, 3vw, 2rem)' }}>
               {[
-                { num: 1, title: 'Parse FIX', desc: 'Extract only business fields (exclude session tags - see Section 5)' },
+                { num: 1, title: 'Load Orchestra Schema & Parse FIX', desc: 'Load the Orchestra XML schema defining field types and structure. Extract only business fields from the FIX message (exclude session tags - see Section 5)' },
                 { num: 2, title: 'Build Canonical Tree', desc: 'Map scalars directly; create array of entry maps for groups (see Section 6)' },
-                { num: 3, title: 'Serialize to SBE', desc: 'Use SBE encoding with schema-driven format (see Section 7)' },
+                { num: 3, title: 'Serialize to SBE', desc: 'Convert Orchestra schema to SBE schema, then encode the FIX message using SBE encoding with schema-driven format (see Section 7)' },
                 { num: 4, title: 'Enumerate Leaves', desc: 'Compute pathSBE for each present field; collect (pathSBE, valueBytes) pairs (see Section 8.1-8.3)' },
                 { num: 5, title: 'Compute Merkle Root', desc: 'Sort leaves by pathSBE; build binary Merkle tree using keccak256 (see Section 8.4)' },
                 { num: 6, title: 'Deploy SBE', desc: 'Deploy as SSTORE2-style data contract; return fixSBEPtr and fixSBELen (see Section 9.4)' },

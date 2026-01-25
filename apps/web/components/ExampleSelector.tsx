@@ -16,13 +16,13 @@ export default function ExampleSelector({ examples, onSelectExample }: ExampleSe
     <div style={{
       marginBottom: '1.5rem',
       padding: '1.25rem',
-      border: '1px solid rgba(34, 197, 94, 0.2)',
+      border: '1px solid rgba(255,255,255,0.15)',
       borderRadius: '8px',
-      background: 'rgba(34, 197, 94, 0.03)'
+      background: 'rgba(255,255,255,0.03)'
     }}>
       <div style={{
         fontSize: '0.875rem',
-        color: 'rgba(34, 197, 94, 0.9)',
+        color: 'rgba(255,255,255,0.7)',
         fontWeight: '600',
         textTransform: 'uppercase',
         letterSpacing: '0.05em',
@@ -36,19 +36,19 @@ export default function ExampleSelector({ examples, onSelectExample }: ExampleSe
           height="18" 
           viewBox="0 0 24 24" 
           fill="none" 
-          stroke="rgba(34, 197, 94, 0.9)" 
+          stroke="rgba(255,255,255,0.7)" 
           strokeWidth="2"
           strokeLinecap="round"
           strokeLinejoin="round"
         >
-          <polyline points="20 6 9 17 4 12" />
+          <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
         </svg>
         Quick Start Examples
       </div>
       
       <p style={{ 
         fontSize: '0.875rem', 
-        color: 'rgba(255,255,255,0.7)', 
+        color: 'rgba(255,255,255,0.6)', 
         marginBottom: '1rem',
         lineHeight: '1.6'
       }}>
@@ -67,7 +67,7 @@ export default function ExampleSelector({ examples, onSelectExample }: ExampleSe
             style={{
               padding: '1rem',
               background: 'rgba(255,255,255,0.05)',
-              border: '1px solid rgba(34, 197, 94, 0.3)',
+              border: '1px solid rgba(255,255,255,0.15)',
               borderRadius: '8px',
               color: 'rgba(255,255,255,0.9)',
               cursor: 'pointer',
@@ -78,20 +78,20 @@ export default function ExampleSelector({ examples, onSelectExample }: ExampleSe
               gap: '0.5rem'
             }}
             onMouseOver={(e) => {
-              e.currentTarget.style.background = 'rgba(34, 197, 94, 0.08)';
-              e.currentTarget.style.borderColor = 'rgba(34, 197, 94, 0.5)';
+              e.currentTarget.style.background = 'rgba(255,255,255,0.08)';
+              e.currentTarget.style.borderColor = 'rgba(255,255,255,0.25)';
               e.currentTarget.style.transform = 'translateY(-2px)';
             }}
             onMouseOut={(e) => {
               e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
-              e.currentTarget.style.borderColor = 'rgba(34, 197, 94, 0.3)';
+              e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)';
               e.currentTarget.style.transform = 'translateY(0)';
             }}
           >
             <div style={{ 
               fontWeight: '600', 
               fontSize: '0.95rem',
-              color: 'rgba(34, 197, 94, 0.9)'
+              color: 'rgba(255,255,255,0.9)'
             }}>
               {example.name}
             </div>

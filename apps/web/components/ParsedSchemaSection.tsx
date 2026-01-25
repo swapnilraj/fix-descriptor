@@ -1,5 +1,6 @@
 "use client";
 import { useState } from 'react';
+import { FaClipboardList } from 'react-icons/fa';
 
 interface ParsedOrchestraField {
   id: string;
@@ -68,7 +69,10 @@ export default function ParsedSchemaSection({
           gap: '0.75rem',
           flex: 1
         }}>
-          <span style={{ color: 'rgba(255,255,255,0.9)' }}>📋 Parsed Orchestra Schema</span>
+          <span style={{ color: 'rgba(255,255,255,0.9)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <FaClipboardList size={18} />
+            Parsed Orchestra Schema
+          </span>
           {allMessages.length > 1 && (
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }} onClick={(e) => e.stopPropagation()}>
               <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)' }}>

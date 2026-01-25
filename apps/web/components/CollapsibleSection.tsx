@@ -3,7 +3,7 @@ import { useState } from 'react';
 
 interface CollapsibleSectionProps {
   title: string;
-  icon?: string;
+  icon?: React.ReactNode;
   defaultCollapsed?: boolean;
   children: React.ReactNode;
 }
@@ -43,8 +43,8 @@ export default function CollapsibleSection({
           letterSpacing: '0.05em'
         }}
       >
-        <span style={{ color: 'rgba(255,255,255,0.9)' }}>
-          {icon && `${icon} `}{title}
+        <span style={{ color: 'rgba(255,255,255,0.9)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          {icon}{title}
         </span>
         <svg 
           width="20" 

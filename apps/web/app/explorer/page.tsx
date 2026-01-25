@@ -7,11 +7,13 @@ import MessageTypeSelector from '@/components/MessageTypeSelector';
 import ParsedSchemaSection from '@/components/ParsedSchemaSection';
 import MessageBuilderSection from '@/components/MessageBuilderSection';
 import ExampleSelector from '@/components/ExampleSelector';
+import LearnMore from '@/components/LearnMore';
 import { abi as AssetTokenAbi } from '@/lib/abis/AssetTokenERC20';
 import { chainFromEnv } from '@/lib/viemClient';
 import { createPublicClient, http } from 'viem';
 import { AddressLink, TransactionLink } from '@/components/BlockExplorerLink';
 import { orchestraToSbe, orchestraToSbeFullSchema, extractMessageIdFromSbe } from '@/lib/orchestraToSbe';
+import { FaSyncAlt } from 'react-icons/fa';
 
 // Extend Window interface for MetaMask
 declare global {
@@ -152,64 +154,6 @@ function Tooltip({ children, content }: { children: React.ReactNode; content: st
         </span>
       )}
     </span>
-  );
-}
-
-function LearnMore({ title, children }: { title: string; children: React.ReactNode }) {
-  const [expanded, setExpanded] = useState(false);
-  
-  return (
-    <div style={{
-      marginBottom: '1.5rem',
-      border: '1px solid rgba(59, 130, 246, 0.2)',
-      borderRadius: '8px',
-      background: 'rgba(59, 130, 246, 0.03)',
-      overflow: 'hidden'
-    }}>
-      <button
-        onClick={() => setExpanded(!expanded)}
-        style={{
-          width: '100%',
-          padding: '1rem 1.25rem',
-          background: 'none',
-          border: 'none',
-          color: 'inherit',
-          cursor: 'pointer',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0.75rem',
-          fontSize: '0.95rem',
-          fontWeight: '500',
-          textAlign: 'left'
-        }}
-      >
-        <svg 
-          width="20" 
-          height="20" 
-          viewBox="0 0 24 24" 
-          fill="none" 
-          stroke="rgba(96, 165, 250, 0.8)" 
-          strokeWidth="2"
-          style={{
-            transition: 'transform 0.2s',
-            transform: expanded ? 'rotate(90deg)' : 'rotate(0deg)'
-          }}
-        >
-          <polyline points="9 18 15 12 9 6" />
-        </svg>
-        <span style={{ color: 'rgba(96, 165, 250, 0.9)' }}>Learn More: {title}</span>
-      </button>
-      {expanded && (
-        <div style={{
-          padding: '0 1.25rem 1.25rem 1.25rem',
-          fontSize: '0.9rem',
-          lineHeight: '1.7',
-          color: 'rgba(255,255,255,0.75)'
-        }}>
-          {children}
-        </div>
-      )}
-    </div>
   );
 }
 
@@ -620,6 +564,7 @@ export default function Page() {
   const [generatedSbeSchema, setGeneratedSbeSchema] = useState<string>('');
   const [fullSbeSchema, setFullSbeSchema] = useState<string>('');
   const [currentMessageId, setCurrentMessageId] = useState<string>('');
+  const [orchestraFieldDictionary, setOrchestraFieldDictionary] = useState<Map<string, { name: string; type: string }>>(new Map());
   
   // Extract available message types when Orchestra schema is loaded
   useEffect(() => {
@@ -839,6 +784,9 @@ export default function Page() {
       
       setParsedOrchestra({ messageName, messageId, msgType, fields });
       setAllMessages([]);
+      
+      // Store the field dictionary for tag name resolution
+      setOrchestraFieldDictionary(fieldDictionary);
     } catch (error) {
       setOrchestraError(error instanceof Error ? error.message : 'Parse error');
       setParsedOrchestra(null);
@@ -937,6 +885,7 @@ export default function Page() {
   // Refs for sections
   const introRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLDivElement>(null);
+  const messageTypeRef = useRef<HTMLDivElement>(null);
   const resultsRef = useRef<HTMLDivElement>(null);
   const deployRef = useRef<HTMLDivElement>(null);
   const proofRef = useRef<HTMLDivElement>(null);
@@ -1326,7 +1275,7 @@ export default function Page() {
 
         if (verifyResult.success) {
           setVerificationNotification({
-            message: `✅ Contract source code verified on Etherscan!`,
+            message: `Contract source code verified on Etherscan!`,
             type: 'success',
             show: true
           });
@@ -1452,7 +1401,7 @@ export default function Page() {
       // Show deployment success message
       setTxInfo(
         <div>
-          <div style={{ marginBottom: '1rem', fontWeight: '600' }}>✅ Token deployed successfully!</div>
+          <div style={{ marginBottom: '1rem', fontWeight: '600' }}>Token deployed successfully!</div>
           <div style={{ marginBottom: '0.5rem' }}>
             <span style={{ color: 'rgba(255,255,255,0.7)' }}>Token Address: </span>
             <AddressLink address={tokenAddress} chainId={chainFromEnv.id} />
@@ -1476,7 +1425,7 @@ export default function Page() {
 
       // Start background verification (non-blocking)
       setVerificationNotification({
-        message: '⏳ Verifying contract source code on Etherscan...',
+        message: 'Verifying contract source code on Etherscan...',
         type: 'info',
         show: true
       });
@@ -1499,7 +1448,7 @@ export default function Page() {
     } catch (error) {
       console.error('Deployment failed:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      setTxInfo(`❌ Deployment failed: ${errorMessage}`);
+      setTxInfo(`Deployment failed: ${errorMessage}`);
       alert(`Deployment failed: ${errorMessage}`);
     } finally {
       setLoading(false);
@@ -1608,12 +1557,12 @@ export default function Page() {
         })
         .join('|');
 
-      // Convert numeric tags to tag names for the named version
+      // Convert numeric tags to tag names for the named version using Orchestra schema
       const namedMessage = filteredMessage
         .split('|')
         .map((pair: string) => {
           const [tag, value] = pair.split('=');
-          const tagInfo = FIX_TAGS[tag];
+          const tagInfo = orchestraFieldDictionary.get(tag);
           if (tagInfo) {
             return `${tagInfo.name}=${value}`;
           }
@@ -1665,7 +1614,7 @@ export default function Page() {
         const errorMsg = rootError instanceof Error ? rootError.message : 'Unknown error';
         if (errorMsg.includes('Descriptor not initialized')) {
           setOnChainVerificationStatus('failed');
-          setProofVerificationInfo(`❌ Descriptor Not Initialized\n\nThe token at ${deployedTokenAddress} does not have a descriptor set yet.\n\nThis can happen if:\n- The token was deployed without a descriptor\n- The descriptor setup transaction failed\n- You're using a different token\n\nTry deploying a new token using the "Quick Deploy Token" button.`);
+          setProofVerificationInfo(`Descriptor Not Initialized\n\nThe token at ${deployedTokenAddress} does not have a descriptor set yet.\n\nThis can happen if:\n- The token was deployed without a descriptor\n- The descriptor setup transaction failed\n- You're using a different token\n\nTry deploying a new token using the "Quick Deploy Token" button.`);
           return;
         }
         throw rootError;
@@ -1689,7 +1638,7 @@ export default function Page() {
         setCurrentStep(6); // Update step indicator to show verification complete
         setProofVerificationInfo(
           <div>
-            <div style={{ marginBottom: '1rem', fontWeight: '600' }}>✅ Merkle Proof Verified Onchain!</div>
+            <div style={{ marginBottom: '1rem', fontWeight: '600' }}>Merkle Proof Verified Onchain!</div>
             <div style={{ marginBottom: '0.5rem' }}>
               <span style={{ color: 'rgba(255,255,255,0.7)' }}>Token Address: </span>
               <AddressLink address={deployedTokenAddress} chainId={chainFromEnv.id} />
@@ -1717,7 +1666,7 @@ export default function Page() {
         );
       } else {
         setOnChainVerificationStatus('failed');
-        setProofVerificationInfo(`❌ Merkle Proof Verification FAILED!\n\nThe proof did not match the committed Merkle root.\n\nDescriptor Root: ${descriptorRoot}\nYour Proof Root: ${preview?.root}\n\nThis could mean:\n- The proof is for a different descriptor\n- The value was modified\n- The path is incorrect\n- The proof is invalid`);
+        setProofVerificationInfo(`Merkle Proof Verification FAILED!\n\nThe proof did not match the committed Merkle root.\n\nDescriptor Root: ${descriptorRoot}\nYour Proof Root: ${preview?.root}\n\nThis could mean:\n- The proof is for a different descriptor\n- The value was modified\n- The path is incorrect\n- The proof is invalid`);
       }
       
     } catch (error) {
@@ -1727,11 +1676,11 @@ export default function Page() {
       
       // Provide helpful error messages
       if (errorMessage.includes('returned no data')) {
-        setProofVerificationInfo(`❌ Contract Call Failed\n\nThe contract at ${deployedTokenAddress} returned no data.\n\nPossible causes:\n- The address is not a valid AssetToken contract\n- The contract doesn't implement IFixDescriptor\n- The network is incorrect\n\nPlease ensure you deployed the token using the "Quick Deploy Token" button.`);
+        setProofVerificationInfo(`Contract Call Failed\n\nThe contract at ${deployedTokenAddress} returned no data.\n\nPossible causes:\n- The address is not a valid AssetToken contract\n- The contract doesn't implement IFixDescriptor\n- The network is incorrect\n\nPlease ensure you deployed the token using the "Quick Deploy Token" button.`);
       } else if (errorMessage.includes('Descriptor not initialized')) {
-        setProofVerificationInfo(`❌ Descriptor Not Initialized\n\nThe token has not been set up with a FIX descriptor yet.`);
+        setProofVerificationInfo(`Descriptor Not Initialized\n\nThe token has not been set up with a FIX descriptor yet.`);
       } else {
-        setProofVerificationInfo(`❌ Merkle proof verification error:\n\n${errorMessage}`);
+        setProofVerificationInfo(`Merkle proof verification error:\n\n${errorMessage}`);
       }
     } finally {
       setLoading(false);
@@ -2490,6 +2439,27 @@ export default function Page() {
             }}>
               Orchestra XML Schema
             </div>
+
+            <LearnMore title="Understanding Orchestra XML">
+              <p style={{ marginBottom: '1rem' }}>
+                <strong>What is Orchestra?</strong><br/>
+                Orchestra is the FIX Trading Community&apos;s modern standard for defining FIX message structures. It uses XML to describe message types, fields, data types, and validation rules in a machine-readable format.
+              </p>
+              <p style={{ marginBottom: '1rem' }}>
+                <strong>Schema Structure:</strong><br/>
+                An Orchestra schema contains:<br/>
+                • Message definitions with their fields and structure<br/>
+                • Data type specifications (strings, integers, enums, etc.)<br/>
+                • Field definitions with tags, names, and types<br/>
+                • Groups and repeating elements for complex structures<br/>
+                This schema is used to validate FIX messages and convert them to binary formats like SBE.
+              </p>
+              <p>
+                <strong>Why Orchestra?</strong><br/>
+                Orchestra provides a single source of truth for message structure, enabling automated code generation, validation, and conversion between different encoding formats (tag=value, SBE, JSON, etc.).
+              </p>
+            </LearnMore>
+
             <textarea 
               value={schemaInput} 
               onChange={(e) => setSchemaInput(e.target.value)} 
@@ -2516,115 +2486,127 @@ export default function Page() {
                   const response = await fetch('/ORCHESTRAFIX44.xml');
                   const text = await response.text();
                   setSchemaInput(text);
+                  
+                  // Scroll to message type section after loading
+                  setTimeout(() => {
+                    scrollToSection(messageTypeRef);
+                  }, 300);
                 } catch (error) {
                   console.error('Failed to load Orchestra schema:', error);
                 }
               }}
               style={{
                 marginTop: '0.75rem',
-                padding: '0.5rem 1rem',
-                background: 'rgba(168, 85, 247, 0.1)',
-                border: '1px solid rgba(168, 85, 247, 0.3)',
+                background: '#ffffff',
+                color: '#0a0a0a',
+                border: 'none',
                 borderRadius: '6px',
-                color: 'rgba(168, 85, 247, 0.9)',
-                fontSize: '0.875rem',
+                padding: '0.875rem 2rem',
+                fontSize: 'clamp(0.85rem, 2vw, 0.9rem)',
+                fontWeight: '500',
                 cursor: 'pointer',
                 transition: 'all 0.2s',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = 'rgba(168, 85, 247, 0.15)';
-                e.currentTarget.style.borderColor = 'rgba(168, 85, 247, 0.5)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = 'rgba(168, 85, 247, 0.1)';
-                e.currentTarget.style.borderColor = 'rgba(168, 85, 247, 0.3)';
+                minHeight: '44px'
               }}
             >
               Load FIX 4.4 Orchestra Schema
             </button>
           </div>
 
-          {/* Generated SBE Schema Preview - Full Schema with All Messages */}
-          {fullSbeSchema && (
-            <CollapsibleSection 
-              title="Generated SBE Schema (All Messages)" 
-              icon="🔄"
-              defaultCollapsed={true}
-            >
-              <div style={{
-                fontSize: '0.9rem',
-                color: 'rgba(255,255,255,0.75)',
-                marginBottom: '0.75rem',
-                lineHeight: '1.6'
-              }}>
-                This schema contains all message types from the Orchestra file and will be sent to the encoder.
-              </div>
-              <textarea 
-                readOnly 
-                value={fullSbeSchema} 
-                rows={15}
-                className="custom-scrollbar"
-                style={{
-                  width: '100%',
-                  padding: '1rem',
-                  borderRadius: '8px',
-                  border: '1px solid rgba(34, 197, 94, 0.2)',
-                  background: 'rgba(34, 197, 94, 0.03)',
-                  color: 'rgba(34, 197, 94, 0.9)',
-                  fontFamily: 'ui-monospace, monospace',
-                  fontSize: '0.75rem',
-                  lineHeight: '1.5',
-                  resize: 'vertical',
-                  boxSizing: 'border-box'
-                }}
+          {/* Only show subsequent sections if Orchestra XML has been entered */}
+          {schemaInput.trim() && (
+            <div ref={messageTypeRef}>
+              {/* Generated SBE Schema Preview - Full Schema with All Messages */}
+              {fullSbeSchema && (
+                <CollapsibleSection 
+                  title="Generated SBE Schema (All Messages)" 
+                  icon={<FaSyncAlt size={18} />}
+                  defaultCollapsed={true}
+                >
+                  <LearnMore title="Understanding SBE Schema">
+                    <p style={{ marginBottom: '1rem' }}>
+                      <strong>What is SBE?</strong><br/>
+                      SBE (Simple Binary Encoding) is a high-performance binary encoding format designed for low-latency financial messaging. It&apos;s significantly more efficient than traditional tag=value FIX encoding.
+                    </p>
+                    <p style={{ marginBottom: '1rem' }}>
+                      <strong>Why Convert to SBE?</strong><br/>
+                      • Compact binary format reduces storage costs on blockchain<br/>
+                      • Deterministic encoding ensures consistent hashes<br/>
+                      • Schema-driven validation prevents malformed data<br/>
+                      • Industry-standard format used by major exchanges
+                    </p>
+                    <p>
+                      <strong>Schema Contents:</strong><br/>
+                      This generated schema defines the binary structure for all message types in your Orchestra file. It specifies field types, byte offsets, and encoding rules that the encoder uses to convert FIX messages to compact binary format.
+                    </p>
+                  </LearnMore>
+
+                  <textarea 
+                    readOnly 
+                    value={fullSbeSchema} 
+                    rows={15}
+                    className="custom-scrollbar"
+                    style={{
+                      width: '100%',
+                      padding: '1rem',
+                      borderRadius: '8px',
+                      border: '1px solid rgba(34, 197, 94, 0.2)',
+                      background: 'rgba(34, 197, 94, 0.03)',
+                      color: 'rgba(34, 197, 94, 0.9)',
+                      fontFamily: 'ui-monospace, monospace',
+                      fontSize: '0.75rem',
+                      lineHeight: '1.5',
+                      resize: 'vertical',
+                      boxSizing: 'border-box'
+                    }}
+                  />
+                </CollapsibleSection>
+              )}
+
+              {/* Message Type Selection */}
+              <MessageTypeSelector
+                availableMessageTypes={availableMessageTypes}
+                selectedMessageType={selectedMessageType}
+                onSelect={setSelectedMessageType}
+                currentMessageId={currentMessageId}
               />
-            </CollapsibleSection>
-          )}
 
-          {/* Message Type Selection */}
-          <MessageTypeSelector
-            availableMessageTypes={availableMessageTypes}
-            selectedMessageType={selectedMessageType}
-            onSelect={setSelectedMessageType}
-            currentMessageId={currentMessageId}
-          />
+              {/* Orchestra XML Parser Preview */}
+              {orchestraError && (
+                <div style={{
+                  padding: '1rem',
+                  marginBottom: '1.5rem',
+                  background: 'rgba(239, 68, 68, 0.1)',
+                  border: '1px solid rgba(239, 68, 68, 0.3)',
+                  borderRadius: '8px',
+                  color: 'rgba(239, 68, 68, 0.9)',
+                  fontSize: '0.875rem'
+                }}>
+                  <strong>Parse Error:</strong> {orchestraError}
+                </div>
+              )}
 
-          {/* Orchestra XML Parser Preview */}
-          {orchestraError && (
-            <div style={{
-              padding: '1rem',
-              marginBottom: '1.5rem',
-              background: 'rgba(239, 68, 68, 0.1)',
-              border: '1px solid rgba(239, 68, 68, 0.3)',
-              borderRadius: '8px',
-              color: 'rgba(239, 68, 68, 0.9)',
-              fontSize: '0.875rem'
-            }}>
-              <strong>⚠️ Parse Error:</strong> {orchestraError}
-            </div>
-          )}
+              {parsedOrchestra && (
+                <ParsedSchemaSection
+                  parsedOrchestra={parsedOrchestra}
+                  allMessages={allMessages}
+                  selectedMessageIndex={selectedMessageIndex}
+                  onMessageIndexChange={setSelectedMessageIndex}
+                />
+              )}
 
-          {parsedOrchestra && (
-            <ParsedSchemaSection
-              parsedOrchestra={parsedOrchestra}
-              allMessages={allMessages}
-              selectedMessageIndex={selectedMessageIndex}
-              onMessageIndexChange={setSelectedMessageIndex}
-            />
-          )}
+              {/* Message Builder */}
+              {parsedOrchestra && (
+                <MessageBuilderSection
+                  parsedOrchestra={parsedOrchestra}
+                  messageBuilderValues={messageBuilderValues}
+                  onValuesChange={setMessageBuilderValues}
+                  onFixMessageChange={setFixRaw}
+                />
+              )}
 
-          {/* Message Builder */}
-          {parsedOrchestra && (
-            <MessageBuilderSection
-              parsedOrchestra={parsedOrchestra}
-              messageBuilderValues={messageBuilderValues}
-              onValuesChange={setMessageBuilderValues}
-              onFixMessageChange={setFixRaw}
-            />
-          )}
-
-          {/* FIX Message Input */}
-          <div style={{ marginBottom: '1.5rem' }}>
+              {/* FIX Message Input */}
+              <div style={{ marginBottom: '1.5rem' }}>
             <div style={{
               fontSize: '0.875rem',
               color: 'rgba(255,255,255,0.5)',
@@ -2754,26 +2736,28 @@ export default function Page() {
             </div>
           )}
 
-          <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-            <button 
-              onClick={doPreview}
-              disabled={!fixRaw || loading}
-              style={{
-                background: fixRaw && !loading ? '#ffffff' : 'rgba(255,255,255,0.1)',
-                color: fixRaw && !loading ? '#0a0a0a' : 'rgba(255,255,255,0.3)',
-                border: 'none',
-                borderRadius: '6px',
-                padding: '0.875rem 2rem',
-                fontSize: 'clamp(0.85rem, 2vw, 0.9rem)',
-                fontWeight: '500',
-                cursor: fixRaw && !loading ? 'pointer' : 'not-allowed',
-                transition: 'all 0.2s',
-                minHeight: '44px'
-              }}
-            >
-              {loading ? 'Processing...' : 'Process'}
-            </button>
-          </div>
+              <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                <button 
+                  onClick={doPreview}
+                  disabled={!fixRaw || loading}
+                  style={{
+                    background: fixRaw && !loading ? '#ffffff' : 'rgba(255,255,255,0.1)',
+                    color: fixRaw && !loading ? '#0a0a0a' : 'rgba(255,255,255,0.3)',
+                    border: 'none',
+                    borderRadius: '6px',
+                    padding: '0.875rem 2rem',
+                    fontSize: 'clamp(0.85rem, 2vw, 0.9rem)',
+                    fontWeight: '500',
+                    cursor: fixRaw && !loading ? 'pointer' : 'not-allowed',
+                    transition: 'all 0.2s',
+                    minHeight: '44px'
+                  }}
+                >
+                  {loading ? 'Processing...' : 'Process'}
+                </button>
+              </div>
+            </div>
+          )}
         </section>
 
         {/* Results Section */}
@@ -2955,40 +2939,6 @@ export default function Page() {
                         boxSizing: 'border-box'
                       }} 
                     />
-
-                    {generatedSbeSchema && (
-                      <div style={{ marginTop: '1.5rem' }}>
-                        <div style={{ 
-                          fontSize: '0.8rem',
-                          color: 'rgba(255,255,255,0.5)',
-                          marginBottom: '0.75rem',
-                          fontWeight: '500',
-                          textTransform: 'uppercase',
-                          letterSpacing: '0.05em'
-                        }}>
-                          Generated SBE Schema
-                        </div>
-                        <textarea 
-                          readOnly 
-                          value={generatedSbeSchema} 
-                          rows={12}
-                          className="custom-scrollbar"
-                          style={{ 
-                            width: '100%',
-                            padding: '1rem',
-                            borderRadius: '8px',
-                            border: '1px solid rgba(255,255,255,0.1)',
-                            background: 'rgba(255,255,255,0.03)',
-                            color: 'rgba(34, 197, 94, 0.8)',
-                            fontFamily: 'ui-monospace, monospace',
-                            fontSize: 'clamp(0.65rem, 1.5vw, 0.7rem)',
-                            resize: 'vertical',
-                            lineHeight: '1.6',
-                            boxSizing: 'border-box'
-                          }} 
-                        />
-                      </div>
-                    )}
                   </>
                 )}
 
@@ -3138,7 +3088,7 @@ export default function Page() {
                       e.currentTarget.style.background = showTokenDeploy ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.1)';
                     }}
                   >
-                    {showTokenDeploy ? '− Hide Deployment Form' : '🚀 Deploy to Testnet'}
+                    {showTokenDeploy ? '− Hide Deployment Form' : 'Deploy to Testnet'}
                   </button>
           </div>
                 {txInfo && (
@@ -3315,7 +3265,7 @@ export default function Page() {
                           width: '100%'
                         }}
                       >
-                        {loading ? '⏳ Deploying...' : '🚀 Deploy Token with Descriptor'}
+                        {loading ? 'Deploying...' : 'Deploy Token with Descriptor'}
                       </button>
                     </div>
                   </div>
@@ -3733,9 +3683,9 @@ export default function Page() {
                               '1px solid rgba(59, 130, 246, 0.3)',
                     }}>
                       <div style={{ fontSize: '1.5rem' }}>
-                        {onChainVerificationStatus === 'success' ? '✅' :
-                         onChainVerificationStatus === 'failed' ? '❌' :
-                         '⏳'}
+                        {onChainVerificationStatus === 'success' ? '●' :
+                         onChainVerificationStatus === 'failed' ? '●' :
+                         '●'}
                       </div>
                       <div>
                         <div style={{
@@ -3937,10 +3887,10 @@ export default function Page() {
                                    onChainVerificationStatus === 'failed' ? 'rgba(239, 68, 68, 0.9)' :
                                    'rgba(59, 130, 246, 0.9)'
                           }}>
-                            {onChainVerificationStatus === null ? '🔗 Ready for Onchain Verification' :
-                             onChainVerificationStatus === 'success' ? '✅ Verified Onchain' :
-                             onChainVerificationStatus === 'failed' ? '❌ Verification Failed' :
-                             '⏳ Verifying...'}
+                            {onChainVerificationStatus === null ? 'Ready for Onchain Verification' :
+                             onChainVerificationStatus === 'success' ? 'Verified Onchain' :
+                             onChainVerificationStatus === 'failed' ? 'Verification Failed' :
+                             'Verifying...'}
                           </strong>
                         <div style={{ 
                           fontSize: 'clamp(0.7rem, 1.5vw, 0.75rem)', 
@@ -4001,10 +3951,10 @@ export default function Page() {
                           }
                         }}
                       >
-                        {loading || onChainVerificationStatus === 'pending' ? '⏳ Verifying Onchain...' :
-                         onChainVerificationStatus === 'success' ? '✅ Re-verify Proof' :
-                         onChainVerificationStatus === 'failed' ? '🔄 Try Again' :
-                         '🔗 Verify Proof Onchain'}
+                        {loading || onChainVerificationStatus === 'pending' ? 'Verifying Onchain...' :
+                         onChainVerificationStatus === 'success' ? 'Re-verify Proof' :
+                         onChainVerificationStatus === 'failed' ? 'Try Again' :
+                         'Verify Proof Onchain'}
                       </button>
                       
                       {proofVerificationInfo && (
@@ -4123,10 +4073,10 @@ export default function Page() {
                       minHeight: '44px'
                     }}
                   >
-                    {fetchSBEStatus === 'loading' ? '⏳ Fetching from Contract...' :
-                     fetchSBEStatus === 'success' ? '✅ Fetch Again' :
-                     fetchSBEStatus === 'error' ? '🔄 Retry' :
-                     '📡 Fetch FIX Message from Contract'}
+                    {fetchSBEStatus === 'loading' ? 'Fetching from Contract...' :
+                     fetchSBEStatus === 'success' ? 'Fetch Again' :
+                     fetchSBEStatus === 'error' ? 'Retry' :
+                     'Fetch FIX Message from Contract'}
                   </button>
 
                   {fetchSBEError && (
@@ -4139,7 +4089,7 @@ export default function Page() {
                       fontSize: '0.875rem',
                       marginBottom: '1.5rem'
                     }}>
-                      ❌ Error: {fetchSBEError}
+                      Error: {fetchSBEError}
                     </div>
                   )}
 
@@ -4286,7 +4236,7 @@ export default function Page() {
                               }}>
                                 {offchainFormat === 'numeric' 
                                   ? 'Decoded off-chain using fixparser library. Shows numeric tags (e.g., "55=AAPL").'
-                                  : 'Decoded off-chain with tag names from TypeScript FIX_44_DICTIONARY package. Shows human-readable names (e.g., "Symbol=AAPL"). Dictionary source: npm package (off-chain).'}
+                                  : 'Decoded off-chain with tag names from the loaded Orchestra XML schema. Shows human-readable names (e.g., "Symbol=AAPL"). Dictionary source: Orchestra schema fields (off-chain).'}
                               </div>
                             </>
                           )}
