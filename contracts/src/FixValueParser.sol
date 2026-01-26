@@ -2,45 +2,19 @@
 pragma solidity ^0.8.28;
 
 /// @title FixValueParser
-/// @notice Library for extracting and parsing FIX field values from CBOR-encoded bytes
-/// @dev Works with raw CBOR value bytes returned by FixCBORReader
+/// @notice Library for parsing FIX field values from raw UTF-8 bytes
+/// @dev Works with raw UTF-8 value bytes as stored in SBE format
 library FixValueParser {
-    // CBOR major types
-    uint8 constant MAJOR_TYPE_TEXT = 3;
-
-    /// @notice Extract UTF-8 string from CBOR text string value
-    /// @param cborValue Raw CBOR-encoded value (including header)
-    /// @return Decoded UTF-8 string
-    function extractString(bytes memory cborValue) internal pure returns (string memory) {
-        require(cborValue.length > 0, "Empty CBOR value");
-
-        uint8 majorType = uint8(cborValue[0]) >> 5;
-        require(majorType == MAJOR_TYPE_TEXT, "Expected text string");
-
-        (uint256 length, uint256 headerSize) = readTextLength(cborValue, 0);
-
-        require(cborValue.length >= headerSize + length, "Truncated text string");
-
-        bytes memory result = new bytes(length);
-        for (uint256 i = 0; i < length; i++) {
-            result[i] = cborValue[headerSize + i];
-        }
-
-        return string(result);
-    }
-
     /// @notice Parse FIX decimal string to fixed-point integer
-    /// @param cborValue Raw CBOR-encoded value
+    /// @param valueBytes Raw UTF-8 bytes (e.g., "4.250")
     /// @param decimals Number of decimal places to preserve
     /// @return Fixed-point integer (e.g., "4.250" with decimals=3 returns 4250)
-    function parseFixedPoint(bytes memory cborValue, uint8 decimals) internal pure returns (uint256) {
-        string memory str = extractString(cborValue);
-        bytes memory strBytes = bytes(str);
-        require(strBytes.length > 0, "Empty value");
+    function parseFixedPoint(bytes memory valueBytes, uint8 decimals) internal pure returns (uint256) {
+        require(valueBytes.length > 0, "Empty value");
 
         // Parse integer and fractional parts
         (uint256 integerPart, uint256 fractionalPart, uint256 fractionalDigits) = 
-            _parseDecimalString(strBytes);
+            _parseDecimalString(valueBytes);
 
         // Convert to fixed-point
         return _convertToFixedPoint(integerPart, fractionalPart, fractionalDigits, decimals);
@@ -105,18 +79,15 @@ library FixValueParser {
     }
 
     /// @notice Parse FIX date string (YYYYMMDD format) to Unix timestamp
-    /// @param cborValue Raw CBOR-encoded value
+    /// @param valueBytes Raw UTF-8 bytes (e.g., "20250615")
     /// @return Unix timestamp (seconds since epoch)
-    function parseDate(bytes memory cborValue) internal pure returns (uint256) {
-        string memory str = extractString(cborValue);
-        bytes memory strBytes = bytes(str);
-
-        require(strBytes.length == 8, "Invalid date format");
+    function parseDate(bytes memory valueBytes) internal pure returns (uint256) {
+        require(valueBytes.length == 8, "Invalid date format");
 
         // Extract YYYYMMDD
-        uint256 year = parseDigits(strBytes, 0, 4);
-        uint256 month = parseDigits(strBytes, 4, 2);
-        uint256 day = parseDigits(strBytes, 6, 2);
+        uint256 year = parseDigits(valueBytes, 0, 4);
+        uint256 month = parseDigits(valueBytes, 4, 2);
+        uint256 day = parseDigits(valueBytes, 6, 2);
 
         require(year >= 1970, "Year before epoch");
         require(month >= 1 && month <= 12, "Invalid month");
@@ -166,67 +137,32 @@ library FixValueParser {
     }
 
     /// @notice Parse FIX integer value
-    /// @param cborValue Raw CBOR-encoded value
+    /// @param valueBytes Raw UTF-8 bytes
     /// @return Integer value
-    function parseInt(bytes memory cborValue) internal pure returns (uint256) {
-        string memory str = extractString(cborValue);
-        bytes memory strBytes = bytes(str);
-
-        require(strBytes.length > 0, "Empty value");
+    function parseInt(bytes memory valueBytes) internal pure returns (uint256) {
+        require(valueBytes.length > 0, "Empty value");
 
         uint256 result = 0;
-        for (uint256 i = 0; i < strBytes.length; i++) {
-            require(strBytes[i] >= "0" && strBytes[i] <= "9", "Invalid digit");
-            result = result * 10 + uint8(strBytes[i]) - uint8(bytes1("0"));
+        for (uint256 i = 0; i < valueBytes.length; i++) {
+            require(valueBytes[i] >= "0" && valueBytes[i] <= "9", "Invalid digit");
+            result = result * 10 + uint8(valueBytes[i]) - uint8(bytes1("0"));
         }
 
         return result;
     }
 
     /// @notice Check if value exists and is non-empty
-    /// @param cborValue Raw CBOR-encoded value
+    /// @param valueBytes Raw UTF-8 bytes
     /// @return True if value is non-empty
-    function isPresent(bytes memory cborValue) internal pure returns (bool) {
-        if (cborValue.length == 0) return false;
-
-        uint8 majorType = uint8(cborValue[0]) >> 5;
-        if (majorType != MAJOR_TYPE_TEXT) return false;
-
-        (uint256 length,) = readTextLength(cborValue, 0);
-        return length > 0;
+    function isPresent(bytes memory valueBytes) internal pure returns (bool) {
+        return valueBytes.length > 0;
     }
 
-    /// @notice Read text string length from CBOR header
-    /// @param cbor CBOR bytes
-    /// @param pos Position of text string
-    /// @return length String length
-    /// @return headerSize Header size in bytes
-    function readTextLength(bytes memory cbor, uint256 pos)
-        internal
-        pure
-        returns (uint256 length, uint256 headerSize)
-    {
-        require(pos < cbor.length, "Position out of bounds");
-
-        uint8 additionalInfo = uint8(cbor[pos]) & 0x1F;
-
-        if (additionalInfo < 24) {
-            return (additionalInfo, 1);
-        } else if (additionalInfo == 24) {
-            require(pos + 1 < cbor.length, "Truncated length");
-            return (uint8(cbor[pos + 1]), 2);
-        } else if (additionalInfo == 25) {
-            require(pos + 2 < cbor.length, "Truncated length");
-            uint256 len = (uint256(uint8(cbor[pos + 1])) << 8) | uint256(uint8(cbor[pos + 2]));
-            return (len, 3);
-        } else if (additionalInfo == 26) {
-            require(pos + 4 < cbor.length, "Truncated length");
-            uint256 len = (uint256(uint8(cbor[pos + 1])) << 24) | (uint256(uint8(cbor[pos + 2])) << 16)
-                | (uint256(uint8(cbor[pos + 3])) << 8) | uint256(uint8(cbor[pos + 4]));
-            return (len, 5);
-        } else {
-            revert("Unsupported length encoding");
-        }
+    /// @notice Convert raw bytes to UTF-8 string
+    /// @param valueBytes Raw UTF-8 bytes
+    /// @return UTF-8 string
+    function bytesToString(bytes memory valueBytes) internal pure returns (string memory) {
+        return string(valueBytes);
     }
 
     /// @notice Parse specified number of digits from byte array

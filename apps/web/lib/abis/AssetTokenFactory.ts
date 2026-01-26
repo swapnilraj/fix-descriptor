@@ -75,7 +75,7 @@ export const abi = [
         "internalType": "uint256"
       },
       {
-        "name": "cborData",
+        "name": "sbeData",
         "type": "bytes",
         "internalType": "bytes"
       },
@@ -100,27 +100,22 @@ export const abi = [
             "internalType": "bytes32"
           },
           {
-            "name": "dictionaryContract",
-            "type": "address",
-            "internalType": "address"
-          },
-          {
             "name": "fixRoot",
             "type": "bytes32",
             "internalType": "bytes32"
           },
           {
-            "name": "fixCBORPtr",
+            "name": "fixSBEPtr",
             "type": "address",
             "internalType": "address"
           },
           {
-            "name": "fixCBORLen",
+            "name": "fixSBELen",
             "type": "uint32",
             "internalType": "uint32"
           },
           {
-            "name": "fixURI",
+            "name": "schemaURI",
             "type": "string",
             "internalType": "string"
           }
@@ -134,7 +129,7 @@ export const abi = [
         "internalType": "address"
       },
       {
-        "name": "cborPtr",
+        "name": "sbePtr",
         "type": "address",
         "internalType": "address"
       }
@@ -318,7 +313,7 @@ export const abi = [
         "internalType": "bytes32"
       },
       {
-        "name": "fixCBORPtr",
+        "name": "fixSBEPtr",
         "type": "address",
         "indexed": false,
         "internalType": "address"

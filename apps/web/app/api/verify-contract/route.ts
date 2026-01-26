@@ -90,7 +90,9 @@ export async function POST(request: NextRequest) {
         viaIR: true, // Foundry uses via-ir
         codeFormat: 'solidity-standard-json-input', // Use standard JSON format
       },
-      apiKey
+      apiKey,
+      1, // Only 1 attempt in backend - frontend will handle retries
+      0  // No delay in backend
     );
 
     console.log('Verification response:', verificationResponse);
@@ -102,6 +104,9 @@ export async function POST(request: NextRequest) {
           success: false,
           error: 'Verification submission failed',
           message: verificationResponse.result || verificationResponse.message,
+          canRetry: verificationResponse.result && 
+                    typeof verificationResponse.result === 'string' &&
+                    verificationResponse.result.toLowerCase().includes('unable to locate'),
         },
         { status: 400 }
       );
@@ -109,9 +114,9 @@ export async function POST(request: NextRequest) {
 
     const guid = verificationResponse.result;
 
-    // Poll for verification status
+    // Poll for verification status with reduced attempts (frontend will retry if needed)
     console.log('Polling verification status for GUID:', guid);
-    const statusResponse = await pollVerificationStatus(guid, Number(chainId), apiKey);
+    const statusResponse = await pollVerificationStatus(guid, Number(chainId), apiKey, 10, 3000);
 
     console.log('Final verification status:', statusResponse);
 

@@ -15,16 +15,14 @@ export default function SpecPage() {
     { id: 'architecture', title: '4. Architecture Overview' },
     { id: 'descriptor-content', title: '5. Descriptor Content' },
     { id: 'canonical-tree', title: '6. Canonical Tree Model' },
-    { id: 'cbor-encoding', title: '7. CBOR Encoding' },
+    { id: 'sbe-encoding', title: '7. SBE Encoding' },
     { id: 'merkle-commitment', title: '8. Merkle Commitment' },
     { id: 'onchain-representation', title: '9. Onchain Representation' },
-    { id: 'human-readable', title: '10. Human-Readable Output' },
-    { id: 'fix-dictionary', title: '11. FIX Dictionary Architecture' },
-    { id: 'verification', title: '12. Onchain Verification' },
-    { id: 'retrieval', title: '13. Offchain Retrieval' },
-    { id: 'security', title: '14. Security Considerations' },
-    { id: 'gas-costs', title: '15. Gas Cost Analysis' },
-    { id: 'implementation', title: '16. Implementation Guide' },
+    { id: 'verification', title: '10. Onchain Verification' },
+    { id: 'retrieval', title: '11. Offchain Retrieval' },
+    { id: 'security', title: '12. Security Considerations' },
+    { id: 'gas-costs', title: '13. Gas Cost Analysis' },
+    { id: 'implementation', title: '14. Implementation Guide' },
   ];
 
   // Set active section from URL hash on mount
@@ -400,7 +398,7 @@ export default function SpecPage() {
               color: 'rgba(255,255,255,0.6)',
               lineHeight: '1.6'
             }}>
-              Canonicalization, CBOR, and Merkle Specification for Onchain FIX Asset Descriptors
+              Canonicalization, SBE, and Merkle Specification for Onchain FIX Asset Descriptors
             </p>
             <div style={{ 
               marginTop: 'clamp(1.5rem, 3vw, 2rem)',
@@ -427,7 +425,7 @@ export default function SpecPage() {
               </div>
               <p style={{ fontSize: 'clamp(0.85rem, 2vw, 0.95rem)', color: 'rgba(255,255,255,0.7)', lineHeight: '1.6', marginBottom: 'clamp(0.75rem, 2vw, 1rem)' }}>
                 Try the interactive explorer to see each step of the transformation process in action. 
-                Visualize how FIX messages become canonical trees, CBOR bytes, and Merkle commitments.
+                Visualize how FIX messages become canonical trees, SBE bytes, and Merkle commitments.
               </p>
               <Link href="/explorer" style={{
                 display: 'flex',
@@ -471,7 +469,7 @@ export default function SpecPage() {
             </SubsectionHeading>
             <p style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', marginBottom: 'clamp(1.5rem, 3vw, 2rem)', fontSize: 'clamp(0.9rem, 2vw, 1rem)' }}>
               This specification defines how to <strong>embed FIX descriptors directly in token contracts</strong> using 
-              canonical CBOR encoding and Merkle commitments. This enables automatic integration with existing 
+              canonical SBE encoding and Merkle commitments. This enables automatic integration with existing 
               financial infrastructure while maintaining onchain verifiability—without requiring any onchain FIX parsing.
             </p>
 
@@ -480,7 +478,7 @@ export default function SpecPage() {
             </SubsectionHeading>
             <ul style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', marginBottom: 'clamp(1.5rem, 3vw, 2rem)', paddingLeft: 'clamp(1rem, 3vw, 1.5rem)', fontSize: 'clamp(0.9rem, 2vw, 1rem)' }}>
               <li style={{ marginBottom: '0.5rem' }}>Converting FIX messages to canonical trees</li>
-              <li style={{ marginBottom: '0.5rem' }}>CBOR encoding rules for deterministic representation</li>
+              <li style={{ marginBottom: '0.5rem' }}>SBE encoding rules for deterministic representation</li>
               <li style={{ marginBottom: '0.5rem' }}>Merkle commitment generation for efficient field verification</li>
               <li style={{ marginBottom: '0.5rem' }}>Onchain storage patterns (SSTORE2-based)</li>
               <li>Verification mechanisms for proving specific fields</li>
@@ -535,7 +533,7 @@ export default function SpecPage() {
               </div>
               <ul style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.7', margin: 0, paddingLeft: '1.5rem' }}>
                 <li style={{ marginBottom: '0.5rem' }}>Build a <strong>canonical tree</strong> (deterministic structure with sorted keys)</li>
-                <li style={{ marginBottom: '0.5rem' }}>Encode to <strong>canonical CBOR</strong> (single, unique byte representation)</li>
+                <li style={{ marginBottom: '0.5rem' }}>Encode to <strong>SBE format</strong> (efficient binary representation)</li>
                 <li>Generate <strong>Merkle root</strong> committing to every field</li>
               </ul>
             </div>
@@ -551,7 +549,7 @@ export default function SpecPage() {
               </div>
               <ul style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.7', margin: 0, paddingLeft: '1.5rem' }}>
                 <li style={{ marginBottom: '0.5rem' }}>Minimal <strong>descriptor struct</strong> in the token contract</li>
-                <li style={{ marginBottom: '0.5rem' }}>CBOR bytes stored via <strong>SSTORE2</strong> (gas-efficient)</li>
+                <li style={{ marginBottom: '0.5rem' }}>SBE bytes stored via <strong>SSTORE2</strong> (gas-efficient)</li>
                 <li>Verification function: anyone can prove any field with a <strong>Merkle proof</strong></li>
               </ul>
             </div>
@@ -637,11 +635,11 @@ export default function SpecPage() {
 }`}</pre>
             </div>
 
-            <SubsectionHeading id="example-cbor">
-              CBOR Encoding
+            <SubsectionHeading id="example-sbe">
+              SBE Encoding
             </SubsectionHeading>
             <p style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', marginBottom: '1rem' }}>
-              This tree is encoded to canonical CBOR (deterministic binary format):
+              This tree is encoded to SBE (Simple Binary Encoding) format:
             </p>
             <div style={{ 
               padding: 'clamp(1rem, 3vw, 1.5rem)',
@@ -651,10 +649,10 @@ export default function SpecPage() {
               marginBottom: '2rem'
             }}>
               <div style={{ color: 'rgba(255,255,255,0.8)', marginBottom: '0.75rem', fontSize: 'clamp(0.8rem, 2vw, 0.9rem)' }}>
-                <strong>Size:</strong> ~243 bytes
+                <strong>Size:</strong> Compact binary format
               </div>
               <div style={{ color: 'rgba(255,255,255,0.8)', fontSize: 'clamp(0.8rem, 2vw, 0.9rem)' }}>
-                <strong>Format:</strong> CBOR map with integer keys (sorted), text string values
+                <strong>Format:</strong> SBE schema-driven encoding with message header and field data
               </div>
             </div>
 
@@ -674,16 +672,16 @@ export default function SpecPage() {
               marginBottom: '1rem'
             }}>
               <div style={{ color: 'rgba(255,255,255,0.8)', marginBottom: '0.75rem' }}>
-                [15] → &quot;USD&quot; = keccak256(CBOR.encode([15]) || &quot;USD&quot;)
+                [15] → &quot;USD&quot; = keccak256(SBE.encode([15]) || &quot;USD&quot;)
               </div>
               <div style={{ color: 'rgba(255,255,255,0.8)', marginBottom: '0.75rem' }}>
-                [223] → &quot;4.250&quot; = keccak256(CBOR.encode([223]) || &quot;4.250&quot;)
+                [223] → &quot;4.250&quot; = keccak256(SBE.encode([223]) || &quot;4.250&quot;)
               </div>
               <div style={{ color: 'rgba(255,255,255,0.8)', marginBottom: '0.75rem' }}>
-                [453, 0, 448] → &quot;US_TREASURY&quot; = keccak256(CBOR.encode([453, 0, 448]) || &quot;US_TREASURY&quot;)
+                [453, 0, 448] → &quot;US_TREASURY&quot; = keccak256(SBE.encode([453, 0, 448]) || &quot;US_TREASURY&quot;)
               </div>
               <div style={{ color: 'rgba(255,255,255,0.8)' }}>
-                [454, 1, 456] → &quot;4&quot; = keccak256(CBOR.encode([454, 1, 456]) || &quot;4&quot;)
+                [454, 1, 456] → &quot;4&quot; = keccak256(SBE.encode([454, 1, 456]) || &quot;4&quot;)
               </div>
             </div>
             <p style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', marginBottom: 'clamp(1.5rem, 3vw, 2rem)', fontSize: 'clamp(0.9rem, 2vw, 1rem)' }}>
@@ -707,8 +705,8 @@ export default function SpecPage() {
   fixMinor: 4,
   dictHash: 0x...,
   fixRoot: 0x7a3f... (Merkle root),
-  fixCBORPtr: 0x123... (SSTORE2 address),
-  fixCBORLen: 243
+  fixSBEPtr: 0x123... (SSTORE2 address),
+  fixSBELen: 243
 }`}</pre>
             </div>
 
@@ -723,7 +721,7 @@ export default function SpecPage() {
               </div>
               <p style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.7', margin: 0, fontSize: '0.9rem' }}>
                 Visit the <Link href="/explorer" style={{ color: 'rgba(59, 130, 246, 1)', textDecoration: 'none' }}>Interactive Explorer</Link> to 
-                see this exact transformation step-by-step with visualizations of the tree, CBOR bytes, and Merkle structure.
+                see this exact transformation step-by-step with visualizations of the tree, SBE bytes, and Merkle structure.
               </p>
             </div>
           </section>
@@ -758,11 +756,11 @@ export default function SpecPage() {
                 },
                 {
                   term: 'Leaf',
-                  definition: 'A (path, value) pair in the Merkle tree representing a single field. Computed as: leaf = keccak256(pathCBOR || valueBytes)'
+                  definition: 'A (path, value) pair in the Merkle tree representing a single field. Computed as: leaf = keccak256(pathSBE || valueBytes)'
                 },
                 {
-                  term: 'CBOR',
-                  definition: 'Concise Binary Object Representation (RFC 8949) - a binary data format. This spec uses canonical CBOR: definite lengths, sorted map keys, no semantic tags.'
+                  term: 'SBE',
+                  definition: 'Simple Binary Encoding - an efficient binary encoding format used for FIX messages. Uses schema-driven encoding with a message header and field data.'
                 },
                 {
                   term: 'SSTORE2',
@@ -903,7 +901,7 @@ export default function SpecPage() {
                 <div className="split-mobile"><Arrow /></div>
               </div>
 
-              {/* Stage 3: Parallel Processing - CBOR & Merkle */}
+              {/* Stage 3: Parallel Processing - SBE & Merkle */}
               <div style={{ marginBottom: '2rem' }}>
                 <div className="parallel-grid" style={{ 
                   display: 'grid',
@@ -924,10 +922,10 @@ export default function SpecPage() {
                       color: 'white',
                       marginBottom: '0.5rem'
                     }}>
-                      CBOR Encoding
+                      SBE Encoding
                     </div>
                     <div style={{ fontSize: '0.875rem', color: 'rgba(255,255,255,0.85)' }}>
-                      Deterministic binary format
+                      Efficient binary format
                     </div>
                   </div>
                   <div className="diagram-card" style={{
@@ -986,7 +984,7 @@ export default function SpecPage() {
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                       <Icon name="package" />
-                      CBOR via SSTORE2
+                      SBE via SSTORE2
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                       <Icon name="fingerprint" />
@@ -1026,7 +1024,7 @@ export default function SpecPage() {
                       Offchain Retrieval
                     </div>
                     <div style={{ fontSize: '0.875rem', color: 'rgba(255,255,255,0.85)' }}>
-                      Read CBOR, decode tree
+                      Read SBE data
                     </div>
                   </div>
                   <div className="diagram-card" style={{
@@ -1064,8 +1062,8 @@ export default function SpecPage() {
                   description: 'Parse FIX, extract business fields, build a hierarchical structure with integer keys and sorted maps.'
                 },
                 {
-                  title: '2. Canonical Tree → CBOR',
-                  description: 'Serialize to canonical CBOR - a compact binary format that ensures any two implementations produce identical bytes for the same input.'
+                  title: '2. Canonical Tree → SBE',
+                  description: 'Serialize to SBE (Simple Binary Encoding) - an efficient binary format designed for financial messages with schema-driven encoding.'
                 },
                 {
                   title: '3. Canonical Tree → Merkle Root',
@@ -1073,7 +1071,7 @@ export default function SpecPage() {
                 },
                 {
                   title: '4. Storage → Onchain',
-                  description: 'Deploy CBOR via SSTORE2, store Merkle root and metadata in a FixDescriptor struct embedded in the token contract.'
+                  description: 'Deploy SBE data via SSTORE2, store Merkle root and metadata in a FixDescriptor struct embedded in the token contract.'
                 },
                 {
                   title: '5. Verification',
@@ -1105,7 +1103,7 @@ export default function SpecPage() {
                 <strong>Canonical:</strong> Multiple implementations produce identical output
               </li>
               <li style={{ marginBottom: '0.75rem' }}>
-                <strong>Compact:</strong> CBOR is significantly smaller than JSON or FIX tag=value
+                <strong>Compact:</strong> SBE is highly efficient and smaller than JSON or FIX tag=value
               </li>
               <li style={{ marginBottom: '0.75rem' }}>
                 <strong>Verifiable:</strong> Merkle proofs allow checking any field without downloading full descriptor
@@ -1331,23 +1329,23 @@ export default function SpecPage() {
             </ol>
           </section>
 
-          {/* Section 7: CBOR Encoding */}
+          {/* Section 7: SBE Encoding */}
           <section style={{ marginBottom: 'clamp(2rem, 5vw, 4rem)' }}>
-            <SectionHeading id="cbor-encoding">
-              7. Canonical CBOR Encoding
+            <SectionHeading id="sbe-encoding">
+              7. SBE Encoding
             </SectionHeading>
 
             <p style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', marginBottom: '1.5rem' }}>
-              The canonical tree is serialized to CBOR using canonical form:
+              The canonical tree is serialized using SBE (Simple Binary Encoding), an efficient binary encoding format designed for financial messages:
             </p>
 
             <div style={{ display: 'grid', gap: 'clamp(0.75rem, 2vw, 1rem)', marginBottom: 'clamp(1.5rem, 3vw, 2rem)' }}>
               {[
-                { label: 'Top Level', value: 'CBOR map ({}), keys = unsigned integers (FIX tags), sorted ascending' },
-                { label: 'Scalar Value', value: 'CBOR text string with exact FIX value bytes (UTF-8). No reformatting' },
-                { label: 'Group', value: 'CBOR array ([]) of CBOR maps. Each entry is a map with integer keys sorted ascending' },
-                { label: 'Lengths', value: 'Definite lengths only; no indefinite-length items' },
-                { label: 'Tags', value: 'No semantic tags are used' }
+                { label: 'Schema-Driven', value: 'SBE uses an XML schema to define message structure, field types, and encoding rules' },
+                { label: 'Message Header', value: 'Each encoded message starts with a standard header containing blockLength, templateId, schemaId, and version' },
+                { label: 'Field Mapping', value: 'FIX tag numbers map directly to SBE field IDs in the schema (e.g., FIX tag 55 → SBE field id="55")' },
+                { label: 'Efficient Encoding', value: 'Fixed-length fields use native binary types; variable-length strings use length-prefixed encoding' },
+                { label: 'Runtime Generation', value: 'SBE codec classes are generated from the schema and compiled at runtime for encoding/decoding' }
               ].map((item, idx) => (
                 <div key={idx} style={{ 
                   padding: '1.25rem',
@@ -1383,8 +1381,8 @@ export default function SpecPage() {
               borderRadius: '8px'
             }}>
               <p style={{ color: 'rgba(255,255,255,0.8)', lineHeight: '1.7', margin: 0 }}>
-                <strong style={{ color: 'rgba(34, 197, 94, 0.9)' }}>Result:</strong> This ensures a 
-                <strong> single, unique</strong> CBOR byte string for a given descriptor tree.
+                <strong style={{ color: 'rgba(34, 197, 94, 0.9)' }}>Result:</strong> SBE produces
+                <strong> highly compact</strong> binary encoding with excellent performance characteristics, ideal for onchain storage.
               </p>
             </div>
           </section>
@@ -1419,7 +1417,7 @@ export default function SpecPage() {
             </div>
 
             <p style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', marginBottom: 'clamp(1.5rem, 3vw, 2rem)', fontSize: 'clamp(0.9rem, 2vw, 1rem)' }}>
-              <strong>Path encoding rules:</strong> Each path is an array of unsigned integers, encoded as canonical CBOR. 
+              <strong>Path encoding rules:</strong> Each path is an array of unsigned integers, encoded using SBE. 
               Paths are used for both Merkle leaves and verification.
             </p>
 
@@ -1437,11 +1435,11 @@ export default function SpecPage() {
               color: 'rgba(255,255,255,0.9)',
               textAlign: 'center'
             }}>
-              leaf = keccak256( pathCBOR || valueBytes )
+              leaf = keccak256( pathSBE || valueBytes )
             </div>
             <ul style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', marginBottom: 'clamp(1.5rem, 3vw, 2rem)', paddingLeft: 'clamp(1rem, 3vw, 1.5rem)', fontSize: 'clamp(0.9rem, 2vw, 1rem)' }}>
-              <li style={{ marginBottom: '0.5rem' }}><code style={{ background: 'rgba(255,255,255,0.1)', padding: '0.2rem 0.5rem', borderRadius: '3px' }}>pathCBOR</code>: the canonical CBOR bytes of the path array</li>
-              <li><code style={{ background: 'rgba(255,255,255,0.1)', padding: '0.2rem 0.5rem', borderRadius: '3px' }}>valueBytes</code>: the exact FIX value bytes (UTF-8 string payload, no CBOR framing)</li>
+              <li style={{ marginBottom: '0.5rem' }}><code style={{ background: 'rgba(255,255,255,0.1)', padding: '0.2rem 0.5rem', borderRadius: '3px' }}>pathSBE</code>: the SBE-encoded bytes of the path array</li>
+              <li><code style={{ background: 'rgba(255,255,255,0.1)', padding: '0.2rem 0.5rem', borderRadius: '3px' }}>valueBytes</code>: the exact FIX value bytes (UTF-8 string payload)</li>
             </ul>
 
             <SubsectionHeading id="leaf-set">
@@ -1459,7 +1457,7 @@ export default function SpecPage() {
               8.4 Root Construction
             </SubsectionHeading>
             <ol style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', paddingLeft: '1.5rem', marginBottom: '2rem' }}>
-              <li style={{ marginBottom: '0.75rem' }}>Sort all leaves by <strong>pathCBOR</strong> lexicographically (byte order)</li>
+              <li style={{ marginBottom: '0.75rem' }}>Sort all leaves by <strong>pathSBE</strong> lexicographically (byte order)</li>
               <li style={{ marginBottom: '0.75rem' }}>Build a standard <strong>binary Merkle tree</strong>:
                 <ul style={{ marginTop: '0.5rem', paddingLeft: '1.5rem' }}>
                   <li style={{ marginBottom: '0.5rem' }}>Pair adjacent leaves; each parent = keccak256(left || right)</li>
@@ -1484,7 +1482,7 @@ export default function SpecPage() {
               fontSize: '0.9rem',
               color: 'rgba(255,255,255,0.8)'
             }}>
-              <div style={{ marginBottom: '0.5rem' }}>pathCBOR (bytes)</div>
+              <div style={{ marginBottom: '0.5rem' }}>pathSBE (bytes)</div>
               <div style={{ marginBottom: '0.5rem' }}>valueBytes (bytes)</div>
               <div style={{ marginBottom: '0.5rem' }}>siblingHashes[]: bytes32[]</div>
               <div style={{ marginBottom: '0.5rem' }}>directions[]: bool[]</div>
@@ -1524,11 +1522,10 @@ export default function SpecPage() {
   uint16  fixMajor;           // e.g., 4
   uint16  fixMinor;           // e.g., 4
   bytes32 dictHash;           // FIX dictionary hash
-  address dictionaryContract; // FixDictionary for tag lookups
   bytes32 fixRoot;            // Merkle root
-  address fixCBORPtr;         // SSTORE2 data address
-  uint32  fixCBORLen;         // CBOR length
-  string  fixURI;             // optional mirror
+  address fixSBEPtr;          // SSTORE2 data address
+  uint32  fixSBELen;          // SBE length
+  string  schemaURI;          // optional SBE schema URI
 }`}</pre>
             </div>
 
@@ -1549,21 +1546,20 @@ export default function SpecPage() {
   function getFixDescriptor() external view returns (FixDescriptor memory descriptor);
   function getFixRoot() external view returns (bytes32 root);
   function verifyField(
-    bytes calldata pathCBOR,
+    bytes calldata pathSBE,
     bytes calldata value,
     bytes32[] calldata proof,
     bool[] calldata directions
   ) external view returns (bool valid);
-  function getHumanReadableDescriptor() external view returns (string memory);
 }`}</pre>
             </div>
 
-            <SubsectionHeading id="cbor-storage">
-              9.4 CBOR Storage (SSTORE2 Pattern)
+            <SubsectionHeading id="sbe-storage">
+              9.4 SBE Storage (SSTORE2 Pattern)
             </SubsectionHeading>
             <ul style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', marginBottom: 'clamp(1.5rem, 3vw, 2rem)', paddingLeft: 'clamp(1rem, 3vw, 1.5rem)', fontSize: 'clamp(0.9rem, 2vw, 1rem)' }}>
-              <li style={{ marginBottom: '0.75rem' }}>The CBOR is deployed as the runtime bytecode of a minimal data contract (prefixed with a STOP byte)</li>
-              <li style={{ marginBottom: '0.75rem' }}>Anyone can retrieve bytes via <code style={{ background: 'rgba(255,255,255,0.1)', padding: '0.2rem 0.5rem', borderRadius: '3px', fontSize: '0.9em' }}>eth_getCode(fixCBORPtr)</code></li>
+              <li style={{ marginBottom: '0.75rem' }}>The SBE data is deployed as the runtime bytecode of a minimal data contract (prefixed with a STOP byte)</li>
+                <li style={{ marginBottom: '0.75rem' }}>Anyone can retrieve bytes via <code style={{ background: 'rgba(255,255,255,0.1)', padding: '0.2rem 0.5rem', borderRadius: '3px', fontSize: '0.9em' }}>eth_getCode(fixSBEPtr)</code></li>
               <li>Optionally expose a chunk retrieval function using EXTCODECOPY</li>
             </ul>
 
@@ -1580,7 +1576,7 @@ export default function SpecPage() {
               marginBottom: '1rem'
             }}>
               <div style={{ color: 'rgba(255,255,255,0.8)', marginBottom: '0.75rem' }}>
-                event FixDescriptorSet(bytes32 fixRoot, bytes32 dictHash, address fixCBORPtr, uint32 fixCBORLen)
+                event FixDescriptorSet(bytes32 fixRoot, bytes32 dictHash, address fixSBEPtr, uint32 fixSBELen)
               </div>
               <div style={{ color: 'rgba(255,255,255,0.8)' }}>
                 event FixDescriptorUpdated(bytes32 oldRoot, bytes32 newRoot, address newPtr)
@@ -1588,272 +1584,10 @@ export default function SpecPage() {
             </div>
           </section>
 
-          {/* Section 10: Human-Readable Output */}
-          <section style={{ marginBottom: 'clamp(2rem, 5vw, 4rem)' }}>
-            <SectionHeading id="human-readable">
-              10. Human-Readable Output
-            </SectionHeading>
-
-            <p style={{ marginBottom: '2rem', lineHeight: '1.8', color: 'rgba(255,255,255,0.7)' }}>
-              While the canonical CBOR encoding provides compact and deterministic storage, it uses numeric tag values that are not human-readable. 
-              The <code style={{ background: 'rgba(255,255,255,0.1)', padding: '0.25rem 0.5rem', borderRadius: '4px' }}>getHumanReadableDescriptor()</code> function 
-              provides an on-chain method to generate a human-readable representation of the FIX descriptor by substituting tag numbers with their textual names from a FIX dictionary.
-            </p>
-
-            <SubsectionHeading id="readable-function">
-              10.1 The getHumanReadableDescriptor() Function
-            </SubsectionHeading>
-
-            <div style={{ 
-              padding: 'clamp(1rem, 3vw, 1.5rem)',
-              background: 'rgba(255,255,255,0.03)',
-              borderRadius: '12px',
-              marginBottom: '2rem',
-              fontFamily: 'ui-monospace, monospace',
-              fontSize: '0.875rem',
-              border: '1px solid rgba(255,255,255,0.1)'
-            }}>
-              <div style={{ color: 'rgba(147, 197, 253, 0.9)', marginBottom: '0.5rem' }}>
-                function getHumanReadableDescriptor() external view returns (string memory)
-              </div>
-            </div>
-
-            <p style={{ marginBottom: '2rem', lineHeight: '1.8', color: 'rgba(255,255,255,0.7)' }}>
-              This function:
-            </p>
-            <ul style={{ marginBottom: '2rem', paddingLeft: '2rem', lineHeight: '2', color: 'rgba(255,255,255,0.7)' }}>
-              <li>Reads the CBOR-encoded descriptor from the SSTORE2 contract</li>
-              <li>Parses the CBOR map to extract tags and values</li>
-              <li>Looks up human-readable tag names from the FixDictionary contract</li>
-              <li>Formats the output in FIX format: <code style={{ background: 'rgba(255,255,255,0.1)', padding: '0.25rem 0.5rem', borderRadius: '4px' }}>TagName=Value|TagName2=Value2|...</code></li>
-              <li>Handles both scalar fields and repeating groups</li>
-            </ul>
-
-            <SubsectionHeading id="readable-output-format">
-              10.2 Output Format
-            </SubsectionHeading>
-
-            <div style={{ marginBottom: '2rem' }}>
-              <div style={{
-                padding: 'clamp(1rem, 3vw, 1.5rem)',
-                background: 'rgba(255,255,255,0.03)',
-                borderRadius: '12px',
-                marginBottom: '1rem',
-                fontFamily: 'ui-monospace, monospace',
-                fontSize: 'clamp(0.75rem, 1.8vw, 0.875rem)',
-                border: '1px solid rgba(255,255,255,0.1)',
-                overflowX: 'auto'
-              }}>
-                <div style={{ color: 'rgba(255,255,255,0.5)', marginBottom: '0.75rem' }}>Scalar Fields:</div>
-                <div style={{ color: 'rgba(34, 197, 94, 0.9)', whiteSpace: 'nowrap' }}>
-                  Symbol=AAPL|SecurityID=US0378331005|SecurityIDSource=1|SecurityType=CS|Currency=USD
-                </div>
-              </div>
-
-              <div style={{
-                padding: 'clamp(1rem, 3vw, 1.5rem)',
-                background: 'rgba(255,255,255,0.03)',
-                borderRadius: '12px',
-                fontFamily: 'ui-monospace, monospace',
-                fontSize: 'clamp(0.75rem, 1.8vw, 0.875rem)',
-                border: '1px solid rgba(255,255,255,0.1)',
-                overflowX: 'auto'
-              }}>
-                <div style={{ color: 'rgba(255,255,255,0.5)', marginBottom: '0.75rem' }}>Repeating Groups:</div>
-                <div style={{ color: 'rgba(34, 197, 94, 0.9)', whiteSpace: 'nowrap' }}>
-                  NoSecurityAltID=2|[0]SecurityAltID=000402AJ1|[0]SecurityAltIDSource=1|[1]SecurityAltID=US000402AJ19|[1]SecurityAltIDSource=4
-                </div>
-              </div>
-            </div>
-
-            <SubsectionHeading id="readable-benefits">
-              10.3 Benefits
-            </SubsectionHeading>
-
-            <ul style={{ marginBottom: '2rem', paddingLeft: '2rem', lineHeight: '2', color: 'rgba(255,255,255,0.7)' }}>
-              <li><strong>On-chain Composability:</strong> Other contracts can call this function to read human-readable descriptors</li>
-              <li><strong>No Off-chain Dependencies:</strong> Everything is verifiable and readable directly on the blockchain</li>
-              <li><strong>Gas Efficient:</strong> Uses optimized SSTORE2 pattern for dictionary storage</li>
-              <li><strong>Standard Compliance:</strong> Output follows FIX protocol format conventions</li>
-            </ul>
-
-            <SubsectionHeading id="readable-vs-offchain">
-              10.4 On-chain vs Off-chain Decoding
-            </SubsectionHeading>
-
-            <p style={{ marginBottom: '1.5rem', lineHeight: '1.8', color: 'rgba(255,255,255,0.7)' }}>
-              Both approaches can show human-readable tag names. The key difference is WHERE decoding happens and WHETHER other contracts can call it.
-            </p>
-
-            <div style={{ 
-              padding: 'clamp(1rem, 3vw, 1.5rem)',
-              background: 'rgba(59, 130, 246, 0.05)',
-              borderRadius: '12px',
-              marginBottom: '1.5rem',
-              border: '1px solid rgba(59, 130, 246, 0.2)'
-            }}>
-              <div style={{ fontWeight: '600', marginBottom: '0.5rem', color: 'rgba(59, 130, 246, 0.9)' }}>
-                Off-chain Decoding
-              </div>
-              <ul style={{ paddingLeft: '1.5rem', color: 'rgba(255,255,255,0.7)', lineHeight: '1.8' }}>
-                <li>Uses fixparser library (JavaScript/TypeScript)</li>
-                <li>Can show tag names from off-chain dictionaries</li>
-                <li>0 gas cost (view call)</li>
-                <li>Not callable by other smart contracts</li>
-                <li>Requires off-chain infrastructure/libraries</li>
-              </ul>
-            </div>
-
-            <div style={{ 
-              padding: 'clamp(1rem, 3vw, 1.5rem)',
-              background: 'rgba(34, 197, 94, 0.05)',
-              borderRadius: '12px',
-              border: '1px solid rgba(34, 197, 94, 0.2)'
-            }}>
-              <div style={{ fontWeight: '600', marginBottom: '0.5rem', color: 'rgba(34, 197, 94, 0.9)' }}>
-                On-chain Human-Readable
-              </div>
-              <ul style={{ paddingLeft: '1.5rem', color: 'rgba(255,255,255,0.7)', lineHeight: '1.8' }}>
-                <li>Calls getHumanReadableDescriptor() on the contract</li>
-                <li>Shows tag names from on-chain FixDictionary</li>
-                <li>0 gas cost (when called as view)</li>
-                <li>~200k-500k gas (when called by another contract)</li>
-                <li>Fully composable with other smart contracts</li>
-                <li>Trustless, no off-chain dependencies</li>
-              </ul>
-            </div>
-          </section>
-
-          {/* Section 11: FIX Dictionary Architecture */}
-          <section style={{ marginBottom: 'clamp(2rem, 5vw, 4rem)' }}>
-            <SectionHeading id="fix-dictionary">
-              11. FIX Dictionary Architecture
-            </SectionHeading>
-
-            <p style={{ marginBottom: '2rem', lineHeight: '1.8', color: 'rgba(255,255,255,0.7)' }}>
-              The FIX Dictionary provides an on-chain mapping from numeric FIX tag numbers to their human-readable names. It uses an innovative storage 
-              strategy that eliminates expensive mapping lookups by storing tag names in fixed-size slots, enabling O(1) direct indexing.
-            </p>
-
-            <SubsectionHeading id="dictionary-storage-strategy">
-              11.1 Storage Strategy
-            </SubsectionHeading>
-
-            <p style={{ marginBottom: '1.5rem', lineHeight: '1.8', color: 'rgba(255,255,255,0.7)' }}>
-              Instead of using a Solidity mapping, the dictionary stores all tag names in a single SSTORE2 contract with a fixed 24-byte slot per tag:
-            </p>
-
-            <div style={{
-              padding: 'clamp(1rem, 3vw, 1.5rem)',
-              background: 'rgba(255,255,255,0.03)',
-              borderRadius: '12px',
-              marginBottom: '2rem',
-              border: '1px solid rgba(255,255,255,0.1)'
-            }}>
-              <div style={{ fontFamily: 'ui-monospace, monospace', fontSize: '0.875rem' }}>
-                <div style={{ color: 'rgba(147, 197, 253, 0.9)', marginBottom: '1rem' }}>
-                  Slot Structure (24 bytes per tag):
-                </div>
-                <div style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8' }}>
-                  <div>Byte 0:     Length of tag name (0-23)</div>
-                  <div>Bytes 1-23: UTF-8 encoded tag name (zero-padded)</div>
-                </div>
-              </div>
-            </div>
-
-            <p style={{ marginBottom: '1.5rem', lineHeight: '1.8', color: 'rgba(255,255,255,0.7)' }}>
-              <strong>Example for Tag 15 (Currency):</strong>
-            </p>
-
-            <div style={{
-              padding: 'clamp(1rem, 3vw, 1.5rem)',
-              background: 'rgba(255,255,255,0.03)',
-              borderRadius: '12px',
-              marginBottom: '2rem',
-              fontFamily: 'ui-monospace, monospace',
-              fontSize: '0.875rem',
-              border: '1px solid rgba(255,255,255,0.1)'
-            }}>
-              <div style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8' }}>
-                <div>Offset: 15 × 24 = 360 bytes</div>
-                <div style={{ marginTop: '1rem' }}>
-                  <div>[Slot at offset 360]</div>
-                  <div>Byte 0:    0x08 (length = 8)</div>
-                  <div>Bytes 1-8: &quot;Currency&quot;</div>
-                  <div>Bytes 9-23: 0x00... (zero padding)</div>
-                </div>
-              </div>
-            </div>
-
-            <SubsectionHeading id="dictionary-lookup">
-              11.2 Tag Name Lookup
-            </SubsectionHeading>
-
-            <div style={{ 
-              padding: 'clamp(1rem, 3vw, 1.5rem)',
-              background: 'rgba(255,255,255,0.03)',
-              borderRadius: '12px',
-              marginBottom: '2rem',
-              fontFamily: 'ui-monospace, monospace',
-              fontSize: '0.875rem',
-              border: '1px solid rgba(255,255,255,0.1)'
-            }}>
-              <div style={{ color: 'rgba(147, 197, 253, 0.9)', marginBottom: '0.5rem' }}>
-                function getTagName(uint16 tag) public view returns (string memory)
-              </div>
-              <div style={{ color: 'rgba(255,255,255,0.5)', marginTop: '1rem' }}>
-                {/* Direct offset calculation: O(1) lookup */}
-              </div>
-              <div style={{ color: 'rgba(255,255,255,0.7)' }}>
-                offset = tag × 24 + 1  {/* +1 to skip STOP byte */}
-              </div>
-              <div style={{ color: 'rgba(255,255,255,0.7)' }}>
-                extcodecopy(dataContract, slot, offset, 24)
-              </div>
-            </div>
-
-            <SubsectionHeading id="dictionary-gas-efficiency">
-              11.3 Gas Efficiency
-            </SubsectionHeading>
-
-            <ul style={{ marginBottom: '2rem', paddingLeft: '2rem', lineHeight: '2', color: 'rgba(255,255,255,0.7)' }}>
-              <li><strong>No Expensive Mappings:</strong> Avoids 20,000+ gas per SSTORE for mapping updates</li>
-              <li><strong>Single Deployment:</strong> All 957 tags stored in one SSTORE2 contract (~23KB)</li>
-              <li><strong>O(1) Lookups:</strong> Direct offset calculation without iteration</li>
-              <li><strong>EXTCODECOPY:</strong> Efficient bytecode reading (100 gas + 3 gas/word)</li>
-            </ul>
-
-            <SubsectionHeading id="dictionary-versioning">
-              11.4 Dictionary Versioning
-            </SubsectionHeading>
-
-            <p style={{ marginBottom: '2rem', lineHeight: '1.8', color: 'rgba(255,255,255,0.7)' }}>
-              Different FIX versions (4.2, 4.4, 5.0) can have different dictionaries. The <code style={{ background: 'rgba(255,255,255,0.1)', padding: '0.25rem 0.5rem', borderRadius: '4px' }}>FixDictionaryFactory</code> contract 
-              manages deployments keyed by FIX major and minor version numbers.
-            </p>
-
-            <div style={{ 
-              padding: 'clamp(1rem, 3vw, 1.5rem)',
-              background: 'rgba(255,255,255,0.03)',
-              borderRadius: '12px',
-              marginBottom: '2rem',
-              fontFamily: 'ui-monospace, monospace',
-              fontSize: '0.875rem',
-              border: '1px solid rgba(255,255,255,0.1)'
-            }}>
-              <div style={{ color: 'rgba(147, 197, 253, 0.9)' }}>
-                mapping(uint16 =&gt; mapping(uint16 =&gt; FixDictionary)) public dictionaries;
-              </div>
-              <div style={{ color: 'rgba(255,255,255,0.7)', marginTop: '0.5rem' }}>
-                {/* dictionaries[fixMajor][fixMinor] => FixDictionary contract */}
-              </div>
-            </div>
-          </section>
-
-          {/* Section 12: Verification (was 10) */}
+          {/* Section 10: Onchain Verification */}
           <section style={{ marginBottom: 'clamp(2rem, 5vw, 4rem)' }}>
             <SectionHeading id="verification">
-              12. Onchain Verification
+              10. Onchain Verification
             </SectionHeading>
 
             <SubsectionHeading id="library-interface">
@@ -1872,7 +1606,7 @@ export default function SpecPage() {
               <pre style={{ margin: 0, color: 'rgba(255,255,255,0.9)', lineHeight: '1.6' }}>{`library FixMerkleVerifier {
   function verify(
       bytes32 root,
-      bytes calldata pathCBOR,
+      bytes calldata pathSBE,
       bytes calldata value,
       bytes32[] calldata proof,
       bool[] calldata directions
@@ -1886,7 +1620,7 @@ export default function SpecPage() {
             <ol style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', paddingLeft: 'clamp(1rem, 3vw, 1.5rem)', fontSize: 'clamp(0.9rem, 2vw, 1rem)' }}>
               <li style={{ marginBottom: '0.75rem' }}>
                 <code style={{ background: 'rgba(255,255,255,0.1)', padding: '0.2rem 0.5rem', borderRadius: '3px', fontSize: '0.9em' }}>
-                  bytes32 leaf = keccak256(abi.encodePacked(pathCBOR, value))
+                  bytes32 leaf = keccak256(abi.encodePacked(pathSBE, value))
                 </code>
               </li>
               <li style={{ marginBottom: '0.75rem' }}>
@@ -1897,15 +1631,15 @@ export default function SpecPage() {
             </ol>
           </section>
 
-          {/* Section 11: Onchain Retrieval */}
+          {/* Section 11: Offchain Retrieval */}
           <section style={{ marginBottom: 'clamp(2rem, 5vw, 4rem)' }}>
             <SectionHeading id="retrieval">
-              13. Offchain Retrieval
+              11. Offchain Retrieval
             </SectionHeading>
 
             <p style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', marginBottom: 'clamp(1.5rem, 3vw, 2rem)', fontSize: 'clamp(0.9rem, 2vw, 1rem)' }}>
-              Once a FIX descriptor is committed onchain, participants MUST be able to retrieve
-              the canonical CBOR representation and reconstruct the original descriptor tree. This
+              Once a FIX descriptor is committed onchain, participants can retrieve
+              the SBE-encoded data and reconstruct the original descriptor. This
               section specifies the retrieval interface and decoding requirements.
             </p>
 
@@ -1913,8 +1647,8 @@ export default function SpecPage() {
               11.1 Retrieval Interface
             </SubsectionHeading>
             <p style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', marginBottom: '1rem' }}>
-              Token contracts that store FIX descriptors SHOULD expose a function to retrieve
-              the CBOR-encoded canonical tree. The retrieval function MUST support chunked
+              Token contracts that store FIX descriptors can expose a function to retrieve
+              the SBE-encoded data. The retrieval function can support chunked
               access to accommodate large descriptors.
             </p>
             <div style={{
@@ -1927,44 +1661,44 @@ export default function SpecPage() {
               marginBottom: '2rem',
               overflowX: 'auto'
             }}>
-              <pre style={{ margin: 0, color: 'rgba(255,255,255,0.9)', lineHeight: '1.6' }}>{`function getFixCBORChunk(uint256 start, uint256 size)
+              <pre style={{ margin: 0, color: 'rgba(255,255,255,0.9)', lineHeight: '1.6' }}>{`function getFixSBEChunk(uint256 start, uint256 size)
     external view returns (bytes memory);`}</pre>
             </div>
 
             <ul style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', marginBottom: 'clamp(1.5rem, 3vw, 2rem)', paddingLeft: 'clamp(1rem, 3vw, 1.5rem)', fontSize: 'clamp(0.9rem, 2vw, 1rem)' }}>
               <li style={{ marginBottom: '0.75rem' }}>
                 <strong>Chunked Access:</strong> The function accepts <code style={{ background: 'rgba(255,255,255,0.1)', padding: '0.2rem 0.5rem', borderRadius: '3px', fontSize: '0.9em' }}>start</code> offset and <code style={{ background: 'rgba(255,255,255,0.1)', padding: '0.2rem 0.5rem', borderRadius: '3px', fontSize: '0.9em' }}>size</code> parameters,
-                allowing callers to retrieve large CBOR in multiple transactions to manage gas costs.
+                allowing callers to retrieve large SBE data in multiple transactions to manage gas costs.
               </li>
               <li style={{ marginBottom: '0.75rem' }}>
-                <strong>Bounds Handling:</strong> Implementations MUST clamp the requested range to available data
-                and return an empty bytes array if the start offset exceeds the CBOR length.
+                <strong>Bounds Handling:</strong> Implementations should clamp the requested range to available data
+                and return an empty bytes array if the start offset exceeds the data length.
               </li>
               <li>
-                <strong>SSTORE2 Access:</strong> Since CBOR is stored via SSTORE2 (as contract bytecode),
-                retrieval functions SHOULD use efficient bytecode access patterns to minimize gas consumption.
+                <strong>SSTORE2 Access:</strong> Since SBE data is stored via SSTORE2 (as contract bytecode),
+                retrieval functions should use efficient bytecode access patterns to minimize gas consumption.
               </li>
             </ul>
 
-            <SubsectionHeading id="cbor-decoding">
-              11.2 CBOR Decoding Requirements
+            <SubsectionHeading id="sbe-decoding">
+              11.2 SBE Decoding Requirements
             </SubsectionHeading>
             <p style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', marginBottom: '1rem' }}>
-              Retrieved CBOR bytes MUST be decoded according to the canonical structure defined
-              in Section 6. Decoders MUST reconstruct the descriptor tree with the following guarantees:
+              Retrieved SBE bytes are decoded using the SBE schema and generated codec classes.
+              The SBE Lambda encoder service handles encoding and decoding operations:
             </p>
             <ul style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', marginBottom: 'clamp(1.5rem, 3vw, 2rem)', paddingLeft: 'clamp(1rem, 3vw, 1.5rem)', fontSize: 'clamp(0.9rem, 2vw, 1rem)' }}>
               <li style={{ marginBottom: '0.75rem' }}>
-                CBOR maps SHALL be converted to descriptor tree objects with numeric tag keys
+                SBE message header identifies the schema template and version
               </li>
               <li style={{ marginBottom: '0.75rem' }}>
-                Scalar string values SHALL remain as UTF-8 text
+                Field IDs in the SBE schema directly correspond to FIX tag numbers
               </li>
               <li style={{ marginBottom: '0.75rem' }}>
-                CBOR arrays SHALL be decoded as group entries, each containing a map of fields
+                Decoded messages reconstruct the original FIX field values
               </li>
               <li>
-                Decoders MUST preserve the canonical key ordering present in the CBOR encoding
+                Decoders use runtime-generated codec classes for efficient decoding
               </li>
             </ul>
 
@@ -1972,8 +1706,8 @@ export default function SpecPage() {
               11.3 FIX Message Reconstruction
             </SubsectionHeading>
             <p style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', marginBottom: '1rem' }}>
-              After decoding CBOR to the descriptor tree, applications MAY reconstruct a FIX message
-              representation. The reconstruction process SHALL:
+              After decoding SBE data, applications can reconstruct a FIX message
+              representation. The reconstruction process:
             </p>
             <ol style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', marginBottom: '2rem', paddingLeft: '1.5rem' }}>
               <li style={{ marginBottom: '0.75rem' }}>
@@ -2002,8 +1736,8 @@ export default function SpecPage() {
               </p>
               <p style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.7', margin: 0 }}>
                 Session fields (tags 8, 9, 10, 34, 35, 49, 52, 56) are excluded from the canonical
-                tree and CBOR encoding. Reconstructed messages MAY include synthetic session headers
-                for compatibility with FIX parsers, but these MUST NOT affect the Merkle root or verification.
+                tree and SBE encoding. Reconstructed messages may include synthetic session headers
+                for compatibility with FIX parsers, but these should not affect the Merkle root or verification.
               </p>
             </div>
 
@@ -2023,7 +1757,7 @@ export default function SpecPage() {
                 to make decisions (e.g., risk assessment based on maturity date)
               </li>
               <li style={{ marginBottom: '0.75rem' }}>
-                <strong>Verification:</strong> Off-chain systems can retrieve CBOR, enumerate leaves,
+                <strong>Verification:</strong> Off-chain systems can retrieve SBE data, enumerate leaves,
                 and generate Merkle proofs for specific fields to be verified onchain
               </li>
               <li>
@@ -2124,12 +1858,14 @@ export default function SpecPage() {
                 One-Time Deployment Costs
               </div>
               <div style={{ fontFamily: 'ui-monospace, monospace', fontSize: '0.875rem', color: 'rgba(255,255,255,0.7)', lineHeight: '1.8' }}>
-                <div style={{ marginBottom: '0.5rem' }}>FixDictionary (23KB): <span style={{ color: 'rgba(251, 191, 36, 0.9)' }}>~8,700,000 gas</span></div>
-                <div style={{ marginBottom: '0.5rem' }}>FixDictionaryFactory: <span style={{ color: 'rgba(251, 191, 36, 0.9)' }}>~620,000 gas</span></div>
+                <div style={{ marginBottom: '0.5rem' }}>ERC20 Asset token deployment: <span style={{ color: 'rgba(251, 191, 36, 0.9)' }}>~1,324,447 gas</span></div>
+                <div style={{ marginBottom: '0.5rem' }}>ERC721 Asset token deployment: <span style={{ color: 'rgba(251, 191, 36, 0.9)' }}>~1,649,225 gas</span></div>
+                <div style={{ marginBottom: '0.5rem' }}>Factory deployment: <span style={{ color: 'rgba(251, 191, 36, 0.9)' }}>~2,142,209 gas</span></div>
+                <div style={{ marginBottom: '0.5rem' }}>SBE data storage (SSTORE2): <span style={{ color: 'rgba(251, 191, 36, 0.9)' }}>~200 gas/byte + ~32k overhead</span></div>
                 <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
-                  Cost on L1 (30 gwei): <span style={{ color: 'rgba(239, 68, 68, 0.9)' }}>~$650 USD</span>
+                  Note: Actual costs vary by descriptor size
                 </div>
-                <div>Cost on L2 (0.001 gwei): <span style={{ color: 'rgba(34, 197, 94, 0.9)' }}>~$0.02 USD</span></div>
+                <div>L2 deployment can reduce costs by 10-100x</div>
               </div>
             </div>
 
@@ -2185,7 +1921,7 @@ export default function SpecPage() {
                     fontSize: '0.75rem',
                     fontWeight: 600
                   }}>low</span>
-                  <span>Simple descriptor (5 fields): ~180,000 gas</span>
+                  <span>Verify field (depth 2-3): ~12,000-14,000 gas</span>
                 </div>
                 <div style={{ marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                   <span style={{
@@ -2198,7 +1934,7 @@ export default function SpecPage() {
                     fontSize: '0.75rem',
                     fontWeight: 600
                   }}>medium</span>
-                  <span>Medium descriptor (12 fields): ~250,000 gas</span>
+                  <span>Verify field (depth 4-6): ~15,000-20,000 gas</span>
                 </div>
                 <div style={{ marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                   <span style={{
@@ -2211,10 +1947,10 @@ export default function SpecPage() {
                     fontSize: '0.75rem',
                     fontWeight: 600
                   }}>high</span>
-                  <span>Complex descriptor (25+ fields): ~500,000 gas</span>
+                  <span>Verify field (depth 8-10): ~23,000-27,000 gas</span>
                 </div>
                 <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid rgba(59, 130, 246, 0.1)', fontSize: '0.8rem', color: 'rgba(255,255,255,0.5)' }}>
-                  Per-tag lookup cost: ~4,400 gas (O(1) constant time)
+                  Measured: depth 0=9,706 gas, depth 2=11,975, depth 4=15,372, depth 6=19,980, depth 8=23,523, depth 10=26,849. Cost scales at ~1,700 gas per proof step.
                 </div>
               </div>
             </div>
@@ -2234,11 +1970,12 @@ export default function SpecPage() {
               marginBottom: '1rem'
             }}>
               <div style={{ fontFamily: 'ui-monospace, monospace', fontSize: '0.9rem', marginBottom: '0.75rem', color: 'rgba(255,255,255,0.9)' }}>
-                CBOR Storage (SSTORE2)
+                SBE Storage (SSTORE2)
               </div>
               <ul style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', margin: 0, paddingLeft: '1.5rem', fontSize: '0.9rem' }}>
                 <li style={{ marginBottom: '0.5rem' }}>~200 gas per byte + ~32k deployment overhead</li>
-                <li style={{ marginBottom: '0.5rem' }}><strong>Example:</strong> 243-byte descriptor ≈ 80k gas</li>
+                <li style={{ marginBottom: '0.5rem' }}><strong>Measured:</strong> 57,859-59,131 gas for data contract deployment (via DataContractFactory)</li>
+                <li style={{ marginBottom: '0.5rem' }}><strong>Example:</strong> 243-byte descriptor ≈ 80k gas total</li>
                 <li>3-4x cheaper than traditional storage slots</li>
               </ul>
             </div>
@@ -2251,12 +1988,13 @@ export default function SpecPage() {
               marginBottom: '2rem'
             }}>
               <div style={{ fontFamily: 'ui-monospace, monospace', fontSize: '0.9rem', marginBottom: '0.75rem', color: 'rgba(255,255,255,0.9)' }}>
-                Descriptor Struct Storage + Verification
+                Descriptor Operations
               </div>
               <ul style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', margin: 0, paddingLeft: '1.5rem', fontSize: '0.9rem' }}>
-                <li style={{ marginBottom: '0.5rem' }}>FixDescriptor struct: ~60-80k gas (3-4 slots)</li>
-                <li style={{ marginBottom: '0.5rem' }}><strong>Total deployment:</strong> ~140-160k gas (typical)</li>
-                <li><strong>verifyField() call:</strong> ~30-40k gas (depth 4-6)</li>
+                <li style={{ marginBottom: '0.5rem' }}><strong>setFixDescriptor():</strong> 24,844-141,874 gas (varies by initialization state)</li>
+                <li style={{ marginBottom: '0.5rem' }}><strong>getFixDescriptor():</strong> ~14,825-14,896 gas (view function)</li>
+                <li style={{ marginBottom: '0.5rem' }}><strong>getFixRoot():</strong> ~2,671-4,719 gas (view function)</li>
+                <li><strong>verifyFieldProof():</strong> ~7,259 gas (single leaf tree, varies with proof depth)</li>
               </ul>
             </div>
           </section>
@@ -2268,20 +2006,20 @@ export default function SpecPage() {
             </SectionHeading>
 
             <p style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', marginBottom: '1.5rem' }}>
-              Given a FIX descriptor message, follow this implementation flow:
+              Given a FIX descriptor message and Orchestra XML schema, follow this implementation flow:
             </p>
 
             <div style={{ display: 'grid', gap: 'clamp(0.75rem, 2vw, 1rem)', marginBottom: 'clamp(1.5rem, 3vw, 2rem)' }}>
               {[
-                { num: 1, title: 'Parse FIX', desc: 'Extract only business fields (exclude session tags - see Section 5)' },
+                { num: 1, title: 'Load Orchestra Schema & Parse FIX', desc: 'Load the Orchestra XML schema defining field types and structure. Extract only business fields from the FIX message (exclude session tags - see Section 5)' },
                 { num: 2, title: 'Build Canonical Tree', desc: 'Map scalars directly; create array of entry maps for groups (see Section 6)' },
-                { num: 3, title: 'Serialize to CBOR', desc: 'Use canonical form - integer keys sorted, definite lengths (see Section 7)' },
-                { num: 4, title: 'Enumerate Leaves', desc: 'Compute pathCBOR for each present field; collect (pathCBOR, valueBytes) pairs (see Section 8.1-8.3)' },
-                { num: 5, title: 'Compute Merkle Root', desc: 'Sort leaves by pathCBOR; build binary Merkle tree using keccak256 (see Section 8.4)' },
-                { num: 6, title: 'Deploy CBOR', desc: 'Deploy as SSTORE2-style data contract; return fixCBORPtr and fixCBORLen (see Section 9.4)' },
-                { num: 7, title: 'Set Descriptor', desc: 'Store in the asset contract (not a registry): fixMajor, fixMinor, dictHash, fixRoot, fixCBORPtr, fixCBORLen, fixURI (see Section 9.2)' },
+                { num: 3, title: 'Serialize to SBE', desc: 'Convert Orchestra schema to SBE schema, then encode the FIX message using SBE encoding with schema-driven format (see Section 7)' },
+                { num: 4, title: 'Enumerate Leaves', desc: 'Compute pathSBE for each present field; collect (pathSBE, valueBytes) pairs (see Section 8.1-8.3)' },
+                { num: 5, title: 'Compute Merkle Root', desc: 'Sort leaves by pathSBE; build binary Merkle tree using keccak256 (see Section 8.4)' },
+                { num: 6, title: 'Deploy SBE', desc: 'Deploy as SSTORE2-style data contract; return fixSBEPtr and fixSBELen (see Section 9.4)' },
+                { num: 7, title: 'Set Descriptor', desc: 'Store in the asset contract (not a registry): fixMajor, fixMinor, dictHash, fixRoot, fixSBEPtr, fixSBELen, schemaURI (see Section 9.2)' },
                 { num: 8, title: 'Emit Event', desc: 'Emit FixDescriptorSet event for indexing (see Section 9.5)' },
-                { num: 9, title: 'Produce Utilities', desc: 'Build proof generator and reader tools for fetching CBOR and generating proofs off-chain' }
+                { num: 9, title: 'Produce Utilities', desc: 'Build proof generator and reader tools for fetching SBE data and generating proofs off-chain' }
               ].map((step) => (
                 <div key={step.num} style={{ 
                   padding: 'clamp(1rem, 3vw, 1.5rem)',

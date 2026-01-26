@@ -41,10 +41,13 @@ export function getEtherscanApiUrl(chainId: number): string {
 
 /**
  * Submit a contract for verification on Etherscan
+ * Includes retry logic for "unable to locate contract code" errors
  */
 export async function verifyContract(
   params: VerifyContractParams,
-  apiKey: string
+  apiKey: string,
+  maxRetries: number = 5,
+  retryDelayMs: number = 5000
 ): Promise<VerificationResponse> {
   const apiUrl = getEtherscanApiUrl(params.chainId);
 
@@ -74,20 +77,56 @@ export async function verifyContract(
     formData.append('viaIR', '1');
   }
 
-  const response = await fetch(apiUrl, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-    },
-    body: formData.toString(),
-  });
+  // Retry logic for "unable to locate contract code" errors
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: formData.toString(),
+      });
 
-  if (!response.ok) {
-    throw new Error(`Etherscan API request failed: ${response.statusText}`);
+      if (!response.ok) {
+        throw new Error(`Etherscan API request failed: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      
+      // Check if we got the "unable to locate contract code" error
+      if (data.status === '0' && 
+          data.result && 
+          typeof data.result === 'string' &&
+          data.result.toLowerCase().includes('unable to locate contract code')) {
+        
+        // If this is not the last attempt, wait and retry
+        if (attempt < maxRetries - 1) {
+          console.log(`Contract code not indexed yet (attempt ${attempt + 1}/${maxRetries}), retrying in ${retryDelayMs}ms...`);
+          await new Promise((resolve) => setTimeout(resolve, retryDelayMs));
+          continue;
+        }
+        
+        // Last attempt failed, return the error
+        return data as VerificationResponse;
+      }
+      
+      // Success or other error - return immediately
+      return data as VerificationResponse;
+      
+    } catch (error) {
+      // Network or other error - if not last attempt, retry
+      if (attempt < maxRetries - 1) {
+        console.log(`Verification request failed (attempt ${attempt + 1}/${maxRetries}), retrying...`);
+        await new Promise((resolve) => setTimeout(resolve, retryDelayMs));
+        continue;
+      }
+      throw error;
+    }
   }
 
-  const data = await response.json();
-  return data as VerificationResponse;
+  // Should never reach here, but TypeScript needs it
+  throw new Error('Verification failed after all retries');
 }
 
 /**
@@ -125,28 +164,46 @@ export async function pollVerificationStatus(
   guid: string,
   chainId: number,
   apiKey: string,
-  maxAttempts: number = 10,
-  delayMs: number = 3000
+  maxAttempts: number = 15,
+  delayMs: number = 5000
 ): Promise<VerificationStatusResponse> {
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    console.log(`Checking verification status (attempt ${attempt + 1}/${maxAttempts})...`);
+    
     const status = await checkVerificationStatus(guid, chainId, apiKey);
+    
+    console.log(`Status response:`, status);
 
     // Check if verification is complete (success or failure)
     if (status.status === '1') {
       // Success
+      console.log('✅ Verification successful!');
       return status;
     } else if (status.status === '0' && status.result !== 'Pending in queue') {
-      // Failed
+      // Check if already verified - treat as success
+      if (status.result && typeof status.result === 'string' && 
+          status.result.toLowerCase().includes('already verified')) {
+        console.log('✅ Contract already verified!');
+        return {
+          status: '1',
+          message: 'OK',
+          result: 'Contract is already verified'
+        };
+      }
+      // Failed (but not just pending)
+      console.log('❌ Verification failed:', status.result);
       return status;
     }
 
     // Still pending, wait before next attempt
     if (attempt < maxAttempts - 1) {
+      console.log(`Still pending, waiting ${delayMs}ms before next check...`);
       await new Promise((resolve) => setTimeout(resolve, delayMs));
     }
   }
 
   // Timeout
+  console.log('⏱️ Verification polling timeout');
   return {
     status: '0',
     message: 'NOTOK',
