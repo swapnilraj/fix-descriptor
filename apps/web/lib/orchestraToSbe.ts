@@ -13,6 +13,24 @@ export interface OrchestraField {
   description?: string;
 }
 
+type FieldNode = {
+  kind: 'field';
+  id: string;
+  name: string;
+  type: string;
+  required: boolean;
+};
+
+type GroupNode = {
+  kind: 'group';
+  id: string;
+  name: string;
+  required: boolean;
+  children: SchemaNode[];
+};
+
+type SchemaNode = FieldNode | GroupNode;
+
 /**
  * Generate a full SBE schema with ALL message types from Orchestra
  */
@@ -23,7 +41,7 @@ export function orchestraToSbeFullSchema(orchestraXml: string): string {
     const orchestraDoc = parser.parseFromString(orchestraXml, 'text/xml');
     
     // Check for parsing errors
-    const parserError = orchestraDoc.querySelector('parsererror');
+    const parserError = findFirstByLocalName(orchestraDoc, 'parsererror');
     if (parserError) {
       throw new Error('Invalid XML: ' + parserError.textContent);
     }
@@ -57,14 +75,13 @@ export function orchestraToSbeFullSchema(orchestraXml: string): string {
     }
     
     // Process each message
-    const messages: Array<{ name: string; id: string; fields: OrchestraField[] }> = [];
+    const messages: Array<{ name: string; id: string; nodes: SchemaNode[] }> = [];
     
     for (const { element, name, id } of messageElements) {
-      const fieldIds = extractFieldIdsFromMessage(element, components, groups);
-      const fields = buildFieldsFromIds(fieldIds, fieldDictionary);
+      const nodes = extractNodesFromMessage(element, components, groups, fieldDictionary);
       
-      if (fields.length > 0) {
-        messages.push({ name, id, fields });
+      if (nodes.length > 0) {
+        messages.push({ name, id, nodes });
       }
     }
     
@@ -88,7 +105,7 @@ export function orchestraToSbe(orchestraXml: string, messageType?: string): stri
     const orchestraDoc = parser.parseFromString(orchestraXml, 'text/xml');
     
     // Check for parsing errors
-    const parserError = orchestraDoc.querySelector('parsererror');
+    const parserError = findFirstByLocalName(orchestraDoc, 'parsererror');
     if (parserError) {
       throw new Error('Invalid XML: ' + parserError.textContent);
     }
@@ -127,21 +144,16 @@ export function orchestraToSbe(orchestraXml: string, messageType?: string): stri
     console.log(`Found message definition for ${messageType} (name: ${messageName}, id: ${messageId})`);
     
     // Extract field IDs from message structure
-    const fieldIds = extractFieldIdsFromMessage(messageElement, components, groups);
+    const nodes = extractNodesFromMessage(messageElement, components, groups, fieldDictionary);
     
-    console.log(`Extracted ${fieldIds.size} field IDs from ${messageType} message definition`);
+    console.log(`Extracted ${nodes.length} nodes from ${messageType} message definition`);
     
-    // Build fields from IDs
-    const fields = buildFieldsFromIds(fieldIds, fieldDictionary);
-    
-    console.log(`Generated SBE schema with ${fields.length} fields`);
-
-    if (fields.length === 0) {
+    if (nodes.length === 0) {
       throw new Error('No valid fields found in Orchestra file');
     }
 
     // Generate SBE schema with the actual message name and ID from Orchestra
-    return generateSbeSchema(messageName, messageId, fields);
+    return generateSbeSchema(messageName, messageId, nodes);
   } catch (error) {
     if (error instanceof Error) {
       throw new Error(`Orchestra to SBE conversion failed: ${error.message}`);
@@ -183,10 +195,10 @@ function buildFieldDictionary(orchestraDoc: Document): Map<string, { name: strin
   }
   
   if (fieldsContainer) {
-    console.log(`Found fields container with ${fieldsContainer.children.length} children`);
+    const children = getChildElements(fieldsContainer);
+    console.log(`Found fields container with ${children.length} children`);
     
     // Only get field elements that are direct children of the fields container
-    const children = fieldsContainer.children;
     for (let i = 0; i < children.length; i++) {
       const child = children[i];
       const localName = child.localName || child.tagName.split(':').pop();
@@ -260,131 +272,93 @@ function extractComponentsAndGroups(orchestraDoc: Document): {
 }
 
 /**
- * Extract field IDs from message structure with presence information
+ * Extract message nodes (fields + groups) from message structure with presence information
  */
-function extractFieldIdsFromMessage(
+function extractNodesFromMessage(
   messageElement: Element,
   components: Element[],
-  groups: Element[]
-): Map<string, { required: boolean }> {
-  const fieldIds = new Map<string, { required: boolean }>();
-  
-  const structure = messageElement.querySelector('structure') || 
-                   messageElement.querySelector('fixr\\:structure') ||
-                   Array.from(messageElement.children).find(el => 
-                     (el.localName || el.tagName.split(':').pop()) === 'structure'
-                   );
-  
-  if (structure) {
-    // Helper function to recursively extract fields
-    // inheritedPresence: the presence from the parent componentRef/groupRef
-    // According to Orchestra spec, when presence is not specified, it defaults to "optional"
-    const extractFields = (element: Element, depth: number = 0, inheritedPresence: string = 'optional'): void => {
-      for (let i = 0; i < element.children.length; i++) {
-        const child = element.children[i];
-        const localName = (child.localName || child.tagName.split(':').pop() || '').toLowerCase();
-        
-        if (localName === 'fieldref') {
-          const fieldId = child.getAttribute('id');
-          if (fieldId) {
-            // Check presence attribute - defaults to "optional" per Orchestra spec if not specified
-            const fieldPresence = child.getAttribute('presence') || inheritedPresence;
-            const isRequired = fieldPresence === 'required';
-            fieldIds.set(fieldId, { required: isRequired });
-          }
-        } else if (localName === 'componentref') {
-          const compId = child.getAttribute('id');
-          if (compId) {
-            const comp = components.find(c => c.getAttribute('id') === compId);
-            if (comp) {
-              // Get presence from componentRef - defaults to "optional" if not specified
-              const compPresence = child.getAttribute('presence') || 'optional';
-              extractFields(comp, depth + 1, compPresence);
-            }
-          }
-        } else if (localName === 'groupref') {
-          const groupId = child.getAttribute('id');
-          if (groupId) {
-            const group = groups.find(g => g.getAttribute('id') === groupId);
-            if (group) {
-              // Get presence from groupRef - defaults to "optional" if not specified
-              const groupPresence = child.getAttribute('presence') || 'optional';
-              extractFields(group, depth + 1, groupPresence);
-            }
-          }
-        }
-      }
-    };
-    
-    extractFields(structure, 0);
-  }
-  
-  return fieldIds;
-}
-
-/**
- * Build fields array from field IDs and dictionary
- */
-function buildFieldsFromIds(
-  fieldIds: Map<string, { required: boolean }>,
+  groups: Element[],
   fieldDictionary: Map<string, { name: string; type: string }>
-): OrchestraField[] {
-  const messageFields = new Map<string, OrchestraField>();
-  
-  // First pass: collect all data fields to identify length fields to exclude
-  const dataFieldNames = new Set<string>();
-  for (const [fieldId, _] of fieldIds) {
-    if (fieldDictionary.has(fieldId)) {
-      const fieldDef = fieldDictionary.get(fieldId)!;
-      const sbeType = mapOrchestraTypeToSbe(fieldDef.type);
-      if (sbeType === 'varStringEncoding' || sbeType === 'varDataEncoding') {
-        dataFieldNames.add(fieldDef.name);
-      }
-    }
+): SchemaNode[] {
+  const structure = findFirstByLocalName(messageElement, 'structure');
+  if (!structure) {
+    return [];
   }
-  
-  // Second pass: add fields, excluding length fields that have corresponding data fields
-  const lengthFieldPattern = /^(.+)(Len|Length)$/i;
-  
-  for (const [fieldId, fieldPresence] of fieldIds) {
-    if (fieldDictionary.has(fieldId)) {
-      const fieldDef = fieldDictionary.get(fieldId)!;
-      const fieldName = fieldDef.name;
-      
-      // Check if this is a length field
-      const lengthMatch = fieldName.match(lengthFieldPattern);
-      if (lengthMatch) {
-        const baseName = lengthMatch[1];
-        // Skip if corresponding data field exists
-        if (dataFieldNames.has(baseName)) {
+
+  const extractNodes = (element: Element, inheritedPresence: string = 'optional'): SchemaNode[] => {
+    const nodes: SchemaNode[] = [];
+
+    const children = getChildElements(element);
+    for (let i = 0; i < children.length; i++) {
+      const child = children[i];
+      const localName = (child.localName || child.tagName.split(':').pop() || '').toLowerCase();
+
+      if (localName === 'numingroup') {
+        continue;
+      }
+
+      if (localName === 'fieldref') {
+        const fieldId = child.getAttribute('id');
+        if (!fieldId || !fieldDictionary.has(fieldId)) {
           continue;
         }
-        // Also check for "Encoded" prefix pattern (e.g., EncodedIssuerLen -> EncodedIssuer)
-        if (baseName.startsWith('Encoded') && dataFieldNames.has(baseName)) {
+        const fieldPresence = child.getAttribute('presence') || inheritedPresence;
+        const isRequired = fieldPresence === 'required';
+        const fieldDef = fieldDictionary.get(fieldId)!;
+        const mappedType = mapOrchestraTypeToSbe(fieldDef.type);
+        const sanitizedName = sanitizeFieldName(fieldDef.name);
+
+        nodes.push({
+          kind: 'field',
+          id: fieldId,
+          name: sanitizedName,
+          type: mappedType,
+          required: isRequired,
+        });
+        continue;
+      }
+
+      if (localName === 'componentref') {
+        const compId = child.getAttribute('id');
+        if (!compId) {
           continue;
         }
+        const comp = components.find(c => c.getAttribute('id') === compId);
+        if (comp) {
+          const compPresence = child.getAttribute('presence') || 'optional';
+          nodes.push(...extractNodes(comp, compPresence));
+        }
+        continue;
       }
-      
-      // Sanitize field name to avoid Java reserved keywords
-      let sanitizedName = fieldDef.name;
-      const lowerName = sanitizedName.toLowerCase();
-      // List of Java keywords that would cause compilation errors
-      const javaKeywords = ['yield', 'class', 'interface', 'return', 'void', 'new', 'this', 'super'];
-      if (javaKeywords.includes(lowerName)) {
-        sanitizedName = sanitizedName + 'Value';
+
+      if (localName === 'groupref') {
+        const groupId = child.getAttribute('id');
+        if (!groupId) {
+          continue;
+        }
+        const group = groups.find(g => g.getAttribute('id') === groupId);
+        if (!group) {
+          continue;
+        }
+        const groupPresence = child.getAttribute('presence') || 'optional';
+        const groupName = group.getAttribute('name') || `Group${groupId}`;
+        const numInGroup = findNumInGroupId(group);
+        const groupChildren = extractNodes(group, groupPresence);
+        nodes.push({
+          kind: 'group',
+          id: numInGroup ?? groupId,
+          name: groupName,
+          required: groupPresence === 'required',
+          children: groupChildren,
+        });
+        continue;
       }
-      
-      messageFields.set(fieldId, {
-        id: fieldId,
-        name: sanitizedName,
-        type: mapOrchestraTypeToSbe(fieldDef.type),
-        required: fieldPresence.required,
-        description: undefined
-      });
     }
-  }
-  
-  return Array.from(messageFields.values());
+
+    return nodes;
+  };
+
+  return extractNodes(structure, 'optional');
 }
 
 /**
@@ -481,26 +455,11 @@ function getNullValue(sbeType: string): string {
  * Generate complete SBE schema XML with all messages
  */
 function generateFullSbeSchema(
-  messages: Array<{ name: string; id: string; fields: OrchestraField[] }>
+  messages: Array<{ name: string; id: string; nodes: SchemaNode[] }>
 ): string {
   // Generate message definitions
-  const messageDefinitions = messages.map(({ name, id, fields }) => {
-    const fixedFields: string[] = [];
-    const varFields: string[] = [];
-    
-    fields.forEach(field => {
-      const isVarLength = field.type === 'varStringEncoding' || field.type === 'varDataEncoding';
-      const presenceAttr = (!field.required && !isVarLength) ? ' presence="optional"' : '';
-      const nullValueAttr = (!field.required && !isVarLength) ? ` nullValue="${getNullValue(field.type)}"` : '';
-      
-      if (isVarLength) {
-        varFields.push(`    <data name="${field.name}" id="${field.id}" type="${field.type}"/>`);
-      } else {
-        fixedFields.push(`    <field name="${field.name}" id="${field.id}" type="${field.type}"${presenceAttr}${nullValueAttr}/>`);
-      }
-    });
-    
-    const sbeFields = [...fixedFields, ...varFields].join('\n');
+  const messageDefinitions = messages.map(({ name, id, nodes }) => {
+    const sbeFields = renderNodes(nodes, '    ');
     
     return `  <sbe:message name="${name}" id="${id}">
 ${sbeFields}
@@ -519,6 +478,10 @@ ${sbeFields}
       <type name="templateId" primitiveType="uint16"/>
       <type name="schemaId" primitiveType="uint16"/>
       <type name="version" primitiveType="uint16"/>
+    </composite>
+    <composite name="groupSizeEncoding">
+      <type name="blockLength" primitiveType="uint16"/>
+      <type name="numInGroup" primitiveType="uint16"/>
     </composite>
     <composite name="varStringEncoding">
       <type name="length" primitiveType="uint16"/>
@@ -539,27 +502,9 @@ ${messageDefinitions}
 function generateSbeSchema(
   messageName: string,
   messageId: string,
-  fields: OrchestraField[]
+  nodes: SchemaNode[]
 ): string {
-  // Separate fixed-size fields from variable-length data fields
-  // SBE requires all fields before all data elements
-  const fixedFields: string[] = [];
-  const varFields: string[] = [];
-  
-  fields.forEach(field => {
-    const isVarLength = field.type === 'varStringEncoding' || field.type === 'varDataEncoding';
-    const presenceAttr = (!field.required && !isVarLength) ? ' presence="optional"' : '';
-    const nullValueAttr = (!field.required && !isVarLength) ? ` nullValue="${getNullValue(field.type)}"` : '';
-    
-    if (isVarLength) {
-      varFields.push(`    <data name="${field.name}" id="${field.id}" type="${field.type}"/>`);
-    } else {
-      fixedFields.push(`    <field name="${field.name}" id="${field.id}" type="${field.type}"${presenceAttr}${nullValueAttr}/>`);
-    }
-  });
-  
-  // Concatenate fixed fields first, then variable fields
-  const sbeFields = [...fixedFields, ...varFields].join('\n');
+  const sbeFields = renderNodes(nodes, '    ');
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <sbe:messageSchema xmlns:sbe="http://fixprotocol.io/2016/sbe" 
@@ -573,6 +518,10 @@ function generateSbeSchema(
       <type name="templateId" primitiveType="uint16"/>
       <type name="schemaId" primitiveType="uint16"/>
       <type name="version" primitiveType="uint16"/>
+    </composite>
+    <composite name="groupSizeEncoding">
+      <type name="blockLength" primitiveType="uint16"/>
+      <type name="numInGroup" primitiveType="uint16"/>
     </composite>
     <composite name="varStringEncoding">
       <type name="length" primitiveType="uint16"/>
@@ -589,6 +538,58 @@ ${sbeFields}
 </sbe:messageSchema>`;
 }
 
+function sanitizeFieldName(name: string): string {
+  let sanitizedName = name;
+  const lowerName = sanitizedName.toLowerCase();
+  const javaKeywords = ['yield', 'class', 'interface', 'return', 'void', 'new', 'this', 'super'];
+  if (javaKeywords.includes(lowerName)) {
+    sanitizedName = sanitizedName + 'Value';
+  }
+  return sanitizedName;
+}
+
+function findNumInGroupId(groupElement: Element): string | null {
+  const children = getChildElements(groupElement);
+  for (let i = 0; i < children.length; i++) {
+    const child = children[i];
+    const localName = (child.localName || child.tagName.split(':').pop() || '').toLowerCase();
+    if (localName === 'numingroup') {
+      return child.getAttribute('id');
+    }
+  }
+  return null;
+}
+
+function renderNodes(nodes: SchemaNode[], indent: string): string {
+  const fieldParts: string[] = [];
+  const groupParts: string[] = [];
+  const dataParts: string[] = [];
+
+  for (const node of nodes) {
+    if (node.kind === 'field') {
+      const isVarLength = node.type === 'varStringEncoding' || node.type === 'varDataEncoding';
+      const presenceAttr = (!node.required && !isVarLength) ? ' presence="optional"' : '';
+      const nullValueAttr = (!node.required && !isVarLength) ? ` nullValue="${getNullValue(node.type)}"` : '';
+      if (isVarLength) {
+        dataParts.push(`${indent}<data name="${node.name}" id="${node.id}" type="${node.type}"/>`);
+      } else {
+        fieldParts.push(
+          `${indent}<field name="${node.name}" id="${node.id}" type="${node.type}"${presenceAttr}${nullValueAttr}/>`,
+        );
+      }
+      continue;
+    }
+
+    const groupChildren = renderNodes(node.children, `${indent}  `);
+    const presenceAttr = node.required ? '' : ' presence="optional"';
+    groupParts.push(
+      `${indent}<group name="${node.name}" id="${node.id}" dimensionType="groupSizeEncoding"${presenceAttr}>\n${groupChildren}\n${indent}</group>`,
+    );
+  }
+
+  return [...fieldParts, ...groupParts, ...dataParts].join('\n');
+}
+
 /**
  * Extract message ID from SBE schema for a given message name
  */
@@ -597,7 +598,7 @@ export function extractMessageIdFromSbe(sbeSchema: string, messageName: string):
     const parser = new DOMParser();
     const doc = parser.parseFromString(sbeSchema, 'text/xml');
     
-    const parserError = doc.querySelector('parsererror');
+    const parserError = findFirstByLocalName(doc, 'parsererror');
     if (parserError) {
       return null;
     }
@@ -617,6 +618,32 @@ export function extractMessageIdFromSbe(sbeSchema: string, messageName: string):
     console.error('Failed to extract message ID:', error);
     return null;
   }
+}
+
+function findFirstByLocalName(root: Document | Element, target: string): Element | null {
+  const elements = (root as Document).getElementsByTagName
+    ? (root as Document).getElementsByTagName('*')
+    : (root as Element).getElementsByTagName('*');
+  for (let i = 0; i < elements.length; i++) {
+    const el = elements[i];
+    const localName = el.localName || el.tagName.split(':').pop();
+    if (localName === target) {
+      return el;
+    }
+  }
+  return null;
+}
+
+function getChildElements(element: Element): Element[] {
+  const children: Element[] = [];
+  const nodes = element.childNodes || [];
+  for (let i = 0; i < nodes.length; i++) {
+    const node = nodes[i] as Element;
+    if (node && node.nodeType === 1) {
+      children.push(node);
+    }
+  }
+  return children;
 }
 
 

@@ -1,4 +1,4 @@
-import { readdirSync, statSync } from "fs";
+import { readFileSync, readdirSync, statSync } from "fs";
 import { resolve } from "path";
 import Module from "module";
 
@@ -24,9 +24,10 @@ export async function encodeFromInput(args: Args): Promise<Uint8Array> {
         throw new Error("schema, fixMessage, and messageId are required.");
     }
 
-    log("start", { messageId: args.messageId, schemaBytes: args.schema.length });
-    const generatorResult = await runGenerator(args.schema);
-    const result = await encodeMessage(args.fixMessage, args.messageId, args.schema, generatorResult);
+    const schemaXml = resolveSchemaInput(args.schema);
+    log("start", { messageId: args.messageId, schemaBytes: schemaXml.length });
+    const generatorResult = await runGenerator(schemaXml);
+    const result = await encodeMessage(args.fixMessage, args.messageId, schemaXml, generatorResult);
     log("done", { encodedBytes: result.length });
     return result;
 }
@@ -62,39 +63,26 @@ export async function encodeMessage(
 
     encoder.wrapAndApplyHeader(buffer, 0, headerEncoder);
 
-    const fixFields = parseFixMessage(fixMessage);
+    const tokens = parseFixTokens(fixMessage);
+    const groupIds = collectGroupIds(message.nodes);
+    const scalarValues = buildScalarMap(tokens, groupIds);
 
-    // Encode fixed-length fields first, in schema order.
-    for (const field of message.orderedFields) {
-        if (field.kind !== "field") continue;
-        const raw = fixFields.get(field.id);
-        if (raw === undefined) continue;
-
-        const methodName = lowerFirst(field.name);
-        const setter = encoder[methodName] as ((value: unknown) => void) | undefined;
-        if (typeof setter !== "function") continue;
-
-        const coerced = coerceValue(raw, field, schema.typeByName);
-        setter.call(encoder, coerced);
-    }
-
-    // Encode variable-length fields in schema order, writing empty values when missing.
-    for (const field of message.orderedFields) {
-        if (field.kind !== "data") continue;
-        const raw = fixFields.get(field.id) ?? "";
-        const methodName = lowerFirst(field.name);
-        const setter = encoder[methodName] as ((value: unknown) => void) | undefined;
-        if (typeof setter === "function") {
-            setter.call(encoder, raw);
+    // Encode fields/groups in schema order.
+    for (const node of message.nodes) {
+        if (node.kind === "field") {
+            const raw = scalarValues.get(node.id);
+            if (raw === undefined) continue;
+            setFieldValue(encoder, node, raw, schema.typeByName);
             continue;
         }
-
-        const arraySetter = encoder[
-            `put${field.name}ToArray`
-        ] as ((src: Array<number>, srcOffset: number, length: number) => void) | undefined;
-        if (typeof arraySetter === "function") {
-            const bytes = new TextEncoder().encode(raw);
-            arraySetter.call(encoder, Array.from(bytes), 0, bytes.length);
+        if (node.kind === "data") {
+            const raw = scalarValues.get(node.id) ?? "";
+            setDataValue(encoder, node, raw);
+            continue;
+        }
+        if (node.kind === "group") {
+            const entries = parseGroupEntries(tokens, node);
+            encodeGroupEntries(encoder, node, entries, schema.typeByName);
         }
     }
 
@@ -102,17 +90,32 @@ export async function encodeMessage(
     return buffer.byteArray().slice(0, length);
 }
 
-type MessageField = {
+type MessageFieldNode = {
+    kind: "field";
     id: string;
     name: string;
     type: string;
-    kind: "field" | "data";
 };
+
+type MessageDataNode = {
+    kind: "data";
+    id: string;
+    name: string;
+    type: string;
+};
+
+type MessageGroupNode = {
+    kind: "group";
+    id: string;
+    name: string;
+    children: MessageNode[];
+};
+
+type MessageNode = MessageFieldNode | MessageDataNode | MessageGroupNode;
 
 type MessageDef = {
     name: string;
-    fieldsById: Map<string, MessageField>;
-    orderedFields: MessageField[];
+    nodes: MessageNode[];
 };
 
 type ParsedSchema = {
@@ -144,62 +147,19 @@ function parseSchema(schemaXml: string): ParsedSchema {
     }
 
     const messagesById = new Map<string, MessageDef>();
-    for (const message of toArray(schema.message)) {
-        const id = message?.id;
-        const name = message?.name;
-        if (!id || !name) continue;
-
-        const fieldsById = new Map<string, MessageField>();
-        const orderedFields: MessageField[] = [];
-        for (const field of toArray(message.field)) {
-            if (field?.id && field?.name && field?.type) {
-                const entry: MessageField = {
-                    id: String(field.id),
-                    name: String(field.name),
-                    type: String(field.type),
-                    kind: "field",
-                };
-                fieldsById.set(entry.id, entry);
-                orderedFields.push(entry);
-            }
-        }
-        for (const data of toArray(message.data)) {
-            if (data?.id && data?.name && data?.type) {
-                const entry: MessageField = {
-                    id: String(data.id),
-                    name: String(data.name),
-                    type: String(data.type),
-                    kind: "data",
-                };
-                fieldsById.set(entry.id, entry);
-                orderedFields.push(entry);
-            }
-        }
-
-        messagesById.set(String(id), { name: String(name), fieldsById, orderedFields });
-    }
-
-    applyPreserveOrder(schemaXml, messagesById);
-    return { messagesById, typeByName };
-}
-
-function toArray<T>(value: T | T[] | undefined): T[] {
-    if (!value) return [];
-    return Array.isArray(value) ? value : [value];
-}
-
-function applyPreserveOrder(schemaXml: string, messagesById: Map<string, MessageDef>): void {
-    const parser = new XMLParser({
+    const orderParser = new XMLParser({
         ignoreAttributes: false,
         attributeNamePrefix: "",
         removeNSPrefix: true,
         preserveOrder: true,
     });
-    const nodes = parser.parse(schemaXml) as Array<Record<string, unknown>>;
+    const nodes = orderParser.parse(schemaXml) as Array<Record<string, unknown>>;
     const schemaNode = nodes.find((node) => node.messageSchema) as
         | { messageSchema?: unknown }
         | undefined;
-    if (!schemaNode?.messageSchema) return;
+    if (!schemaNode?.messageSchema) {
+        return { messagesById, typeByName };
+    }
 
     const schemaChildren = Array.isArray(schemaNode.messageSchema)
         ? schemaNode.messageSchema
@@ -209,41 +169,34 @@ function applyPreserveOrder(schemaXml: string, messagesById: Map<string, Message
         if (!child.message) continue;
         const messageAttrs = (child[":@"] ?? {}) as Record<string, string>;
         const id = messageAttrs.id;
-        if (!id) continue;
-        const messageDef = messagesById.get(String(id));
-        if (!messageDef) continue;
+        const name = messageAttrs.name;
+        if (!id || !name) continue;
 
-        const orderedFields: MessageField[] = [];
-        const messageChildren = child.message as Array<Record<string, unknown>>;
-        for (const msgChild of messageChildren) {
-            if (!msgChild.field && !msgChild.data) continue;
-            const fieldAttrs = (msgChild[":@"] ?? {}) as Record<string, string>;
-            const fieldId = fieldAttrs.id;
-            if (!fieldId) continue;
-            const field = messageDef.fieldsById.get(String(fieldId));
-            if (field) {
-                orderedFields.push(field);
-            }
-        }
-
-        if (orderedFields.length > 0) {
-            messageDef.orderedFields = orderedFields;
-        }
+        const messageChildren = toChildArray(child.message);
+        const nodesForMessage = parseMessageNodes(messageChildren);
+        messagesById.set(String(id), { name: String(name), nodes: nodesForMessage });
     }
+
+    return { messagesById, typeByName };
 }
 
-function parseFixMessage(fixMessage: string): Map<string, string> {
+function toArray<T>(value: T | T[] | undefined): T[] {
+    if (!value) return [];
+    return Array.isArray(value) ? value : [value];
+}
+
+function parseFixTokens(fixMessage: string): Array<{ tag: string; value: string }> {
     const normalized = fixMessage.replace(/\u0001/g, "|");
-    const fields = new Map<string, string>();
+    const tokens: Array<{ tag: string; value: string }> = [];
     for (const part of normalized.split("|")) {
         if (!part) continue;
         const idx = part.indexOf("=");
         if (idx === -1) continue;
         const tag = part.slice(0, idx).trim();
         const value = part.slice(idx + 1).trim();
-        if (tag) fields.set(tag, value);
+        if (tag) tokens.push({ tag, value });
     }
-    return fields;
+    return tokens;
 }
 
 function lowerFirst(value: string): string {
@@ -251,16 +204,192 @@ function lowerFirst(value: string): string {
     return value[0].toLowerCase() + value.slice(1);
 }
 
+function toChildArray(value: unknown): Array<Record<string, unknown>> {
+    if (!value) return [];
+    if (Array.isArray(value)) return value as Array<Record<string, unknown>>;
+    if (typeof value === "object") return Object.values(value as object) as Array<Record<string, unknown>>;
+    return [];
+}
+
+function parseMessageNodes(nodes: Array<Record<string, unknown>>): MessageNode[] {
+    const result: MessageNode[] = [];
+    for (const node of nodes) {
+        if (node.field) {
+            const attrs = (node[":@"] ?? {}) as Record<string, string>;
+            if (attrs.id && attrs.name && attrs.type) {
+                result.push({ kind: "field", id: String(attrs.id), name: String(attrs.name), type: String(attrs.type) });
+            }
+            continue;
+        }
+        if (node.data) {
+            const attrs = (node[":@"] ?? {}) as Record<string, string>;
+            if (attrs.id && attrs.name && attrs.type) {
+                result.push({ kind: "data", id: String(attrs.id), name: String(attrs.name), type: String(attrs.type) });
+            }
+            continue;
+        }
+        if (node.group) {
+            const attrs = (node[":@"] ?? {}) as Record<string, string>;
+            if (!attrs.id || !attrs.name) continue;
+            const children = parseMessageNodes(toChildArray(node.group));
+            result.push({
+                kind: "group",
+                id: String(attrs.id),
+                name: String(attrs.name),
+                children,
+            });
+        }
+    }
+    return result;
+}
+
+function collectGroupIds(nodes: MessageNode[], into: Set<string> = new Set()): Set<string> {
+    for (const node of nodes) {
+        if (node.kind === "group") {
+            into.add(node.id);
+            collectGroupIds(node.children, into);
+        }
+    }
+    return into;
+}
+
+function buildScalarMap(tokens: Array<{ tag: string; value: string }>, groupIds: Set<string>): Map<string, string> {
+    const values = new Map<string, string>();
+    for (const token of tokens) {
+        if (groupIds.has(token.tag)) continue;
+        if (!values.has(token.tag)) {
+            values.set(token.tag, token.value);
+        }
+    }
+    return values;
+}
+
+function parseGroupEntries(
+    tokens: Array<{ tag: string; value: string }>,
+    group: MessageGroupNode,
+    startIndex: number = 0,
+): Array<Record<string, unknown>> {
+    const idx = findNextTokenIndex(tokens, group.id, startIndex);
+    if (idx === -1) return [];
+    const count = Number.parseInt(tokens[idx].value, 10);
+    if (!Number.isFinite(count) || count <= 0) return [];
+
+    const entries: Array<Record<string, unknown>> = [];
+    let cursor = idx + 1;
+    for (let i = 0; i < count; i++) {
+        const entry: Record<string, unknown> = {};
+        for (const child of group.children) {
+            if (child.kind === "group") {
+                const nested = parseGroupEntries(tokens, child, cursor);
+                entry[child.id] = nested;
+                const nextIdx = findNextTokenIndex(tokens, child.id, cursor);
+                if (nextIdx !== -1) {
+                    cursor = nextIdx + 1;
+                }
+                continue;
+            }
+            const nextIdx = findNextTokenIndex(tokens, child.id, cursor);
+            if (nextIdx === -1) continue;
+            entry[child.id] = tokens[nextIdx].value;
+            cursor = nextIdx + 1;
+        }
+        entries.push(entry);
+    }
+    return entries;
+}
+
+function encodeGroupEntries(
+    encoder: Record<string, unknown>,
+    group: MessageGroupNode,
+    entries: Array<Record<string, unknown>>,
+    typeByName: Map<string, string>,
+): void {
+    const countMethodName = `${lowerFirst(group.name)}Count`;
+    const countMethod = encoder[countMethodName] as ((count: number) => unknown) | undefined;
+    if (typeof countMethod !== "function") {
+        return;
+    }
+    const groupEncoder = countMethod.call(encoder, entries.length) as Record<string, unknown>;
+    if (!groupEncoder) return;
+
+    for (const entry of entries) {
+        if (typeof groupEncoder.next === "function") {
+            groupEncoder.next();
+        }
+        for (const child of group.children) {
+            if (child.kind === "group") {
+                const nestedEntries = entry[child.id] as Array<Record<string, unknown>> | undefined;
+                if (nestedEntries) {
+                    encodeGroupEntries(groupEncoder, child, nestedEntries, typeByName);
+                }
+                continue;
+            }
+            const raw = entry[child.id];
+            if (raw === undefined) continue;
+            if (child.kind === "field") {
+                setFieldValue(groupEncoder, child, String(raw), typeByName);
+            } else {
+                setDataValue(groupEncoder, child, String(raw));
+            }
+        }
+    }
+}
+
+function findNextTokenIndex(
+    tokens: Array<{ tag: string; value: string }>,
+    tag: string,
+    startIndex: number,
+): number {
+    for (let i = startIndex; i < tokens.length; i++) {
+        if (tokens[i].tag === tag) return i;
+    }
+    return -1;
+}
+
+function setFieldValue(
+    target: Record<string, unknown>,
+    field: MessageFieldNode,
+    raw: string,
+    typeByName: Map<string, string>,
+): void {
+    const methodName = lowerFirst(field.name);
+    const setter = target[methodName] as ((value: unknown) => void) | undefined;
+    if (typeof setter !== "function") return;
+    const coerced = coerceValue(raw, field.type, typeByName);
+    setter.call(target, coerced);
+}
+
+function setDataValue(target: Record<string, unknown>, field: MessageDataNode, raw: string): void {
+    const methodName = lowerFirst(field.name);
+    const setter = target[methodName] as ((value: unknown) => void) | undefined;
+    if (typeof setter === "function") {
+        setter.call(target, raw);
+        return;
+    }
+    const arraySetter = target[`put${field.name}ToArray`] as
+        | ((src: Array<number>, srcOffset: number, length: number) => void)
+        | undefined;
+    if (typeof arraySetter === "function") {
+        const bytes = new TextEncoder().encode(raw);
+        arraySetter.call(target, Array.from(bytes), 0, bytes.length);
+    }
+}
+
+function resolveSchemaInput(schema: string): string {
+    const trimmed = schema.trim();
+    if (trimmed.startsWith("<")) {
+        return schema;
+    }
+    const resolved = resolve(process.cwd(), schema);
+    return readFileSync(resolved, "utf8");
+}
+
 function coerceValue(
     rawValue: string,
-    field: MessageField,
+    fieldType: string,
     typeByName: Map<string, string>,
 ): string | number | bigint {
-    if (field.kind === "data") {
-        return rawValue;
-    }
-
-    const primitive = resolvePrimitiveType(field.type, typeByName);
+    const primitive = resolvePrimitiveType(fieldType, typeByName);
     if (!primitive) {
         return rawValue;
     }

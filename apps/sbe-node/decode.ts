@@ -1,4 +1,4 @@
-import { readdirSync, statSync } from "fs";
+import { readFileSync, readdirSync, statSync } from "fs";
 import { resolve } from "path";
 import Module from "module";
 
@@ -24,13 +24,14 @@ export async function decodeFromInput(args: DecodeArgs): Promise<Record<string, 
         throw new Error("schema and encodedMessage are required.");
     }
 
+    const schemaXml = resolveSchemaInput(args.schema);
     log("start", {
         messageId: args.messageId,
-        schemaBytes: args.schema.length,
+        schemaBytes: schemaXml.length,
         encodedLength: args.encodedMessage.length,
     });
-    const generatorResult = await runGenerator(args.schema);
-    const result = await decodeMessage(args.encodedMessage, args.schema, args.messageId, generatorResult);
+    const generatorResult = await runGenerator(schemaXml);
+    const result = await decodeMessage(args.encodedMessage, schemaXml, args.messageId, generatorResult);
     log("done", { decodedFields: Object.keys(result.decodedFields ?? {}).length });
     return result;
 }
@@ -100,7 +101,7 @@ export async function decodeMessage(
 
     log("header", { templateId, blockLength, version, messageName: message.name });
     log("encodedBytes", bytes.length);
-    log("fields", message.orderedFields.length);
+    log("nodes", message.nodes.length);
 
     const decoder = new MessageDecoder();
     if (typeof decoder.wrap === "function") {
@@ -115,22 +116,29 @@ export async function decodeMessage(
     const actingVersion = typeof decoder.actingVersion === "function" ? decoder.actingVersion() : version;
     let inVariableSection = false;
 
-    for (const field of message.orderedFields) {
-        if (field.kind === "data") {
+    for (const node of message.nodes) {
+        if (node.kind === "data") {
             inVariableSection = true;
         }
+        if (node.kind === "group") {
+            const entries = readGroup(decoder, node);
+            if (entries.length > 0) {
+                decodedFields[node.id] = entries;
+            }
+            continue;
+        }
 
-        const methodName = lowerFirst(field.name);
+        const methodName = lowerFirst(node.name);
         const sinceVersionMethod = decoder[`${methodName}SinceVersion`] as (() => number) | undefined;
         if (typeof sinceVersionMethod === "function" && actingVersion < sinceVersionMethod.call(decoder)) {
             continue;
         }
 
         try {
-            if (field.kind === "data") {
-                const value = readDataField(decoder, field.name);
+            if (node.kind === "data") {
+                const value = readDataField(decoder, node.name);
                 if (value !== undefined) {
-                    decodedFields[field.id] = value;
+                    decodedFields[node.id] = value;
                 }
             } else {
                 const getter = decoder[methodName] as (() => unknown) | undefined;
@@ -138,7 +146,7 @@ export async function decodeMessage(
                     continue;
                 }
                 const value = getter.call(decoder);
-                decodedFields[field.id] = value;
+                decodedFields[node.id] = value;
             }
         } catch (err) {
             if (
@@ -155,7 +163,7 @@ export async function decodeMessage(
     }
 
     const filteredFields = filterDecodedFields(decodedFields);
-    const fixMessage = buildFixMessage(message.orderedFields, filteredFields);
+    const fixMessage = buildFixMessage(message.nodes, filteredFields);
 
     return {
         messageId: effectiveMessageId,
@@ -179,17 +187,32 @@ function ensureTextDecoderEncoding(): void {
     };
 }
 
-type MessageField = {
+type MessageFieldNode = {
+    kind: "field";
     id: string;
     name: string;
     type: string;
-    kind: "field" | "data";
 };
+
+type MessageDataNode = {
+    kind: "data";
+    id: string;
+    name: string;
+    type: string;
+};
+
+type MessageGroupNode = {
+    kind: "group";
+    id: string;
+    name: string;
+    children: MessageNode[];
+};
+
+type MessageNode = MessageFieldNode | MessageDataNode | MessageGroupNode;
 
 type MessageDef = {
     name: string;
-    fieldsById: Map<string, MessageField>;
-    orderedFields: MessageField[];
+    nodes: MessageNode[];
 };
 
 type ParsedSchema = {
@@ -218,43 +241,18 @@ function parseSchema(schemaXml: string): ParsedSchema {
             const name = messageAttrs.name;
             if (!id || !name) continue;
 
-            const fieldsById = new Map<string, MessageField>();
-            const orderedFields: MessageField[] = [];
-            const messageChildren = child.message as Array<Record<string, unknown>>;
-
-            for (const msgChild of messageChildren) {
-                if (!msgChild.field && !msgChild.data) continue;
-                const kind = msgChild.field ? "field" : "data";
-                const fieldAttrs = (msgChild[":@"] ?? {}) as Record<string, string>;
-                if (!fieldAttrs.id || !fieldAttrs.name || !fieldAttrs.type) continue;
-                const entry: MessageField = {
-                    id: fieldAttrs.id,
-                    name: fieldAttrs.name,
-                    type: fieldAttrs.type,
-                    kind,
-                };
-                fieldsById.set(entry.id, entry);
-                orderedFields.push(entry);
-            }
-
-            messagesById.set(String(id), { name: String(name), fieldsById, orderedFields });
+            const messageChildren = toChildArray(child.message);
+            const nodesForMessage = parseMessageNodes(messageChildren);
+            messagesById.set(String(id), { name: String(name), nodes: nodesForMessage });
         }
     }
 
     return { messagesById };
 }
 
-function buildFixMessage(orderedFields: MessageField[], decoded: Record<string, unknown>): string {
+function buildFixMessage(orderedFields: MessageNode[], decoded: Record<string, unknown>): string {
     const parts: string[] = [];
-    for (const field of orderedFields) {
-        const raw = decoded[field.id];
-        if (raw === null || raw === undefined) continue;
-        if (typeof raw === "string" && raw.length === 0) continue;
-        if (typeof raw === "number" && (Number.isNaN(raw) || raw === 0)) continue;
-        if (typeof raw === "bigint" && raw === 0n) continue;
-        const value = typeof raw === "bigint" ? raw.toString() : String(raw);
-        parts.push(`${field.id}=${value}`);
-    }
+    appendNodesToFix(parts, orderedFields, decoded);
     return parts.join("|");
 }
 
@@ -262,6 +260,11 @@ function filterDecodedFields(decoded: Record<string, unknown>): Record<string, u
     const filtered: Record<string, unknown> = {};
     for (const [key, raw] of Object.entries(decoded)) {
         if (raw === null || raw === undefined) continue;
+        if (Array.isArray(raw)) {
+            if (raw.length === 0) continue;
+            filtered[key] = raw;
+            continue;
+        }
         if (typeof raw === "string") {
             const trimmed = raw.trim();
             if (trimmed.length === 0) continue;
@@ -276,6 +279,84 @@ function filterDecodedFields(decoded: Record<string, unknown>): Record<string, u
 
 function isZeroString(value: string): boolean {
     return /^0+(?:\.0+)?$/.test(value);
+}
+
+function appendNodesToFix(
+    parts: string[],
+    nodes: MessageNode[],
+    decoded: Record<string, unknown>,
+): void {
+    for (const node of nodes) {
+        if (node.kind === "group") {
+            const entries = decoded[node.id];
+            if (!Array.isArray(entries) || entries.length === 0) {
+                continue;
+            }
+            parts.push(`${node.id}=${entries.length}`);
+            for (const entry of entries) {
+                if (entry && typeof entry === "object" && !Array.isArray(entry)) {
+                    appendGroupEntry(parts, node, entry as Record<string, unknown>);
+                }
+            }
+            continue;
+        }
+
+        const raw = decoded[node.id];
+        if (!shouldIncludeFixValue(raw)) continue;
+        parts.push(`${node.id}=${stringifyFixValue(raw)}`);
+    }
+}
+
+function appendGroupEntry(
+    parts: string[],
+    group: MessageGroupNode,
+    entry: Record<string, unknown>,
+): void {
+    for (const child of group.children) {
+        if (child.kind === "group") {
+            const nested = entry[child.id];
+            if (!Array.isArray(nested) || nested.length === 0) {
+                continue;
+            }
+            parts.push(`${child.id}=${nested.length}`);
+            for (const nestedEntry of nested) {
+                if (nestedEntry && typeof nestedEntry === "object" && !Array.isArray(nestedEntry)) {
+                    appendGroupEntry(parts, child, nestedEntry as Record<string, unknown>);
+                }
+            }
+            continue;
+        }
+
+        const raw = entry[child.id];
+        if (!shouldIncludeFixValue(raw)) continue;
+        parts.push(`${child.id}=${stringifyFixValue(raw)}`);
+    }
+}
+
+function shouldIncludeFixValue(raw: unknown): boolean {
+    if (raw === null || raw === undefined) return false;
+    if (typeof raw === "string") {
+        const trimmed = raw.trim();
+        if (trimmed.length === 0) return false;
+        if (isZeroString(trimmed)) return false;
+    }
+    if (typeof raw === "number" && (Number.isNaN(raw) || raw === 0)) return false;
+    if (typeof raw === "bigint" && raw === 0n) return false;
+    return true;
+}
+
+function stringifyFixValue(raw: unknown): string {
+    if (typeof raw === "bigint") return raw.toString();
+    return String(raw);
+}
+
+function resolveSchemaInput(schema: string): string {
+    const trimmed = schema.trim();
+    if (trimmed.startsWith("<")) {
+        return schema;
+    }
+    const resolved = resolve(process.cwd(), schema);
+    return readFileSync(resolved, "utf8");
 }
 
 function readDataField(decoder: Record<string, unknown>, fieldName: string): string | undefined {
@@ -331,6 +412,86 @@ function decodeMessageBytes(encodedMessage: string): Uint8Array {
 function lowerFirst(value: string): string {
     if (!value) return value;
     return value[0].toLowerCase() + value.slice(1);
+}
+
+function toChildArray(value: unknown): Array<Record<string, unknown>> {
+    if (!value) return [];
+    if (Array.isArray(value)) return value as Array<Record<string, unknown>>;
+    if (typeof value === "object") return Object.values(value as object) as Array<Record<string, unknown>>;
+    return [];
+}
+
+function parseMessageNodes(nodes: Array<Record<string, unknown>>): MessageNode[] {
+    const result: MessageNode[] = [];
+    for (const node of nodes) {
+        if (node.field) {
+            const attrs = (node[":@"] ?? {}) as Record<string, string>;
+            if (attrs.id && attrs.name && attrs.type) {
+                result.push({ kind: "field", id: String(attrs.id), name: String(attrs.name), type: String(attrs.type) });
+            }
+            continue;
+        }
+        if (node.data) {
+            const attrs = (node[":@"] ?? {}) as Record<string, string>;
+            if (attrs.id && attrs.name && attrs.type) {
+                result.push({ kind: "data", id: String(attrs.id), name: String(attrs.name), type: String(attrs.type) });
+            }
+            continue;
+        }
+        if (node.group) {
+            const attrs = (node[":@"] ?? {}) as Record<string, string>;
+            if (!attrs.id || !attrs.name) continue;
+            const children = parseMessageNodes(toChildArray(node.group));
+            result.push({
+                kind: "group",
+                id: String(attrs.id),
+                name: String(attrs.name),
+                children,
+            });
+        }
+    }
+    return result;
+}
+
+function readGroup(decoder: Record<string, unknown>, group: MessageGroupNode): Array<Record<string, unknown>> {
+    const accessor = decoder[lowerFirst(group.name)] as (() => Record<string, unknown>) | undefined;
+    if (typeof accessor !== "function") {
+        return [];
+    }
+    const groupDecoder = accessor.call(decoder);
+    if (!groupDecoder || typeof groupDecoder !== "object") {
+        return [];
+    }
+    const countMethod = groupDecoder["count"] as (() => number) | undefined;
+    const count = typeof countMethod === "function" ? countMethod.call(groupDecoder) : 0;
+    if (!Number.isFinite(count) || count <= 0) {
+        return [];
+    }
+    const entries: Array<Record<string, unknown>> = [];
+    for (let i = 0; i < count; i++) {
+        if (typeof groupDecoder["next"] === "function") {
+            groupDecoder["next"]();
+        }
+        const entry: Record<string, unknown> = {};
+        for (const child of group.children) {
+            if (child.kind === "group") {
+                entry[child.id] = readGroup(groupDecoder, child);
+                continue;
+            }
+            if (child.kind === "data") {
+                const value = readDataField(groupDecoder, child.name);
+                if (value !== undefined) {
+                    entry[child.id] = value;
+                }
+                continue;
+            }
+            const getter = groupDecoder[lowerFirst(child.name)] as (() => unknown) | undefined;
+            if (typeof getter !== "function") continue;
+            entry[child.id] = getter.call(groupDecoder);
+        }
+        entries.push(entry);
+    }
+    return entries;
 }
 
 function findGeneratedIndex(codecsDir: string): string {
