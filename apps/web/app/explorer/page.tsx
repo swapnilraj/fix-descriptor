@@ -63,7 +63,7 @@ const EXAMPLES = {
   treasury: {
     name: "US Treasury Bond",
     description: "A simple government security with basic fields",
-    fix: "55=USTB-2030-11-15|48=US91282CEZ76|22=4|167=1|461=DBFTFR|541=20301115|223=4250|15=USD"
+    fix: "8=FIX.4.4|9=0000|35=d|55=USTB-2030-11-15|48=US91282CEZ76|22=4|167=TBOND|461=DBFTFR|541=20301115|223=4.250|15=USD|10=000"
   },
   corporate: {
     name: "Corporate Bond",
@@ -801,9 +801,8 @@ export default function Page() {
       
       for (const pair of pairs) {
         const [tag, value] = pair.split('=');
-        if (tag && value && !['8', '9', '10', '35'].includes(tag)) {
           fields[tag] = value;
-        }
+        
       }
       
       // Merge with existing values (append, don't replace)
@@ -1548,17 +1547,8 @@ export default function Page() {
         throw new Error(`SBE decoding failed: ${decodeResult.error || 'Unknown error'}`);
       }
 
-      // Filter out zero values from the decoded message
-      const filteredMessage = decodeResult.fixMessage
-        .split('|')
-        .filter((pair: string) => {
-          const [, value] = pair.split('=');
-          return value !== '0' && value !== '0.0' && value !== '0.00';
-        })
-        .join('|');
-
       // Convert numeric tags to tag names for the named version using Orchestra schema
-      const namedMessage = filteredMessage
+      const namedMessage = decodeResult.fixMessage
         .split('|')
         .map((pair: string) => {
           const [tag, value] = pair.split('=');
@@ -1570,7 +1560,7 @@ export default function Page() {
         })
         .join('|');
 
-      setDecodedFIX(filteredMessage);
+      setDecodedFIX(decodeResult.fixMessage);
       setDecodedFIXNamed(namedMessage);
       setFetchSBEStatus('success');
       setCurrentStep(7); // Update step indicator to show retrieval complete
@@ -2697,27 +2687,13 @@ export default function Page() {
                       <span style={{ 
                         fontWeight: '500',
                         fontFamily: 'ui-monospace, monospace',
-                        color: ['8', '9', '10', '35'].includes(field.tag) 
-                          ? 'rgba(239, 68, 68, 0.8)' 
-                          : 'rgba(255,255,255,0.9)'
+                        color: 'rgba(255,255,255,0.9)'
                       }}>
                         {field.tag}
                       </span>
                       {field.tagInfo && (
                         <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.8rem' }}>
                           {field.tagInfo.name}
-                        </span>
-                      )}
-                      {['8', '9', '10', '35'].includes(field.tag) && (
-                        <span style={{ 
-                          fontSize: '0.7rem',
-                          color: 'rgba(239, 68, 68, 0.8)',
-                          background: 'rgba(239, 68, 68, 0.1)',
-                          padding: '0.15rem 0.5rem',
-                          borderRadius: '3px',
-                          fontWeight: '500'
-                        }}>
-                          excluded
                         </span>
                       )}
                     </div>
