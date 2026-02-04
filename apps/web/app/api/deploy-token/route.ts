@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
       sbeHex,
       cborHex, // Legacy support
       root,
-      schemaURI
+      schemaXml
     } = body;
     
     // Use sbeHex if provided, otherwise fall back to cborHex for backward compatibility
@@ -42,10 +42,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (!schemaXml || typeof schemaXml !== 'string') {
+      return NextResponse.json(
+        { error: 'Missing schemaXml (generated SBE schema XML)' },
+        { status: 400 }
+      );
+    }
+
     // Get environment variables
     const privateKey = process.env.PRIVATE_KEY;
     const rpcUrl = process.env.NEXT_PUBLIC_RPC_URL;
     const factoryAddress = process.env.NEXT_PUBLIC_TOKEN_FACTORY_ADDRESS;
+    const gistToken = process.env.GITHUB_GIST_TOKEN;
 
     if (!privateKey) {
       return NextResponse.json(
@@ -64,6 +72,48 @@ export async function POST(request: NextRequest) {
     if (!factoryAddress) {
       return NextResponse.json(
         { error: 'Token factory not configured (NEXT_PUBLIC_TOKEN_FACTORY_ADDRESS missing)' },
+        { status: 500 }
+      );
+    }
+
+    if (!gistToken) {
+      return NextResponse.json(
+        { error: 'Gist upload not configured (GITHUB_GIST_TOKEN missing)' },
+        { status: 500 }
+      );
+    }
+
+    const gistResponse = await fetch('https://api.github.com/gists', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${gistToken}`,
+        'User-Agent': 'fix-descriptor-web'
+      },
+      body: JSON.stringify({
+        description: 'SBE schema for token deployment',
+        public: true,
+        files: {
+          'schema.xml': {
+            content: schemaXml
+          }
+        }
+      })
+    });
+
+    if (!gistResponse.ok) {
+      const errorText = await gistResponse.text();
+      return NextResponse.json(
+        { error: `Failed to upload schema to Gist: ${errorText}` },
+        { status: 500 }
+      );
+    }
+
+    const gistJson = await gistResponse.json();
+    const schemaURI = gistJson?.files?.['schema.xml']?.raw_url;
+    if (!schemaURI) {
+      return NextResponse.json(
+        { error: 'Gist upload succeeded but raw_url was missing' },
         { status: 500 }
       );
     }
@@ -95,7 +145,7 @@ export async function POST(request: NextRequest) {
       fixRoot: root as `0x${string}`,
       fixSBEPtr: '0x0000000000000000000000000000000000000000' as `0x${string}`,
       fixSBELen: 0,
-      schemaURI: schemaURI || ''
+      schemaURI: schemaURI
     };
 
     // Convert supply to wei (18 decimals)

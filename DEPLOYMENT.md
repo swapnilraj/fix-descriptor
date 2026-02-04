@@ -129,9 +129,12 @@ vercel --prod
 
 After deployment, go to your Vercel project dashboard → Settings → Environment Variables and add:
 
-**Required Environment Variable:**
+**Required Environment Variables:**
 - **Name:** `FIXPARSER_LICENSE_KEY`
 - **Value:** `FIXParser_QjtkyzBGvFLS0tLS1CRUdJTiBQR1AgU0lHTkVEIE1FU1NBR0UtLS0tLQpIYXNoOiBTSEE1MTIKCjguMy4zfHN3cEBuZXRoZXJtaW5kLmlvfDE3ODgzOTM2MDAwMDB8ZnJlZQotLS0tLUJFR0lOIFBHUCBTSUdOQVRVUkUtLS0tLQoKd3JzRUFSWUtBRzBGZ21pNGZYZ0pFQ0p3M09mWVRzVEpSUlFBQUFBQUFCd0FJSE5oYkhSQWJtOTBZWFJwCmIyNXpMbTl3Wlc1d1ozQnFjeTV2Y21jaHZ2SS9ZQnR1QlB1R3ozKzY3Y3hWcitPeEZveE8xNzhLL1dtdApUSlAxeGhZaEJDVmdXQ2dKSU50bVgrZVpnaUp3M09mWVRzVEpBQUNHYWdEK0o3ZTN4ZzByc0d4TVYwZlEKMzlIM29EUjFlTitPb2xCR2VKM002djkxVGhBQS8yeEFlSUlhbi9VaS9qT2xyNVdRdGdGR1BpemYrbjdwCmpZMWllZEJVTkxnTgo9eGZNWgotLS0tLUVORCBQR1A=`
+- **Environments:** Production, Preview, Development
+- **Name:** `GITHUB_GIST_TOKEN`
+- **Value:** GitHub personal access token with Gist scope (server-only)
 - **Environments:** Production, Preview, Development
 
 **Optional Contract Environment Variables:**
