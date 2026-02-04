@@ -135,7 +135,7 @@ function descriptorTreeToFields(tree: DescriptorTree): Array<{ tag: string; valu
 }
 
 // Build DescriptorTree from SBE parsed fields
-function buildTreeFromSbeFields(parsedFields: Record<string, string>): DescriptorTree {
+function buildTreeFromSbeFields(parsedFields: Record<string, unknown>): DescriptorTree {
   const tree: DescriptorTree = {};
   
   for (const [tag, value] of Object.entries(parsedFields)) {
@@ -175,18 +175,28 @@ function parseSchemaFieldMapping(schemaXml: string): Record<string, { name: stri
 }
 
 export async function POST(req: NextRequest) {
+  const started = Date.now();
   try {
     const { fixRaw, schema, messageId } = await req.json();
+    console.log('[preview] request', {
+      fixLength: typeof fixRaw === 'string' ? fixRaw.length : null,
+      schemaLength: typeof schema === 'string' ? schema.length : null,
+      messageId
+    });
     
     // Get SBE encoder endpoint from environment
-    const sbeEncoderUrl = process.env.SBE_ENCODER_URL || process.env.NEXT_PUBLIC_SBE_ENCODER_URL;
+    const encoderBaseUrl = process.env.ENCODER_URL;
     
-    if (!sbeEncoderUrl) {
-      throw new Error('SBE_ENCODER_URL environment variable is not configured');
+    if (!encoderBaseUrl) {
+      throw new Error('ENCODER_URL environment variable is not configured');
     }
+    const encoderBase = encoderBaseUrl.replace(/\/$/, '');
+    const encodeUrl = `${encoderBase}/encode`;
+    const decodeUrl = `${encoderBase}/decode`;
     
-    // Call SBE encoder API first (it will parse the FIX message)
-    const sbeResponse = await fetch(sbeEncoderUrl, {
+    // Call encoder service to encode the FIX message
+    const encodeStarted = Date.now();
+    const encodeResponse = await fetch(encodeUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -195,26 +205,60 @@ export async function POST(req: NextRequest) {
         messageId: messageId || undefined
       })
     });
+    console.log('[preview] encode response', {
+      status: encodeResponse.status,
+      durationMs: Date.now() - encodeStarted
+    });
     
-    if (!sbeResponse.ok) {
-      const errorText = await sbeResponse.text();
+    if (!encodeResponse.ok) {
+      const errorText = await encodeResponse.text();
       throw new Error(`SBE encoding failed: ${errorText}`);
     }
     
-    const sbeResult = await sbeResponse.json();
-    
-
-    console.log(sbeResult);
-    // Build tree from SBE parsed fields
-    const tree = buildTreeFromSbeFields(sbeResult.parsedFields || {});
-    const canonical = buildCanonicalTree(tree);
-    
-    if (!sbeResult.success) {
-      throw new Error(`SBE encoding failed: ${sbeResult.error || 'Unknown error'}`);
+    const encodeResult = await encodeResponse.json();
+    console.log('[preview] encode result', {
+      encodedBytes: encodeResult?.encodedBytes,
+      encodedHexLength: encodeResult?.encodedHex?.length
+    });
+    const encodedHex = encodeResult.encodedHex;
+    if (!encodedHex) {
+      throw new Error('SBE encoding failed: missing encodedHex');
     }
-    
-    const sbeBase64 = sbeResult.encodedBase64;
-    const sbeHex = sbeResult.encodedHex.startsWith('0x') ? sbeResult.encodedHex : `0x${sbeResult.encodedHex}`;
+    const encodedHexClean = encodedHex.startsWith('0x') ? encodedHex.slice(2) : encodedHex;
+    const sbeHex = encodedHex.startsWith('0x') ? encodedHex : `0x${encodedHex}`;
+    const sbeBase64 = Buffer.from(encodedHexClean, 'hex').toString('base64');
+
+    // Decode to get parsed fields for preview tree
+    const decodeStarted = Date.now();
+    console.log('[preview] decode request', { url: decodeUrl });
+    const decodeResponse = await fetch(decodeUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        schema,
+        encodedMessage: encodedHex,
+        messageId: messageId || undefined
+      })
+    });
+    console.log('[preview] decode response', {
+      status: decodeResponse.status,
+      durationMs: Date.now() - decodeStarted
+    });
+    if (!decodeResponse.ok) {
+      const errorText = await decodeResponse.text();
+      throw new Error(`SBE decoding failed: ${errorText}`);
+    }
+    console.log('[preview] decode json start');
+    const decodeResult = await decodeResponse.json();
+    console.log('[preview] decode json done');
+    console.log('[preview] decode result', {
+      decodedFields: Object.keys(decodeResult?.decodedFields || {}).length,
+      fixMessageLength: decodeResult?.fixMessage?.length
+    });
+
+    // Build tree from decoded fields
+    const tree = buildTreeFromSbeFields(decodeResult.decodedFields || {});
+    const canonical = buildCanonicalTree(tree);
     
     const leaves = enumerateLeaves(canonical);
     
@@ -230,9 +274,9 @@ export async function POST(req: NextRequest) {
     // Convert parsed tree to UI-friendly formats with schema field names
     const treeData = descriptorTreeToTreeData(tree, schemaFieldMapping);
     
-    // Use SBE encoder's parsed fields for display (includes field names from schema)
-    const parsedFieldsFromSbe = sbeResult.parsedFields || {};
-    const mappedFieldsFromSbe = sbeResult.mappedFields || {};
+    // Use decoded fields for display (tag/value pairs)
+    const parsedFieldsFromSbe = decodeResult.decodedFields || {};
+    const mappedFieldsFromSbe = {};
     
     // Build field display array with both tag ID and field name from schema
     const parsedFields = Object.entries(parsedFieldsFromSbe).map(([tag, value]) => {
@@ -250,7 +294,7 @@ export async function POST(req: NextRequest) {
       };
     });
     
-    return NextResponse.json({ 
+    const response = { 
       root, 
       sbeHex, // For deployment (contracts need hex)
       sbeBase64, // For display
@@ -261,11 +305,14 @@ export async function POST(req: NextRequest) {
       parsedFields, // Fields from SBE encoder with schema metadata
       sbeMetadata: {
         mappedFields: mappedFieldsFromSbe,
-        encodedBytes: sbeResult.encodedBytes,
+        encodedBytes: encodeResult.encodedBytes,
         schemaFields: schemaFieldMapping
       }
-    });
+    };
+    console.log('[preview] success', { durationMs: Date.now() - started });
+    return NextResponse.json(response);
   } catch (e: unknown) {
+    console.error('[preview] error', e);
     const msg = e instanceof Error
       ? e.message
       : (typeof e === 'object' && e !== null && 'message' in e && typeof (e as { message?: unknown }).message === 'string'

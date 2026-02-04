@@ -7,6 +7,13 @@ export type GeneratorResult = {
     namespace: string;
 };
 
+const isLogEnabled = process.env.SBE_LOG === "1";
+const log = (...args: unknown[]) => {
+    if (isLogEnabled) {
+        console.log("[sbe-generator]", ...args);
+    }
+};
+
 export function findLocalJar(): string | undefined {
     const candidates = [
         resolve(process.cwd(), "simple-binary-encoding", "sbe-all", "build", "libs"),
@@ -26,6 +33,7 @@ export function findLocalJar(): string | undefined {
 }
 
 export async function runGenerator(schemaXml: string): Promise<GeneratorResult> {
+    const started = Date.now();
     const jarPath = process.env.SBE_TOOL_JAR || findLocalJar();
     if (!jarPath) {
         throw new Error(
@@ -47,7 +55,15 @@ export async function runGenerator(schemaXml: string): Promise<GeneratorResult> 
         schemaPath,
     ];
 
+    log("start", {
+        jarPath,
+        outputDir,
+        schemaPath,
+        schemaBytes: schemaXml.length,
+        cmd: [javaCmd, ...cmdArgs].join(" "),
+    });
     const result = spawnSync(javaCmd, cmdArgs, { stdio: "inherit" });
+    log("exit", { status: result.status, durationMs: Date.now() - started });
     if (result.status !== 0) {
         throw new Error(`sbe-ts: generator failed with status ${result.status ?? "unknown"}`);
     }

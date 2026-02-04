@@ -12,13 +12,23 @@ export type Args = {
     messageId?: number;
 };
 
+const isLogEnabled = process.env.SBE_LOG === "1";
+const log = (...args: unknown[]) => {
+    if (isLogEnabled) {
+        console.log("[sbe-encode]", ...args);
+    }
+};
+
 export async function encodeFromInput(args: Args): Promise<Uint8Array> {
     if (!args.schema || !args.fixMessage || args.messageId == null) {
         throw new Error("schema, fixMessage, and messageId are required.");
     }
 
+    log("start", { messageId: args.messageId, schemaBytes: args.schema.length });
     const generatorResult = await runGenerator(args.schema);
-    return encodeMessage(args.fixMessage, args.messageId, args.schema, generatorResult);
+    const result = await encodeMessage(args.fixMessage, args.messageId, args.schema, generatorResult);
+    log("done", { encodedBytes: result.length });
+    return result;
 }
 
 export async function encodeMessage(

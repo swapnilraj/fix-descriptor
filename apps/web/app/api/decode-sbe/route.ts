@@ -9,7 +9,7 @@ export const runtime = 'nodejs';
  */
 export async function POST(req: NextRequest) {
   try {
-    const { encodedMessage, schema } = await req.json();
+    const { encodedMessage, schema, messageId } = await req.json();
     
     if (!encodedMessage || !schema) {
       return NextResponse.json(
@@ -19,14 +19,15 @@ export async function POST(req: NextRequest) {
     }
 
     // Get SBE encoder endpoint from environment
-    const sbeEncoderUrl = process.env.SBE_ENCODER_URL || process.env.NEXT_PUBLIC_SBE_ENCODER_URL;
+    const encoderBaseUrl = process.env.ENCODER_URL;
     
-    if (!sbeEncoderUrl) {
+    if (!encoderBaseUrl) {
       return NextResponse.json(
-        { error: 'SBE_ENCODER_URL environment variable is not configured' },
+        { error: 'ENCODER_URL environment variable is not configured' },
         { status: 500 }
       );
     }
+    const encoderUrl = `${encoderBaseUrl.replace(/\/$/, '')}/decode`;
 
     // Log schema info for debugging
     console.log('Decoding with schema length:', schema.length, 'chars');
@@ -37,33 +38,26 @@ export async function POST(req: NextRequest) {
     const messageCount = (schema.match(/<sbe:message/g) || []).length;
     console.log('Schema contains', messageCount, 'message definitions');
 
-    // Call Lambda to decode SBE
-    const lambdaResponse = await fetch(sbeEncoderUrl, {
+    // Call encoder service to decode SBE
+    const encoderResponse = await fetch(encoderUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         encodedMessage,
         schema,
-        mode: 'decode'
+        messageId: messageId || undefined
       })
     });
 
-    if (!lambdaResponse.ok) {
-      const errorText = await lambdaResponse.text();
+    if (!encoderResponse.ok) {
+      const errorText = await encoderResponse.text();
       return NextResponse.json(
-        { error: `Lambda decode failed: ${errorText}` },
+        { error: `Encoder decode failed: ${errorText}` },
         { status: 500 }
       );
     }
 
-    const result = await lambdaResponse.json();
-    
-    if (!result.success) {
-      return NextResponse.json(
-        { error: result.error || 'Decoding failed' },
-        { status: 400 }
-      );
-    }
+    const result = await encoderResponse.json();
     console.log('Decoded SBE:', result);
     return NextResponse.json(result);
 

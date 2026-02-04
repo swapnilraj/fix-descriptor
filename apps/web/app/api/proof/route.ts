@@ -3,7 +3,7 @@ import { buildCanonicalTree, enumerateLeaves, generateProof, type DescriptorTree
 export const runtime = 'nodejs';
 
 // Build DescriptorTree from SBE parsed fields (same as preview API)
-function buildTreeFromSbeFields(parsedFields: Record<string, string>): DescriptorTree {
+function buildTreeFromSbeFields(parsedFields: Record<string, unknown>): DescriptorTree {
   const tree: DescriptorTree = {};
   
   for (const [tag, value] of Object.entries(parsedFields)) {
@@ -19,14 +19,17 @@ export async function POST(req: NextRequest) {
     const { fixRaw, path, schema, messageId } = await req.json();
     
     // Get SBE encoder endpoint from environment
-    const sbeEncoderUrl = process.env.SBE_ENCODER_URL || process.env.NEXT_PUBLIC_SBE_ENCODER_URL;
+    const encoderBaseUrl = process.env.ENCODER_URL;
     
-    if (!sbeEncoderUrl) {
-      throw new Error('SBE_ENCODER_URL environment variable is not configured');
+    if (!encoderBaseUrl) {
+      throw new Error('ENCODER_URL environment variable is not configured');
     }
+    const encoderBase = encoderBaseUrl.replace(/\/$/, '');
+    const encodeUrl = `${encoderBase}/encode`;
+    const decodeUrl = `${encoderBase}/decode`;
     
-    // Call SBE encoder API to parse the FIX message (same as preview)
-    const sbeResponse = await fetch(sbeEncoderUrl, {
+    // Call encoder service to encode the FIX message
+    const encodeResponse = await fetch(encodeUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -36,19 +39,35 @@ export async function POST(req: NextRequest) {
       })
     });
     
-    if (!sbeResponse.ok) {
-      const errorText = await sbeResponse.text();
+    if (!encodeResponse.ok) {
+      const errorText = await encodeResponse.text();
       throw new Error(`SBE encoding failed: ${errorText}`);
     }
     
-    const sbeResult = await sbeResponse.json();
-    
-    if (!sbeResult.success) {
-      throw new Error(`SBE encoding failed: ${sbeResult.error || 'Unknown error'}`);
+    const encodeResult = await encodeResponse.json();
+    const encodedHex = encodeResult.encodedHex;
+    if (!encodedHex) {
+      throw new Error('SBE encoding failed: missing encodedHex');
     }
+
+    // Decode to get parsed fields for proof generation
+    const decodeResponse = await fetch(decodeUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        schema,
+        encodedMessage: encodedHex,
+        messageId: messageId || undefined
+      })
+    });
+    if (!decodeResponse.ok) {
+      const errorText = await decodeResponse.text();
+      throw new Error(`SBE decoding failed: ${errorText}`);
+    }
+    const decodeResult = await decodeResponse.json();
     
     // Build tree from SBE parsed fields (same as preview)
-    const tree = buildTreeFromSbeFields(sbeResult.parsedFields || {});
+    const tree = buildTreeFromSbeFields(decodeResult.decodedFields || {});
     const canonical = buildCanonicalTree(tree);
     const leaves = enumerateLeaves(canonical);
     

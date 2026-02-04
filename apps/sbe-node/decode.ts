@@ -12,13 +12,27 @@ export type DecodeArgs = {
     messageId?: number;
 };
 
+const isLogEnabled = process.env.SBE_LOG === "1";
+const log = (...args: unknown[]) => {
+    if (isLogEnabled) {
+        console.log("[sbe-decode]", ...args);
+    }
+};
+
 export async function decodeFromInput(args: DecodeArgs): Promise<Record<string, unknown>> {
     if (!args.schema || !args.encodedMessage) {
         throw new Error("schema and encodedMessage are required.");
     }
 
+    log("start", {
+        messageId: args.messageId,
+        schemaBytes: args.schema.length,
+        encodedLength: args.encodedMessage.length,
+    });
     const generatorResult = await runGenerator(args.schema);
-    return decodeMessage(args.encodedMessage, args.schema, args.messageId, generatorResult);
+    const result = await decodeMessage(args.encodedMessage, args.schema, args.messageId, generatorResult);
+    log("done", { decodedFields: Object.keys(result.decodedFields ?? {}).length });
+    return result;
 }
 
 export async function decodeMessage(
@@ -140,11 +154,12 @@ export async function decodeMessage(
         }
     }
 
-    const fixMessage = buildFixMessage(message.orderedFields, decodedFields);
+    const filteredFields = filterDecodedFields(decodedFields);
+    const fixMessage = buildFixMessage(message.orderedFields, filteredFields);
 
     return {
         messageId: effectiveMessageId,
-        decodedFields,
+        decodedFields: filteredFields,
         fixMessage,
     };
 }
@@ -241,6 +256,26 @@ function buildFixMessage(orderedFields: MessageField[], decoded: Record<string, 
         parts.push(`${field.id}=${value}`);
     }
     return parts.join("|");
+}
+
+function filterDecodedFields(decoded: Record<string, unknown>): Record<string, unknown> {
+    const filtered: Record<string, unknown> = {};
+    for (const [key, raw] of Object.entries(decoded)) {
+        if (raw === null || raw === undefined) continue;
+        if (typeof raw === "string") {
+            const trimmed = raw.trim();
+            if (trimmed.length === 0) continue;
+            if (isZeroString(trimmed)) continue;
+        }
+        if (typeof raw === "number" && (Number.isNaN(raw) || raw === 0)) continue;
+        if (typeof raw === "bigint" && raw === 0n) continue;
+        filtered[key] = raw;
+    }
+    return filtered;
+}
+
+function isZeroString(value: string): boolean {
+    return /^0+(?:\.0+)?$/.test(value);
 }
 
 function readDataField(decoder: Record<string, unknown>, fieldName: string): string | undefined {
