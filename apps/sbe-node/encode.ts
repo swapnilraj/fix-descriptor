@@ -95,6 +95,7 @@ type MessageFieldNode = {
     id: string;
     name: string;
     type: string;
+    semanticType?: string;
 };
 
 type MessageDataNode = {
@@ -217,7 +218,13 @@ function parseMessageNodes(nodes: Array<Record<string, unknown>>): MessageNode[]
         if (node.field) {
             const attrs = (node[":@"] ?? {}) as Record<string, string>;
             if (attrs.id && attrs.name && attrs.type) {
-                result.push({ kind: "field", id: String(attrs.id), name: String(attrs.name), type: String(attrs.type) });
+                result.push({
+                    kind: "field",
+                    id: String(attrs.id),
+                    name: String(attrs.name),
+                    type: String(attrs.type),
+                    semanticType: attrs.semanticType ? String(attrs.semanticType) : undefined,
+                });
             }
             continue;
         }
@@ -355,7 +362,7 @@ function setFieldValue(
     const methodName = lowerFirst(field.name);
     const setter = target[methodName] as ((value: unknown) => void) | undefined;
     if (typeof setter !== "function") return;
-    const coerced = coerceValue(raw, field.type, typeByName);
+    const coerced = coerceValue(raw, field.type, field.semanticType, typeByName);
     setter.call(target, coerced);
 }
 
@@ -387,6 +394,7 @@ function resolveSchemaInput(schema: string): string {
 function coerceValue(
     rawValue: string,
     fieldType: string,
+    semanticType: string | undefined,
     typeByName: Map<string, string>,
 ): string | number | bigint {
     const primitive = resolvePrimitiveType(fieldType, typeByName);
@@ -406,6 +414,15 @@ function coerceValue(
     }
 
     if (primitive === "int64" || primitive === "uint64") {
+        if (
+            (semanticType === "UTCTimestamp" || semanticType === "TZTimestamp") &&
+            (rawValue.includes("-") || rawValue.includes(":"))
+        ) {
+            const digits = rawValue.replace(/\D/g, "");
+            if (digits.length > 0) {
+                return BigInt(digits);
+            }
+        }
         if (rawValue.includes(".")) {
             const scaled = Math.round(Number.parseFloat(rawValue) * 1e8);
             return BigInt(scaled);

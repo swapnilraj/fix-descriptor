@@ -192,6 +192,7 @@ type MessageFieldNode = {
     id: string;
     name: string;
     type: string;
+    semanticType?: string;
 };
 
 type MessageDataNode = {
@@ -303,7 +304,7 @@ function appendNodesToFix(
 
         const raw = decoded[node.id];
         if (!shouldIncludeFixValue(raw)) continue;
-        parts.push(`${node.id}=${stringifyFixValue(raw)}`);
+        parts.push(`${node.id}=${stringifyFixValue(raw, node)}`);
     }
 }
 
@@ -329,7 +330,7 @@ function appendGroupEntry(
 
         const raw = entry[child.id];
         if (!shouldIncludeFixValue(raw)) continue;
-        parts.push(`${child.id}=${stringifyFixValue(raw)}`);
+        parts.push(`${child.id}=${stringifyFixValue(raw, child)}`);
     }
 }
 
@@ -345,9 +346,29 @@ function shouldIncludeFixValue(raw: unknown): boolean {
     return true;
 }
 
-function stringifyFixValue(raw: unknown): string {
-    if (typeof raw === "bigint") return raw.toString();
+function stringifyFixValue(raw: unknown, node: MessageNode): string {
+    if (typeof raw === "bigint") {
+        const value = raw.toString();
+        if (node.kind === "field" && (node.semanticType === "UTCTimestamp" || node.semanticType === "TZTimestamp")) {
+            const formatted = formatFixTimestamp(value);
+            return formatted ?? value;
+        }
+        return value;
+    }
     return String(raw);
+}
+
+function formatFixTimestamp(value: string): string | null {
+    if (!/^\d{17}$/.test(value)) return null;
+    if (!value.startsWith("20")) return null;
+    const year = value.slice(0, 4);
+    const month = value.slice(4, 6);
+    const day = value.slice(6, 8);
+    const hour = value.slice(8, 10);
+    const minute = value.slice(10, 12);
+    const second = value.slice(12, 14);
+    const millis = value.slice(14, 17);
+    return `${year}${month}${day}-${hour}:${minute}:${second}.${millis}`;
 }
 
 function resolveSchemaInput(schema: string): string {
@@ -427,7 +448,13 @@ function parseMessageNodes(nodes: Array<Record<string, unknown>>): MessageNode[]
         if (node.field) {
             const attrs = (node[":@"] ?? {}) as Record<string, string>;
             if (attrs.id && attrs.name && attrs.type) {
-                result.push({ kind: "field", id: String(attrs.id), name: String(attrs.name), type: String(attrs.type) });
+                result.push({
+                    kind: "field",
+                    id: String(attrs.id),
+                    name: String(attrs.name),
+                    type: String(attrs.type),
+                    semanticType: attrs.semanticType ? String(attrs.semanticType) : undefined,
+                });
             }
             continue;
         }
