@@ -101,6 +101,11 @@ export default function MessageBuilderSection({
     field.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
     field.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
+  const valueList = Object.values(messageBuilderValues);
+  const filledCount = valueList.filter((v) => (
+    Array.isArray(v) ? v.some((item) => item && item.trim()) : !!v?.trim()
+  )).length;
+  const hasAnyFilled = filledCount > 0;
 
   if (businessFields.length === 0) {
     return null;
@@ -244,7 +249,12 @@ export default function MessageBuilderSection({
           }}>
             {filteredFields
               .sort((a, b) => parseInt(a.id) - parseInt(b.id))
-              .map((field, idx) => (
+              .map((field, idx) => {
+              const value = messageBuilderValues[field.id];
+              const hasValue = Array.isArray(value)
+                ? value.some((v) => v && v.trim())
+                : !!value?.trim();
+              return (
               <div key={idx} style={{
                 display: 'grid',
                 gridTemplateColumns: '24px 80px 120px 1fr',
@@ -253,20 +263,11 @@ export default function MessageBuilderSection({
                 fontSize: '0.85rem',
                 padding: '0.5rem',
                 borderRadius: '6px',
-                background: messageBuilderValues[field.id] && messageBuilderValues[field.id].trim()
-                  ? 'rgba(34, 197, 94, 0.05)'
-                  : 'transparent',
-                border: `1px solid ${messageBuilderValues[field.id] && messageBuilderValues[field.id].trim()
-                  ? 'rgba(34, 197, 94, 0.2)'
-                  : 'transparent'}`,
+                background: hasValue ? 'rgba(34, 197, 94, 0.05)' : 'transparent',
+                border: `1px solid ${hasValue ? 'rgba(34, 197, 94, 0.2)' : 'transparent'}`,
                 transition: 'all 0.2s'
               }}>
-                {(() => {
-                  const value = messageBuilderValues[field.id];
-                  const filled = Array.isArray(value)
-                    ? value.some((v) => v && v.trim())
-                    : value && value.trim();
-                  return filled ? (
+                {hasValue ? (
                   <svg 
                     width="16" 
                     height="16" 
@@ -281,8 +282,7 @@ export default function MessageBuilderSection({
                   </svg>
                 ) : (
                   <div style={{ width: '16px', height: '16px' }} />
-                );
-                })()}
+                )}
                 <span style={{
                   color: 'rgba(96, 165, 250, 0.9)',
                   fontFamily: 'ui-monospace, monospace',
@@ -370,7 +370,8 @@ export default function MessageBuilderSection({
                   </button>
                 </div>
               </div>
-            ))}
+            );
+            })}
           </div>
           <div style={{ 
             marginTop: '1rem',
@@ -384,24 +385,24 @@ export default function MessageBuilderSection({
               color: 'rgba(255,255,255,0.6)',
               fontFamily: 'ui-monospace, monospace'
             }}>
-              {Object.values(messageBuilderValues).filter(v => Array.isArray(v) ? v.some(item => item && item.trim()) : v && v.trim()).length} field(s) filled
+              {filledCount} field(s) filled
             </div>
             <button
               onClick={handleClearAll}
-              disabled={Object.values(messageBuilderValues).filter(v => v && v.trim()).length === 0}
+              disabled={!hasAnyFilled}
               style={{
                 padding: '0.75rem 1.5rem',
-                background: Object.values(messageBuilderValues).filter(v => v && v.trim()).length > 0 
+                background: hasAnyFilled 
                   ? 'rgba(239, 68, 68, 0.1)' 
                   : 'rgba(255,255,255,0.03)',
-                border: `1px solid ${Object.values(messageBuilderValues).filter(v => v && v.trim()).length > 0 
+                border: `1px solid ${hasAnyFilled 
                   ? 'rgba(239, 68, 68, 0.3)' 
                   : 'rgba(255,255,255,0.1)'}`,
                 borderRadius: '6px',
-                color: Object.values(messageBuilderValues).filter(v => v && v.trim()).length > 0 
+                color: hasAnyFilled 
                   ? 'rgba(239, 68, 68, 0.9)' 
                   : 'rgba(255,255,255,0.4)',
-                cursor: Object.values(messageBuilderValues).filter(v => v && v.trim()).length > 0 
+                cursor: hasAnyFilled 
                   ? 'pointer' 
                   : 'not-allowed',
                 fontSize: '0.875rem',
@@ -409,13 +410,13 @@ export default function MessageBuilderSection({
                 transition: 'all 0.2s'
               }}
               onMouseOver={(e) => {
-                if (Object.values(messageBuilderValues).filter(v => v && v.trim()).length > 0) {
+                if (hasAnyFilled) {
                   e.currentTarget.style.background = 'rgba(239, 68, 68, 0.15)';
                   e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.5)';
                 }
               }}
               onMouseOut={(e) => {
-                if (Object.values(messageBuilderValues).filter(v => v && v.trim()).length > 0) {
+                if (hasAnyFilled) {
                   e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)';
                   e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.3)';
                 }
