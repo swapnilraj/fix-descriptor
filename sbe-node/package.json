@@ -4,7 +4,10 @@
   "type": "commonjs",
   "scripts": {
     "build:agrona": "npx tsc -p agrona-ts/tsconfig.json",
-    "build:sbe-jar": "cd simple-binary-encoding && ./gradlew :sbe-all:jar"
+    "build:sbe-jar": "cd simple-binary-encoding && ./gradlew :sbe-all:jar",
+    "test:encode": "TS_NODE_TRANSPILE_ONLY=1 ts-node index.ts",
+    "test:decode": "TS_NODE_TRANSPILE_ONLY=1 ts-node index-decode.ts",
+    "serve": "PORT=8001 TS_NODE_TRANSPILE_ONLY=1 ts-node serve.ts"
   },
   "dependencies": {
     "agrona": "file:./agrona-ts",
