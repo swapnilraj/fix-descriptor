@@ -15,8 +15,8 @@ interface ParsedOrchestra {
 
 interface MessageBuilderSectionProps {
   parsedOrchestra: ParsedOrchestra;
-  messageBuilderValues: Record<string, string>;
-  onValuesChange: (values: Record<string, string>) => void;
+  messageBuilderValues: Record<string, string | string[]>;
+  onValuesChange: (values: Record<string, string | string[]>) => void;
   onFixMessageChange: (fixMessage: string) => void;
 }
 
@@ -29,22 +29,69 @@ export default function MessageBuilderSection({
   const [isCollapsed, setIsCollapsed] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
 
-  const handleInputChange = (fieldId: string, value: string) => {
-    const updated = { ...messageBuilderValues, [fieldId]: value };
+  const handleInputChange = (fieldId: string, value: string, index: number = 0) => {
+    const updated = { ...messageBuilderValues };
+    const existing = updated[fieldId];
+    if (Array.isArray(existing)) {
+      const next = [...existing];
+      next[index] = value;
+      updated[fieldId] = next;
+    } else if (index > 0) {
+      const next = [existing || '', value];
+      updated[fieldId] = next;
+    } else {
+      updated[fieldId] = value;
+    }
     onValuesChange(updated);
-    
-    // Auto-update FIX message with all current values
-    const parts = Object.entries(updated)
-      .filter(([id, val]) => val && val.trim() && !['8', '9', '10', '35'].includes(id))
-      .map(([id, val]) => `${id}=${val}`);
-    
-    const fixMessage = parts.length > 0 ? parts.join('|') : '';
-    onFixMessageChange(fixMessage);
+    onFixMessageChange(buildFixMessage(updated));
+  };
+
+  const handleAddRepeat = (fieldId: string) => {
+    const updated = { ...messageBuilderValues };
+    const existing = updated[fieldId];
+    if (Array.isArray(existing)) {
+      updated[fieldId] = [...existing, ''];
+    } else if (existing !== undefined) {
+      updated[fieldId] = [existing, ''];
+    } else {
+      updated[fieldId] = [''];
+    }
+    onValuesChange(updated);
+  };
+
+  const handleRemoveRepeat = (fieldId: string, index: number) => {
+    const updated = { ...messageBuilderValues };
+    const existing = updated[fieldId];
+    if (!Array.isArray(existing)) {
+      updated[fieldId] = '';
+    } else {
+      const next = existing.filter((_, idx) => idx !== index);
+      updated[fieldId] = next.length === 1 ? next[0] : next;
+    }
+    onValuesChange(updated);
+    onFixMessageChange(buildFixMessage(updated));
   };
 
   const handleClearAll = () => {
     onValuesChange({});
     onFixMessageChange('');
+  };
+
+  const buildFixMessage = (values: Record<string, string | string[]>) => {
+    const parts: string[] = [];
+    for (const [id, val] of Object.entries(values)) {
+      if (['8', '9', '10', '35'].includes(id)) continue;
+      if (Array.isArray(val)) {
+        for (const item of val) {
+          if (item && item.trim()) parts.push(`${id}=${item}`);
+        }
+        continue;
+      }
+      if (val && val.trim()) {
+        parts.push(`${id}=${val}`);
+      }
+    }
+    return parts.length > 0 ? parts.join('|') : '';
   };
 
   const businessFields = parsedOrchestra.fields.filter(f => !['8', '9', '10', '35'].includes(f.id));
@@ -214,7 +261,12 @@ export default function MessageBuilderSection({
                   : 'transparent'}`,
                 transition: 'all 0.2s'
               }}>
-                {messageBuilderValues[field.id] && messageBuilderValues[field.id].trim() ? (
+                {(() => {
+                  const value = messageBuilderValues[field.id];
+                  const filled = Array.isArray(value)
+                    ? value.some((v) => v && v.trim())
+                    : value && value.trim();
+                  return filled ? (
                   <svg 
                     width="16" 
                     height="16" 
@@ -229,7 +281,8 @@ export default function MessageBuilderSection({
                   </svg>
                 ) : (
                   <div style={{ width: '16px', height: '16px' }} />
-                )}
+                );
+                })()}
                 <span style={{
                   color: 'rgba(96, 165, 250, 0.9)',
                   fontFamily: 'ui-monospace, monospace',
@@ -255,52 +308,66 @@ export default function MessageBuilderSection({
                     </span>
                   </Tooltip>
                 </div>
-                <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <input
-                    type="text"
-                    value={messageBuilderValues[field.id] || ''}
-                    placeholder={`Enter ${field.name}...`}
-                    onChange={(e) => handleInputChange(field.id, e.target.value)}
+                <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  {(() => {
+                    const value = messageBuilderValues[field.id];
+                    const values = Array.isArray(value) ? value : [value || ''];
+                    return values.map((entryValue, entryIdx) => (
+                      <div key={entryIdx} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <input
+                          type="text"
+                          value={entryValue}
+                          placeholder={`Enter ${field.name}...`}
+                          onChange={(e) => handleInputChange(field.id, e.target.value, entryIdx)}
+                          style={{
+                            flex: 1,
+                            padding: '0.5rem 0.75rem',
+                            borderRadius: '4px',
+                            border: '1px solid rgba(255,255,255,0.15)',
+                            background: 'rgba(255,255,255,0.05)',
+                            color: '#ffffff',
+                            fontFamily: 'ui-monospace, monospace',
+                            fontSize: '0.8rem',
+                            outline: 'none'
+                          }}
+                        />
+                        {values.length > 1 && (
+                          <button
+                            onClick={() => handleRemoveRepeat(field.id, entryIdx)}
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              color: 'rgba(255,255,255,0.4)',
+                              cursor: 'pointer',
+                              padding: '0.25rem',
+                              display: 'flex',
+                              alignItems: 'center'
+                            }}
+                          >
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <line x1="18" y1="6" x2="6" y2="18" />
+                              <line x1="6" y1="6" x2="18" y2="18" />
+                            </svg>
+                          </button>
+                        )}
+                      </div>
+                    ));
+                  })()}
+                  <button
+                    onClick={() => handleAddRepeat(field.id)}
                     style={{
-                      flex: 1,
-                      padding: '0.5rem 2rem 0.5rem 0.75rem',
+                      alignSelf: 'flex-start',
+                      background: 'none',
+                      border: '1px solid rgba(255,255,255,0.2)',
+                      color: 'rgba(255,255,255,0.6)',
+                      cursor: 'pointer',
+                      padding: '0.25rem 0.5rem',
                       borderRadius: '4px',
-                      border: '1px solid rgba(255,255,255,0.15)',
-                      background: 'rgba(255,255,255,0.05)',
-                      color: '#ffffff',
-                      fontFamily: 'ui-monospace, monospace',
-                      fontSize: '0.8rem',
-                      outline: 'none'
+                      fontSize: '0.75rem'
                     }}
-                  />
-                  {messageBuilderValues[field.id] && messageBuilderValues[field.id].trim() && (
-                    <button
-                      onClick={() => handleInputChange(field.id, '')}
-                      style={{
-                        position: 'absolute',
-                        right: '0.5rem',
-                        background: 'none',
-                        border: 'none',
-                        color: 'rgba(255,255,255,0.4)',
-                        cursor: 'pointer',
-                        padding: '0.25rem',
-                        display: 'flex',
-                        alignItems: 'center',
-                        transition: 'color 0.2s'
-                      }}
-                      onMouseOver={(e) => {
-                        e.currentTarget.style.color = 'rgba(239, 68, 68, 0.8)';
-                      }}
-                      onMouseOut={(e) => {
-                        e.currentTarget.style.color = 'rgba(255,255,255,0.4)';
-                      }}
-                    >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <line x1="18" y1="6" x2="6" y2="18" />
-                        <line x1="6" y1="6" x2="18" y2="18" />
-                      </svg>
-                    </button>
-                  )}
+                  >
+                    + add
+                  </button>
                 </div>
               </div>
             ))}
@@ -317,7 +384,7 @@ export default function MessageBuilderSection({
               color: 'rgba(255,255,255,0.6)',
               fontFamily: 'ui-monospace, monospace'
             }}>
-              {Object.values(messageBuilderValues).filter(v => v && v.trim()).length} field(s) filled
+              {Object.values(messageBuilderValues).filter(v => Array.isArray(v) ? v.some(item => item && item.trim()) : v && v.trim()).length} field(s) filled
             </div>
             <button
               onClick={handleClearAll}

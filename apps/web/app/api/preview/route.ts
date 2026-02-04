@@ -9,26 +9,6 @@ import {
 } from 'fixdescriptorkit-typescript';
 export const runtime = 'nodejs';
 
-// FIX Tag reference
-const FIX_TAGS: Record<string, { name: string; description: string }> = {
-  "15": { name: "Currency", description: "Currency of the instrument" },
-  "22": { name: "SecurityIDSource", description: "Source of SecurityID (1=CUSIP, 4=ISIN)" },
-  "48": { name: "SecurityID", description: "Primary security identifier" },
-  "55": { name: "Symbol", description: "Ticker or common symbol" },
-  "167": { name: "SecurityType", description: "Type of security (TBOND, CORP, CS, etc.)" },
-  "223": { name: "CouponRate", description: "Interest rate for fixed income" },
-  "447": { name: "PartyIDSource", description: "Source of PartyID" },
-  "448": { name: "PartyID", description: "Party identifier" },
-  "452": { name: "PartyRole", description: "Role of the party (1=Issuer, 24=Trustee)" },
-  "453": { name: "NoPartyIDs", description: "Number of party entries" },
-  "454": { name: "NoSecurityAltID", description: "Number of alternative security IDs" },
-  "455": { name: "SecurityAltID", description: "Alternative security identifier" },
-  "456": { name: "SecurityAltIDSource", description: "Source of alternative ID" },
-  "461": { name: "CFICode", description: "ISO 10962 Classification of Financial Instruments" },
-  "541": { name: "MaturityDate", description: "Maturity date (YYYYMMDD)" },
-  "802": { name: "NoPartySubIDs", description: "Number of party sub-identifiers" }
-};
-
 type TreeNodeData = {
   tag?: string;
   name?: string;
@@ -52,10 +32,8 @@ function descriptorTreeToTreeData(tree: DescriptorTree, schemaFieldMapping: Reco
 
   for (const [tagNum, value] of Object.entries(tree)) {
     const tag = String(tagNum);
-    // Use schema field mapping first, fallback to FIX_TAGS
     const schemaField = schemaFieldMapping[tag];
-    const tagInfo = schemaField || FIX_TAGS[tag];
-    const fieldName = schemaField ? schemaField.name : (FIX_TAGS[tag]?.name || `Tag ${tag}`);
+    const fieldName = schemaField?.name;
 
     if (typeof value === 'string') {
       // Scalar field
@@ -78,13 +56,52 @@ function descriptorTreeToTreeData(tree: DescriptorTree, schemaFieldMapping: Reco
         for (const [entryTagNum, entryValue] of Object.entries(entry)) {
           const entryTag = String(entryTagNum);
           const schemaEntryField = schemaFieldMapping[entryTag];
-          const entryFieldName = schemaEntryField ? schemaEntryField.name : (FIX_TAGS[entryTag]?.name || `Tag ${entryTag}`);
-          
+          const entryFieldName = schemaEntryField?.name;
+
+          if (typeof entryValue === 'string') {
+            entryChildren.push({
+              type: 'scalar',
+              tag: entryTag,
+              name: entryFieldName,
+              value: entryValue as string,
+              path: [Number(tag), index + 1, Number(entryTag)],
+              isExpanded: false
+            });
+            continue;
+          }
+
+          const nestedGroup = entryValue as GroupNode;
+          const nestedChildren: TreeNodeData[] = [];
+          nestedGroup.entries.forEach((nestedEntry, nestedIndex) => {
+            const nestedEntryChildren: TreeNodeData[] = [];
+            for (const [nestedTagNum, nestedValue] of Object.entries(nestedEntry)) {
+              const nestedTag = String(nestedTagNum);
+              const nestedSchemaField = schemaFieldMapping[nestedTag];
+              const nestedFieldName = nestedSchemaField?.name;
+              nestedEntryChildren.push({
+                type: 'scalar',
+                tag: nestedTag,
+                name: nestedFieldName,
+                value: String(nestedValue),
+                path: [Number(tag), index + 1, Number(entryTag), nestedIndex + 1, Number(nestedTag)],
+                isExpanded: false
+              });
+            }
+            nestedChildren.push({
+              type: 'entry',
+              name: `Entry ${nestedIndex + 1}`,
+              children: nestedEntryChildren,
+              path: [Number(tag), index + 1, Number(entryTag), nestedIndex + 1],
+              isExpanded: false
+            });
+          });
+
           entryChildren.push({
-            type: 'scalar',
+            type: 'group',
             tag: entryTag,
             name: entryFieldName,
-            value: entryValue as string,
+            value: String(nestedGroup.entries.length),
+            children: nestedChildren,
             path: [Number(tag), index + 1, Number(entryTag)],
             isExpanded: false
           });
@@ -115,35 +132,87 @@ function descriptorTreeToTreeData(tree: DescriptorTree, schemaFieldMapping: Reco
   return root;
 }
 
-// Convert DescriptorTree to parsed fields array for display
-function descriptorTreeToFields(tree: DescriptorTree): Array<{ tag: string; value: string; tagInfo?: typeof FIX_TAGS[string] }> {
-  const fields: Array<{ tag: string; value: string; tagInfo?: typeof FIX_TAGS[string] }> = [];
+type ParsedFieldNode = {
+  tag?: string;
+  name?: string;
+  value?: string;
+  type: 'scalar' | 'group' | 'entry';
+  children?: ParsedFieldNode[];
+};
+
+function treeToParsedFields(tree: DescriptorTree, schemaFieldMapping: Record<string, { name: string; type: string }> = {}): ParsedFieldNode[] {
+  const fields: ParsedFieldNode[] = [];
 
   for (const [tagNum, value] of Object.entries(tree)) {
     const tag = String(tagNum);
-    const tagInfo = FIX_TAGS[tag];
+    const schemaField = schemaFieldMapping[tag];
+    const fieldName = schemaField?.name;
 
     if (typeof value === 'string') {
-      fields.push({ tag, value, tagInfo });
-    } else {
-      const groupNode = value as GroupNode;
-      fields.push({ tag, value: String(groupNode.entries.length), tagInfo });
+      fields.push({ type: 'scalar', tag, name: fieldName, value });
+      continue;
     }
+
+    const groupNode = value as GroupNode;
+    const groupEntries: ParsedFieldNode[] = groupNode.entries.map((entry, index) => {
+      const entryChildren: ParsedFieldNode[] = [];
+      for (const [entryTagNum, entryValue] of Object.entries(entry)) {
+        const entryTag = String(entryTagNum);
+        const entrySchemaField = schemaFieldMapping[entryTag];
+        const entryFieldName = entrySchemaField?.name;
+        if (typeof entryValue === 'string') {
+          entryChildren.push({ type: 'scalar', tag: entryTag, name: entryFieldName, value: entryValue as string });
+          continue;
+        }
+        const nestedGroup = entryValue as GroupNode;
+        const nestedEntries: ParsedFieldNode[] = nestedGroup.entries.map((nestedEntry, nestedIndex) => {
+          const nestedEntryChildren: ParsedFieldNode[] = [];
+          for (const [nestedTagNum, nestedValue] of Object.entries(nestedEntry)) {
+            const nestedTag = String(nestedTagNum);
+            const nestedSchemaField = schemaFieldMapping[nestedTag];
+            const nestedFieldName = nestedSchemaField?.name;
+            nestedEntryChildren.push({ type: 'scalar', tag: nestedTag, name: nestedFieldName, value: String(nestedValue) });
+          }
+          return { type: 'entry', name: `Entry ${nestedIndex + 1}`, children: nestedEntryChildren };
+        });
+        entryChildren.push({ type: 'group', tag: entryTag, name: entryFieldName, value: String(nestedGroup.entries.length), children: nestedEntries });
+      }
+      return { type: 'entry', name: `Entry ${index + 1}`, children: entryChildren };
+    });
+
+    fields.push({ type: 'group', tag, name: fieldName, value: String(groupNode.entries.length), children: groupEntries });
   }
 
   return fields;
 }
 
-// Build DescriptorTree from SBE parsed fields
+// Build DescriptorTree from SBE parsed fields (group-aware)
 function buildTreeFromSbeFields(parsedFields: Record<string, unknown>): DescriptorTree {
   const tree: DescriptorTree = {};
   
   for (const [tag, value] of Object.entries(parsedFields)) {
-    // Simple scalar fields (no group support yet, but can be added if needed)
+    if (Array.isArray(value)) {
+      const entries = value.map((entry) => buildGroupEntry(entry as Record<string, unknown>));
+      tree[Number(tag)] = { tag: Number(tag), entries };
+      continue;
+    }
     tree[Number(tag)] = String(value);
   }
   
   return tree;
+}
+
+function buildGroupEntry(entry: Record<string, unknown>): Record<number, string | GroupNode> {
+  const result: Record<number, string | GroupNode> = {};
+  for (const [tag, value] of Object.entries(entry)) {
+    if (Array.isArray(value)) {
+      const entries = value.map((nestedEntry) => buildGroupEntry(nestedEntry as Record<string, unknown>));
+      result[Number(tag)] = { tag: Number(tag), entries };
+      continue;
+    }
+    result[Number(tag)] = String(value);
+  }
+  return result;
 }
 
 // Parse SBE schema to extract field ID to name mapping
@@ -274,25 +343,8 @@ export async function POST(req: NextRequest) {
     // Convert parsed tree to UI-friendly formats with schema field names
     const treeData = descriptorTreeToTreeData(tree, schemaFieldMapping);
     
-    // Use decoded fields for display (tag/value pairs)
-    const parsedFieldsFromSbe = decodeResult.decodedFields || {};
     const mappedFieldsFromSbe = {};
-    
-    // Build field display array with both tag ID and field name from schema
-    const parsedFields = Object.entries(parsedFieldsFromSbe).map(([tag, value]) => {
-      const fieldMetadata = schemaFieldMapping[tag];
-      const fieldName = fieldMetadata ? fieldMetadata.name : `Tag ${tag}`;
-      const fieldType = fieldMetadata ? fieldMetadata.type : 'unknown';
-      
-      return {
-        tag,
-        value: String(value),
-        tagInfo: { 
-          name: fieldName, 
-          description: `Type: ${fieldType}`
-        }
-      };
-    });
+    const parsedFields = treeToParsedFields(tree, schemaFieldMapping);
     
     const response = { 
       root, 

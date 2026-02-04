@@ -225,7 +225,7 @@ function TreeNode({
               color: 'rgba(255,255,255,0.6)',
               fontFamily: 'ui-monospace, monospace'
             }}>
-              Entry {node.name}
+              {node.name}
             </span>
           )}
           
@@ -560,7 +560,7 @@ export default function Page() {
   const [orchestraError, setOrchestraError] = useState<string | null>(null);
   const [allMessages, setAllMessages] = useState<Array<{ name: string; id: string; msgType: string }>>([]);
   const [selectedMessageIndex, setSelectedMessageIndex] = useState(0);
-  const [messageBuilderValues, setMessageBuilderValues] = useState<Record<string, string>>({});
+  const [messageBuilderValues, setMessageBuilderValues] = useState<Record<string, string | string[]>>({});
   const [generatedSbeSchema, setGeneratedSbeSchema] = useState<string>('');
   const [fullSbeSchema, setFullSbeSchema] = useState<string>('');
   const [currentMessageId, setCurrentMessageId] = useState<string>('');
@@ -793,25 +793,62 @@ export default function Page() {
     }
   }, [schemaInput, selectedMessageType]);
   
-  // Parse FIX raw input and populate message builder
+  // Parse FIX raw input and populate message builder (supports repeated tags)
   useEffect(() => {
-    if (fixRaw.trim()) {
-      const fields: Record<string, string> = {};
-      const pairs = fixRaw.split('|');
-      
-      for (const pair of pairs) {
-        const [tag, value] = pair.split('=');
-          fields[tag] = value;
-        
+    if (!fixRaw.trim()) return;
+    const fields: Record<string, string | string[]> = {};
+    const pairs = fixRaw.split('|');
+    
+    for (const pair of pairs) {
+      const [tag, value] = pair.split('=');
+      if (!tag) continue;
+      if (fields[tag] === undefined) {
+        fields[tag] = value;
+        continue;
       }
-      
-      // Merge with existing values (append, don't replace)
-      setMessageBuilderValues(prev => ({
-        ...prev,
-        ...fields
-      }));
+      const existing = fields[tag];
+      if (Array.isArray(existing)) {
+        existing.push(value);
+      } else {
+        fields[tag] = [existing, value];
+      }
     }
+    
+    // Merge with existing values (append, don't replace)
+    setMessageBuilderValues(prev => ({
+      ...prev,
+      ...fields
+    }));
   }, [fixRaw]);
+
+  // Auto-select message type based on MsgType (35=) in FIX input
+  useEffect(() => {
+    if (!fixRaw.trim() || !schemaInput.trim()) return;
+    const msgTypeMatch = fixRaw.split('|').find(part => part.startsWith('35='));
+    if (!msgTypeMatch) return;
+    const msgType = msgTypeMatch.split('=')[1];
+    if (!msgType) return;
+
+    try {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(schemaInput, 'text/xml');
+      const messages = doc.getElementsByTagName('*');
+      let foundName: string | null = null;
+      for (let i = 0; i < messages.length; i++) {
+        const el = messages[i];
+        const localName = el.localName || el.tagName.split(':').pop();
+        if (localName === 'message' && el.getAttribute('msgType') === msgType) {
+          foundName = el.getAttribute('name');
+          break;
+        }
+      }
+      if (foundName && foundName !== selectedMessageType) {
+        setSelectedMessageType(foundName);
+      }
+    } catch (error) {
+      console.warn('Failed to infer message type from FIX input:', error);
+    }
+  }, [fixRaw, schemaInput, selectedMessageType]);
 
   // Auto-generate full SBE schema when Orchestra is loaded
   useEffect(() => {
@@ -858,6 +895,14 @@ export default function Page() {
     }
   }, [schemaInput, selectedMessageType, fullSbeSchema]);
   
+  type ParsedFieldNode = {
+    tag?: string;
+    name?: string;
+    value?: string;
+    type: 'scalar' | 'group' | 'entry';
+    children?: ParsedFieldNode[];
+  };
+
   const [preview, setPreview] = useState<{ 
     root: string; 
     sbeHex: string;
@@ -866,7 +911,7 @@ export default function Page() {
     paths: number[][]; 
     merkleTree: MerkleNodeData;
     treeData?: TreeNodeData;
-    parsedFields?: Array<{ tag: string; value: string; tagInfo?: typeof FIX_TAGS[string] }>;
+    parsedFields?: ParsedFieldNode[];
   } | null>(null);
   const [pathInput, setPathInput] = useState('');
   const [proof, setProof] = useState<ProofResult>(null);
@@ -1542,9 +1587,8 @@ export default function Page() {
       }
 
       const decodeResult = await decodeResponse.json();
-      
-      if (!decodeResult.success) {
-        throw new Error(`SBE decoding failed: ${decodeResult.error || 'Unknown error'}`);
+      if (decodeResult?.error) {
+        throw new Error(`SBE decoding failed: ${decodeResult.error}`);
       }
 
       // Convert numeric tags to tag names for the named version using Orchestra schema
@@ -1757,8 +1801,7 @@ export default function Page() {
 
   // Helper function to find a field by path in tree data
   function findFieldByPath(node: TreeNodeData, targetPath: number[]): TreeNodeData | null {
-    if (!node.path) return null;
-    if (JSON.stringify(node.path) === JSON.stringify(targetPath)) {
+    if (node.path && JSON.stringify(node.path) === JSON.stringify(targetPath)) {
       return node;
     }
     if (node.children) {
@@ -1772,6 +1815,78 @@ export default function Page() {
 
   const fixFields = preview?.parsedFields || [];
   const displayTreeData = treeData ? updateTreeExpansion(treeData) : null;
+
+  const ParsedFieldRow = ({ field, depth, isLast }: { field: ParsedFieldNode; depth: number; isLast: boolean }) => {
+    if (field.type === 'entry') {
+      return (
+        <div
+          style={{
+            padding: '0.5rem 1rem',
+            borderBottom: isLast ? 'none' : '1px solid rgba(255,255,255,0.05)',
+            fontSize: '0.8rem',
+            color: 'rgba(255,255,255,0.6)'
+          }}
+        >
+          <div style={{ marginLeft: depth * 16 }}>{field.name}</div>
+          {field.children?.map((child, idx) => (
+            <ParsedFieldRow key={idx} field={child} depth={depth + 1} isLast={idx === field.children!.length - 1} />
+          ))}
+        </div>
+      );
+    }
+
+    if (field.type === 'group') {
+      return (
+        <div
+          style={{
+            padding: '0.5rem 1rem',
+            borderBottom: isLast ? 'none' : '1px solid rgba(255,255,255,0.05)',
+            fontSize: '0.85rem'
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginLeft: depth * 16 }}>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <span style={{ fontFamily: 'ui-monospace, monospace', color: 'rgba(255,255,255,0.9)' }}>
+                {field.tag}
+              </span>
+              <span style={{ color: 'rgba(255,255,255,0.4)' }}>{field.name}</span>
+            </div>
+            <span style={{ color: 'rgba(255,255,255,0.6)' }}>{field.value}</span>
+          </div>
+          {field.children?.map((child, idx) => (
+            <ParsedFieldRow key={idx} field={child} depth={depth + 1} isLast={idx === field.children!.length - 1} />
+          ))}
+        </div>
+      );
+    }
+
+    return (
+      <div
+        style={{
+          padding: '0.5rem 1rem',
+          borderBottom: isLast ? 'none' : '1px solid rgba(255,255,255,0.05)',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          fontSize: '0.875rem'
+        }}
+      >
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '0.75rem', marginLeft: depth * 16 }}>
+          <span style={{ fontWeight: '500', fontFamily: 'ui-monospace, monospace', color: 'rgba(255,255,255,0.9)' }}>
+            {field.tag}
+          </span>
+          {field.name && (
+            <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.8rem' }}>
+              {field.name}
+            </span>
+          )}
+        </div>
+        <div style={{ flex: 1, color: 'rgba(255,255,255,0.6)', fontFamily: 'ui-monospace, monospace', textAlign: 'right', fontSize: '0.8rem' }}>
+          {field.value}
+        </div>
+      </div>
+    );
+  };
 
   // Get Merkle tree from API (with all real keccak256 hashes), enrich with tag info, and highlight selected path
   const baseMerkleTree = preview?.merkleTree || null;
@@ -2589,7 +2704,7 @@ export default function Page() {
               {parsedOrchestra && (
                 <MessageBuilderSection
                   parsedOrchestra={parsedOrchestra}
-                  messageBuilderValues={messageBuilderValues}
+                  messageBuilderValues={messageBuilderValues as Record<string, string | string[]>}
                   onValuesChange={setMessageBuilderValues}
                   onFixMessageChange={setFixRaw}
                 />
@@ -2671,42 +2786,8 @@ export default function Page() {
                 borderRadius: '8px',
                 background: 'rgba(255,255,255,0.03)'
               }}>
-                {fixFields.map((field: { tag: string; value: string; tagInfo?: typeof FIX_TAGS[string] }, idx: number) => (
-                  <div 
-                    key={idx} 
-                    style={{ 
-                      padding: '0.75rem 1rem',
-                      borderBottom: idx < fixFields.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none',
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      fontSize: '0.875rem'
-                    }}
-                  >
-                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                      <span style={{ 
-                        fontWeight: '500',
-                        fontFamily: 'ui-monospace, monospace',
-                        color: 'rgba(255,255,255,0.9)'
-                      }}>
-                        {field.tag}
-                      </span>
-                      {field.tagInfo && (
-                        <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.8rem' }}>
-                          {field.tagInfo.name}
-                        </span>
-                      )}
-                    </div>
-                    <div style={{ 
-                      flex: 1, 
-                      color: 'rgba(255,255,255,0.6)',
-                      fontFamily: 'ui-monospace, monospace',
-                      textAlign: 'right',
-                      fontSize: '0.8rem'
-                    }}>
-                      {field.value}
-                    </div>
-                  </div>
+                {fixFields.map((field, idx) => (
+                  <ParsedFieldRow key={idx} field={field} depth={0} isLast={idx === fixFields.length - 1} />
                 ))}
               </div>
             </div>
@@ -3313,147 +3394,171 @@ export default function Page() {
                   }}>
                     Select a Field to Prove
                   </div>
-                  <div style={{
-                    maxHeight: '300px',
-                    overflowY: 'auto',
-                    border: '1px solid rgba(255,255,255,0.1)',
-                    borderRadius: '8px',
-                    background: 'rgba(255,255,255,0.03)'
-                  }}>
-                    {preview.paths.map((path, idx) => {
-                      // Get the corresponding tag info
-                      // For simple scalar fields, path is [tagNumber]
-                      // For nested fields in groups, path is [groupTag, entryIndex, fieldTag]
+                <div style={{
+                  maxHeight: '300px',
+                  overflowY: 'auto',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  borderRadius: '8px',
+                  background: 'rgba(255,255,255,0.03)',
+                  padding: '0.5rem'
+                }}>
+                  {(() => {
+                    const normalizePath = (rawPath: number[]) => {
+                      if (rawPath.length < 3) return rawPath.map((value) => Number(value));
+                      const normalized = rawPath.map((value) => Number(value));
+                      for (let i = 1; i < normalized.length; i += 2) {
+                        normalized[i] = normalized[i] + 1;
+                      }
+                      return normalized;
+                    };
+
+                    const findFieldByPath = (node: TreeNodeData, targetPath: number[]): TreeNodeData | null => {
+                      if (node.path && JSON.stringify(node.path) === JSON.stringify(targetPath)) {
+                        return node;
+                      }
+                      if (node.children) {
+                        for (const child of node.children) {
+                          const found = findFieldByPath(child, targetPath);
+                          if (found) return found;
+                        }
+                      }
+                      return null;
+                    };
+
+                    const scalarPaths = preview.paths.filter((p) => p.length === 1);
+                    const groupPaths = preview.paths.filter((p) => p.length > 1);
+                    const groups = new Map<number, Map<number, Array<{ path: number[]; tag?: string; value?: string; name?: string }>>>();
+
+                    for (const rawPath of groupPaths) {
+                      const normalizedPath = normalizePath(rawPath);
+                      const groupTag = normalizedPath[0];
+                      const entryIndex = normalizedPath[1];
+                      const leafTag = normalizedPath[normalizedPath.length - 1];
                       let tag: string | undefined;
                       let value: string | undefined;
-                      let fieldName: string | undefined;
-
-                      // Try to match against tree data first
+                      let name: string | undefined;
                       if (displayTreeData) {
-                        const findFieldByPath = (node: TreeNodeData, targetPath: number[]): TreeNodeData | null => {
-                          if (!node.path) return null;
-                          if (JSON.stringify(node.path) === JSON.stringify(targetPath)) {
-                            return node;
-                          }
-                          if (node.children) {
-                            for (const child of node.children) {
-                              const found = findFieldByPath(child, targetPath);
-                              if (found) return found;
-                            }
-                          }
-                          return null;
-                        };
-
-                        const field = findFieldByPath(displayTreeData, path);
+                        const field = findFieldByPath(displayTreeData, normalizedPath);
                         if (field?.type === 'scalar') {
                           tag = field.tag;
                           value = field.value;
-                          fieldName = field.name; // Use name from tree data (includes schema field names)
+                          name = field.name;
                         }
                       }
-
-                      // Fallback: if path is simple [tagNumber], look it up in parsed fields
-                      if (!tag && path.length === 1 && fixFields) {
-                        const tagNum = String(path[0]);
-                        const parsedField = fixFields.find(f => f.tag === tagNum);
-                        if (parsedField) {
-                          tag = parsedField.tag;
-                          value = parsedField.value;
-                          fieldName = parsedField.tagInfo?.name || `Tag ${tag}`;
-                        }
+                      if (!tag && Number.isFinite(leafTag)) {
+                        tag = String(leafTag);
                       }
+                      if (!groups.has(groupTag)) {
+                        groups.set(groupTag, new Map());
+                      }
+                      const entryMap = groups.get(groupTag)!;
+                      if (!entryMap.has(entryIndex)) {
+                        entryMap.set(entryIndex, []);
+                      }
+                      entryMap.get(entryIndex)!.push({ path: rawPath, tag, value, name });
+                    }
 
-                      return (
-                        <button
-                          key={idx}
-                          onClick={() => setPathInput(JSON.stringify(path))}
-                          style={{
-                            display: 'flex',
-                            width: '100%',
-                            textAlign: 'left',
-                            padding: '0.875rem 1rem',
-                            background: pathInput === JSON.stringify(path) ? 'rgba(168, 85, 247, 0.1)' : 'transparent',
-                            border: 'none',
-                            borderBottom: idx < preview.paths.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none',
-                            cursor: 'pointer',
-                            fontSize: '0.875rem',
-                            color: 'rgba(255,255,255,0.7)',
-                            transition: 'all 0.2s',
-                            alignItems: 'center',
-                            gap: '0.75rem'
-                          }}
-                          onMouseEnter={(e) => {
-                            if (pathInput !== JSON.stringify(path)) {
-                              e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
-                            }
-                            e.currentTarget.style.color = 'rgba(255,255,255,0.9)';
-                          }}
-                          onMouseLeave={(e) => {
-                            if (pathInput !== JSON.stringify(path)) {
-                              e.currentTarget.style.background = 'transparent';
-                            }
-                            e.currentTarget.style.color = 'rgba(255,255,255,0.7)';
-                          }}
-                        >
-                          {tag && value ? (
-                            <>
-                              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                  <span style={{
-                                    fontFamily: 'ui-monospace, monospace',
-                                    fontWeight: '600',
-                                    color: 'rgba(96, 165, 250, 0.9)',
-                                    fontSize: '0.95rem'
-                                  }}>
-                                    Tag {tag}
-                                  </span>
-                                  {fieldName && (
-                                    <span style={{
-                                      color: 'rgba(255,255,255,0.5)',
-                                      fontSize: '0.8rem'
-                                    }}>
-                                      {fieldName}
-                                    </span>
-                                  )}
-                                </div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                  <span style={{
-                                    fontSize: '0.75rem',
-                                    color: 'rgba(255,255,255,0.4)'
-                                  }}>
-                                    Prove that:
-                                  </span>
-                                  <span style={{
-                                    fontFamily: 'ui-monospace, monospace',
-                                    fontSize: '0.85rem',
-                                    color: 'rgba(255,255,255,0.8)',
-                                    fontWeight: '500'
-                                  }}>
-                                    {tag} = {value}
-                                  </span>
-                                </div>
-                              </div>
-                              <div style={{
-                                fontFamily: 'ui-monospace, monospace',
-                                fontSize: '0.7rem',
-                                color: 'rgba(255,255,255,0.3)',
-                                minWidth: 'fit-content'
-                              }}>
-                                {JSON.stringify(path)}
-                              </div>
-                            </>
-                          ) : (
-                            <div style={{
+                    const renderPathButton = (item: { path: number[]; tag?: string; value?: string; name?: string }) => (
+                      <button
+                        key={JSON.stringify(item.path)}
+                        onClick={() => setPathInput(JSON.stringify(item.path))}
+                        style={{
+                          display: 'flex',
+                          width: '100%',
+                          textAlign: 'left',
+                          padding: '0.6rem 0.75rem',
+                          background: pathInput === JSON.stringify(item.path) ? 'rgba(168, 85, 247, 0.1)' : 'transparent',
+                          border: 'none',
+                          borderBottom: '1px solid rgba(255,255,255,0.05)',
+                          cursor: 'pointer',
+                          fontSize: '0.85rem',
+                          color: 'rgba(255,255,255,0.75)',
+                          transition: 'all 0.2s',
+                          alignItems: 'center',
+                          gap: '0.75rem'
+                        }}
+                      >
+                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <span style={{
                               fontFamily: 'ui-monospace, monospace',
-                              flex: 1
+                              fontWeight: '600',
+                              color: 'rgba(96, 165, 250, 0.9)',
+                              fontSize: '0.9rem'
                             }}>
-                              {JSON.stringify(path)}
+                              {item.tag ? (item.name ? `${item.name} (${item.tag})` : `Tag ${item.tag}`) : JSON.stringify(item.path)}
+                            </span>
+                          </div>
+                          {item.tag && item.value !== undefined && (
+                            <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.45)' }}>
+                              {item.tag} = {item.value}
                             </div>
                           )}
-                        </button>
-                      );
-                    })}
-                  </div>
+                        </div>
+                        <div style={{
+                          fontFamily: 'ui-monospace, monospace',
+                          fontSize: '0.7rem',
+                          color: 'rgba(255,255,255,0.3)'
+                        }}>
+                          [{item.path.join(',')}]
+                        </div>
+                      </button>
+                    );
+
+                    return (
+                      <div>
+                        {scalarPaths.map((path) => {
+                          let tag: string | undefined;
+                          let value: string | undefined;
+                          let name: string | undefined;
+                          if (displayTreeData?.children) {
+                            const tagNum = String(path[0]);
+                            const parsedField = displayTreeData.children.find(
+                              (child) => child.type === 'scalar' && child.tag === tagNum,
+                            );
+                            if (parsedField) {
+                              tag = parsedField.tag;
+                              value = parsedField.value;
+                              name = parsedField.name;
+                            }
+                          }
+                          if (!tag && path.length === 1) {
+                            tag = String(path[0]);
+                          }
+                          return renderPathButton({ path, tag, value, name });
+                        })}
+
+                        {Array.from(groups.entries()).map(([groupTag, entries]) => {
+                          const groupName = displayTreeData?.children?.find(
+                            (child) => child.type === 'group' && child.tag === String(groupTag),
+                          )?.name;
+                          return (
+                          <div key={groupTag} style={{ marginTop: '0.75rem' }}>
+                            <div style={{
+                              padding: '0.5rem 0.75rem',
+                              fontSize: '0.85rem',
+                              fontWeight: 600,
+                              color: 'rgba(255,255,255,0.85)',
+                              background: 'rgba(255,255,255,0.04)',
+                              borderRadius: '6px'
+                            }}>
+                              Group {groupTag}{groupName ? ` · ${groupName}` : ''}
+                            </div>
+                            {Array.from(entries.entries()).map(([entryIndex, items]) => (
+                              <div key={entryIndex} style={{ marginLeft: '0.75rem', marginTop: '0.5rem' }}>
+                                <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.5)', marginBottom: '0.25rem' }}>
+                                  Entry {entryIndex}
+                                </div>
+                                {items.map(renderPathButton)}
+                              </div>
+                            ))}
+                          </div>
+                        );
+                      })}
+                      </div>
+                    );
+                  })()}
+                </div>
                 </div>
               )}
 
@@ -3474,8 +3579,7 @@ export default function Page() {
                     try {
                       const parsedPath = JSON.parse(pathInput);
                       const findFieldByPath = (node: TreeNodeData, targetPath: number[]): TreeNodeData | null => {
-                        if (!node.path) return null;
-                        if (JSON.stringify(node.path) === JSON.stringify(targetPath)) {
+                        if (node.path && JSON.stringify(node.path) === JSON.stringify(targetPath)) {
                           return node;
                         }
                         if (node.children) {

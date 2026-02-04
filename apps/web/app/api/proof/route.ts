@@ -1,17 +1,34 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { buildCanonicalTree, enumerateLeaves, generateProof, type DescriptorTree } from 'fixdescriptorkit-typescript';
+import { buildCanonicalTree, enumerateLeaves, generateProof, type DescriptorTree, type GroupNode, type GroupEntry } from 'fixdescriptorkit-typescript';
 export const runtime = 'nodejs';
 
-// Build DescriptorTree from SBE parsed fields (same as preview API)
+// Build DescriptorTree from SBE parsed fields (group-aware)
 function buildTreeFromSbeFields(parsedFields: Record<string, unknown>): DescriptorTree {
   const tree: DescriptorTree = {};
   
   for (const [tag, value] of Object.entries(parsedFields)) {
-    // Simple scalar fields (no group support yet, but can be added if needed)
+    if (Array.isArray(value)) {
+      const entries = value.map((entry) => buildGroupEntry(entry as Record<string, unknown>));
+      tree[Number(tag)] = { tag: Number(tag), entries };
+      continue;
+    }
     tree[Number(tag)] = String(value);
   }
   
   return tree;
+}
+
+function buildGroupEntry(entry: Record<string, unknown>): GroupEntry {
+  const result: GroupEntry = {};
+  for (const [tag, value] of Object.entries(entry)) {
+    if (Array.isArray(value)) {
+      const entries = value.map((nestedEntry) => buildGroupEntry(nestedEntry as Record<string, unknown>));
+      result[Number(tag)] = { tag: Number(tag), entries } as GroupNode;
+      continue;
+    }
+    result[Number(tag)] = String(value);
+  }
+  return result;
 }
 
 export async function POST(req: NextRequest) {

@@ -19,6 +19,7 @@ type FieldNode = {
   name: string;
   type: string;
   required: boolean;
+  semanticType?: string;
 };
 
 type GroupNode = {
@@ -304,9 +305,10 @@ function extractNodesFromMessage(
         }
         const fieldPresence = child.getAttribute('presence') || inheritedPresence;
         const isRequired = fieldPresence === 'required';
-        const fieldDef = fieldDictionary.get(fieldId)!;
+      const fieldDef = fieldDictionary.get(fieldId)!;
         const mappedType = mapOrchestraTypeToSbe(fieldDef.type);
         const sanitizedName = sanitizeFieldName(fieldDef.name);
+      const semanticType = mapOrchestraSemanticType(fieldDef.type);
 
         nodes.push({
           kind: 'field',
@@ -314,6 +316,7 @@ function extractNodesFromMessage(
           name: sanitizedName,
           type: mappedType,
           required: isRequired,
+        semanticType
         });
         continue;
       }
@@ -570,11 +573,12 @@ function renderNodes(nodes: SchemaNode[], indent: string): string {
       const isVarLength = node.type === 'varStringEncoding' || node.type === 'varDataEncoding';
       const presenceAttr = (!node.required && !isVarLength) ? ' presence="optional"' : '';
       const nullValueAttr = (!node.required && !isVarLength) ? ` nullValue="${getNullValue(node.type)}"` : '';
+      const semanticAttr = node.semanticType ? ` semanticType="${node.semanticType}"` : '';
       if (isVarLength) {
         dataParts.push(`${indent}<data name="${node.name}" id="${node.id}" type="${node.type}"/>`);
       } else {
         fieldParts.push(
-          `${indent}<field name="${node.name}" id="${node.id}" type="${node.type}"${presenceAttr}${nullValueAttr}/>`,
+          `${indent}<field name="${node.name}" id="${node.id}" type="${node.type}"${presenceAttr}${nullValueAttr}${semanticAttr}/>`,
         );
       }
       continue;
@@ -588,6 +592,13 @@ function renderNodes(nodes: SchemaNode[], indent: string): string {
   }
 
   return [...fieldParts, ...groupParts, ...dataParts].join('\n');
+}
+
+function mapOrchestraSemanticType(orchestraType: string): string | undefined {
+  if (orchestraType === 'UTCTimestamp' || orchestraType === 'TZTimestamp') {
+    return orchestraType;
+  }
+  return undefined;
 }
 
 /**
