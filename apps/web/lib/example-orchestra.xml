@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<repository name="Example" xmlns="http://fixprotocol.io/2020/orchestra/repository">
+  <messages>
+    <message name="Order" id="1" msgType="D" category="SingleGeneralOrderHandling">
+      <structure>
+        <field id="11" name="orderId" type="int" presence="required">
+          <annotation>
+            <documentation>Unique identifier for the order</documentation>
+          </annotation>
+        </field>
+        <field id="38" name="quantity" type="Qty" presence="required">
+          <annotation>
+            <documentation>Quantity of the order</documentation>
+          </annotation>
+        </field>
+        <field id="44" name="price" type="Price" presence="required">
+          <annotation>
+            <documentation>Price of the order</documentation>
+          </annotation>
+        </field>
+        <field id="55" name="symbol" type="String" presence="required">
+          <annotation>
+            <documentation>Security symbol</documentation>
+          </annotation>
+        </field>
+      </structure>
+    </message>
+  </messages>
+</repository>
+

@@ -76,30 +76,6 @@ export const abi = [
   },
   {
     "type": "function",
-    "name": "getFixCBORChunk",
-    "inputs": [
-      {
-        "name": "start",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "size",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "chunk",
-        "type": "bytes",
-        "internalType": "bytes"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
     "name": "getFixDescriptor",
     "inputs": [],
     "outputs": [
@@ -124,27 +100,22 @@ export const abi = [
             "internalType": "bytes32"
           },
           {
-            "name": "dictionaryContract",
-            "type": "address",
-            "internalType": "address"
-          },
-          {
             "name": "fixRoot",
             "type": "bytes32",
             "internalType": "bytes32"
           },
           {
-            "name": "fixCBORPtr",
+            "name": "fixSBEPtr",
             "type": "address",
             "internalType": "address"
           },
           {
-            "name": "fixCBORLen",
+            "name": "fixSBELen",
             "type": "uint32",
             "internalType": "uint32"
           },
           {
-            "name": "fixURI",
+            "name": "schemaURI",
             "type": "string",
             "internalType": "string"
           }
@@ -168,13 +139,24 @@ export const abi = [
   },
   {
     "type": "function",
-    "name": "getHumanReadableDescriptor",
-    "inputs": [],
+    "name": "getFixSBEChunk",
+    "inputs": [
+      {
+        "name": "start",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "size",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
     "outputs": [
       {
-        "name": "",
-        "type": "string",
-        "internalType": "string"
+        "name": "chunk",
+        "type": "bytes",
+        "internalType": "bytes"
       }
     ],
     "stateMutability": "view"
@@ -368,27 +350,22 @@ export const abi = [
             "internalType": "bytes32"
           },
           {
-            "name": "dictionaryContract",
-            "type": "address",
-            "internalType": "address"
-          },
-          {
             "name": "fixRoot",
             "type": "bytes32",
             "internalType": "bytes32"
           },
           {
-            "name": "fixCBORPtr",
+            "name": "fixSBEPtr",
             "type": "address",
             "internalType": "address"
           },
           {
-            "name": "fixCBORLen",
+            "name": "fixSBELen",
             "type": "uint32",
             "internalType": "uint32"
           },
           {
-            "name": "fixURI",
+            "name": "schemaURI",
             "type": "string",
             "internalType": "string"
           }
@@ -490,7 +467,7 @@ export const abi = [
     "name": "verifyField",
     "inputs": [
       {
-        "name": "pathCBOR",
+        "name": "pathSBE",
         "type": "bytes",
         "internalType": "bytes"
       },
@@ -586,13 +563,13 @@ export const abi = [
         "internalType": "bytes32"
       },
       {
-        "name": "fixCBORPtr",
+        "name": "fixSBEPtr",
         "type": "address",
         "indexed": false,
         "internalType": "address"
       },
       {
-        "name": "fixCBORLen",
+        "name": "fixSBELen",
         "type": "uint32",
         "indexed": false,
         "internalType": "uint32"
@@ -668,11 +645,6 @@ export const abi = [
       }
     ],
     "anonymous": false
-  },
-  {
-    "type": "error",
-    "name": "DictionaryNotSet",
-    "inputs": []
   },
   {
     "type": "error",

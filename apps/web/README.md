@@ -2,7 +2,7 @@
 
 > **Interactive demo and deployment interface for FIX descriptor transformation and onchain verification**
 
-A Next.js 15 application that provides an interactive web interface for converting FIX asset descriptors into canonical CBOR and Merkle commitments, with full blockchain integration for deployment and verification.
+A Next.js 15 application that provides an interactive web interface for converting FIX asset descriptors into SBE (Simple Binary Encoding) and Merkle commitments, with full blockchain integration for deployment and verification.
 
 [![Next.js](https://img.shields.io/badge/Next.js-15.5+-black.svg)](https://nextjs.org/)
 [![React](https://img.shields.io/badge/React-19.1+-blue.svg)](https://reactjs.org/)
@@ -11,7 +11,7 @@ A Next.js 15 application that provides an interactive web interface for converti
 ## 🎯 Purpose
 
 This web application serves as:
-- **Interactive Explorer** - Visualize the complete FIX → CBOR → Merkle transformation pipeline
+- **Interactive Explorer** - Visualize the complete FIX → SBE → Merkle transformation pipeline
 - **Development Tool** - Test and debug descriptor transformations before deployment
 - **Deployment Interface** - Deploy descriptors to blockchain networks via MetaMask
 - **Specification Reference** - Browse the complete technical specification with examples
@@ -22,7 +22,7 @@ This web application serves as:
 ### 1. **Interactive Transformation Explorer**
 - **FIX Parser** - Real-time parsing of FIX messages with validation
 - **Tree Visualizer** - Interactive hierarchical view of the canonical descriptor tree
-- **CBOR Inspector** - Hex dump and decoded view of canonical CBOR bytes
+- **SBE Inspector** - Hex dump and decoded view of SBE encoded bytes
 - **Merkle Tree Viewer** - Visual representation of Merkle tree structure with leaf enumeration
 
 ### 2. **Field Inspector**
@@ -343,9 +343,37 @@ vercel --prod
 
 See [DEPLOYMENT.md](../../DEPLOYMENT.md) in the root for detailed instructions.
 
+### Schema Format Support
+
+The application accepts **FIX Orchestra XML** as input:
+
+- **Orchestra XML**: Standard FIX protocol specification format
+- Automatically converted to SBE before encoding
+- Supports field types like String, Qty, Price, int, etc.
+
+**Example Orchestra XML** (see `lib/example-orchestra.xml`):
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<repository name="Example" xmlns="http://fixprotocol.io/2020/orchestra/repository">
+  <messages>
+    <message name="Order" id="1">
+      <structure>
+        <field id="11" name="orderId" type="int" presence="required"/>
+        <field id="38" name="quantity" type="Qty" presence="required"/>
+        <field id="44" name="price" type="Price" presence="required"/>
+        <field id="55" name="symbol" type="String" presence="required"/>
+      </structure>
+    </message>
+  </messages>
+</repository>
+```
+
 ### Environment Variables
 
 ```env
+# Required: SBE Encoder API endpoint
+SBE_ENCODER_URL=https://your-sbe-encoder-api-url.on.aws/
+
 # Optional: Analytics
 NEXT_PUBLIC_ANALYTICS_ID=your-analytics-id
 

@@ -130,7 +130,7 @@ struct FixDescriptor {
     bytes32 fixRoot;      // Merkle root
     address fixCBORPtr;   // CBOR data contract address
     uint32  fixCBORLen;   // CBOR data length
-    string  fixURI;       // Optional mirror URI
+    string  schemaURI;    // Optional SBE schema URI
 }
 ```
 

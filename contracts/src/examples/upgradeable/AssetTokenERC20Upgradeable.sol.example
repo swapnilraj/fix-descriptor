@@ -82,33 +82,26 @@ contract AssetTokenERC20Upgradeable is
      * @inheritdoc IFixDescriptor
      */
     function verifyField(
-        bytes calldata pathCBOR,
+        bytes calldata pathSBE,
         bytes calldata value,
         bytes32[] calldata proof,
         bool[] calldata directions
     ) external view override returns (bool) {
-        return _fixDescriptor.verifyFieldProof(pathCBOR, value, proof, directions);
+        return _fixDescriptor.verifyFieldProof(pathSBE, value, proof, directions);
     }
 
     /**
-     * @notice Get CBOR data chunk
+     * @notice Get SBE data chunk
      * @param start Start offset (in the data, not including STOP byte)
      * @param size Number of bytes to read
-     * @return chunk The requested CBOR data
+     * @return chunk The requested SBE data
      */
-    function getFixCBORChunk(uint256 start, uint256 size)
+    function getFixSBEChunk(uint256 start, uint256 size)
         external
         view
         returns (bytes memory chunk)
     {
-        return _fixDescriptor.getFixCBORChunk(start, size);
-    }
-
-    /**
-     * @inheritdoc IFixDescriptor
-     */
-    function getHumanReadableDescriptor() external view override returns (string memory) {
-        return _fixDescriptor.getHumanReadable();
+        return _fixDescriptor.getFixSBEChunk(start, size);
     }
 
     /**

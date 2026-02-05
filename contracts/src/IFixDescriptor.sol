@@ -12,19 +12,18 @@ interface IFixDescriptor {
         uint16 fixMajor;           // FIX version major (e.g., 4)
         uint16 fixMinor;           // FIX version minor (e.g., 4)
         bytes32 dictHash;          // FIX dictionary/Orchestra hash
-        address dictionaryContract; // FixDictionary contract address for tag name lookups
         bytes32 fixRoot;           // Merkle root commitment
-        address fixCBORPtr;        // SSTORE2 data contract address
-        uint32 fixCBORLen;         // CBOR data length
-        string fixURI;             // Optional mirror URI (ipfs:// or https://)
+        address fixSBEPtr;         // SSTORE2 data contract address
+        uint32 fixSBELen;          // SBE data length
+        string schemaURI;          // Optional SBE schema URI (ipfs:// or https://)
     }
 
     /// @notice Emitted when descriptor is first set
     event FixDescriptorSet(
         bytes32 indexed fixRoot,
         bytes32 indexed dictHash,
-        address fixCBORPtr,
-        uint32 fixCBORLen
+        address fixSBEPtr,
+        uint32 fixSBELen
     );
 
     /// @notice Emitted when descriptor is updated
@@ -48,23 +47,16 @@ interface IFixDescriptor {
 
     /**
      * @notice Verify a specific field against the committed descriptor
-     * @param pathCBOR Canonical CBOR bytes of the field path
+     * @param pathSBE SBE-encoded bytes of the field path
      * @param value Raw FIX value bytes
      * @param proof Merkle proof (sibling hashes)
      * @param directions Direction array (true=right child, false=left child)
      * @return valid True if the proof is valid
      */
     function verifyField(
-        bytes calldata pathCBOR,
+        bytes calldata pathSBE,
         bytes calldata value,
         bytes32[] calldata proof,
         bool[] calldata directions
     ) external view returns (bool valid);
-
-    /**
-     * @notice Get human-readable FIX descriptor output
-     * @dev Uses dictionaryContract to map tag numbers to names
-     * @return Human-readable FIX string (pipe-delimited format)
-     */
-    function getHumanReadableDescriptor() external view returns (string memory);
 }
