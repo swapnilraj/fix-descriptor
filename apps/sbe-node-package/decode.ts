@@ -1,8 +1,8 @@
 import { readFileSync, readdirSync, rmSync, statSync } from "fs";
-import { resolve } from "path";
+import { resolve, sep } from "path";
 import Module from "module";
 
-import { DefaultMutableDirectBuffer } from "agrona/src";
+import { DefaultMutableDirectBuffer } from "agrona";
 import { XMLParser } from "fast-xml-parser";
 import { runGenerator, type GeneratorResult } from "./generator";
 import { pruneSchemaToMessage } from "./schema-prune";
@@ -19,6 +19,7 @@ const log = (...args: unknown[]) => {
         console.log("[sbe-decode]", ...args);
     }
 };
+const packageRoot = resolve(__dirname, __dirname.endsWith(`${sep}dist`) ? ".." : ".");
 
 export async function decodeFromInput(args: DecodeArgs): Promise<Record<string, unknown>> {
     if (!args.schema || !args.encodedMessage) {
@@ -599,7 +600,7 @@ function ensureAgronaAlias(): void {
         ) => string;
     };
     const originalResolve = moduleAny._resolveFilename.bind(Module);
-    const agronaPath = resolve(process.cwd(), "agrona-ts", "src", "index.ts");
+    const agronaPath = resolve(packageRoot, "agrona-ts", "src", "index.ts");
 
     moduleAny._resolveFilename = (
         request: string,

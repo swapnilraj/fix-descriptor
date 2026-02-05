@@ -1,6 +1,6 @@
 import { spawnSync } from "child_process";
 import { existsSync, mkdirSync, readdirSync, rmSync, writeFileSync } from "fs";
-import { join, resolve } from "path";
+import { join, resolve, sep } from "path";
 
 export type GeneratorResult = {
     codecsDir: string;
@@ -14,11 +14,12 @@ const log = (...args: unknown[]) => {
     }
 };
 let javaVersionLogged = false;
+const packageRoot = resolve(__dirname, __dirname.endsWith(`${sep}dist`) ? ".." : ".");
 
 export function findLocalJar(): string | undefined {
     const candidates = [
-        resolve(process.cwd(), "simple-binary-encoding", "sbe-all", "build", "libs"),
-        resolve(process.cwd(), "simple-binary-encoding", "sbe-tool", "build", "libs"),
+        resolve(packageRoot, "simple-binary-encoding", "sbe-all", "build", "libs"),
+        resolve(packageRoot, "simple-binary-encoding", "sbe-tool", "build", "libs"),
     ];
 
     for (const dir of candidates) {
@@ -42,7 +43,7 @@ export async function runGenerator(schemaXml: string): Promise<GeneratorResult> 
         );
     }
 
-    const outputDir = process.env.SBE_OUTPUT_DIR || "generated";
+    const outputDir = process.env.SBE_OUTPUT_DIR || resolve(packageRoot, "generated");
     if (existsSync(outputDir)) {
         rmSync(outputDir, { recursive: true, force: true });
     }

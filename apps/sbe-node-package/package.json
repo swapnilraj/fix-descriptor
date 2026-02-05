@@ -1,8 +1,28 @@
 {
   "name": "fix-sbe-typescript",
-  "private": true,
+  "version": "0.1.0",
+  "private": false,
   "type": "commonjs",
+  "main": "dist/lib.js",
+  "types": "dist/lib.d.ts",
+  "bin": {
+    "sbe-build-agrona": "bin/build-agrona.js",
+    "sbe-build-jar": "bin/build-sbe-jar.js"
+  },
+  "exports": {
+    ".": {
+      "require": "./dist/lib.js",
+      "types": "./dist/lib.d.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "bin",
+    "agrona-ts",
+    "simple-binary-encoding"
+  ],
   "scripts": {
+    "build": "tsc -p tsconfig.json",
     "build:agrona": "npx tsc -p agrona-ts/tsconfig.json",
     "build:sbe-jar": "cd simple-binary-encoding && ./gradlew :sbe-all:jar",
     "test:encode": "TS_NODE_TRANSPILE_ONLY=1 ts-node index.ts",

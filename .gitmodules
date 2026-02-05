@@ -5,9 +5,9 @@
 	path = contracts/lib/forge-std
 	url = https://github.com/foundry-rs/forge-std
 [submodule "sbe-node/agrona-ts"]
-	path = apps/sbe-node/agrona-ts
+	path = apps/sbe-node-package/agrona-ts
 	url = git@github.com:rafalpiotrowski/agrona-ts.git
 [submodule "sbe-node/simple-binary-encoding"]
-	path = apps/sbe-node/simple-binary-encoding
+	path = apps/sbe-node-package/simple-binary-encoding
 	url = git@github.com:rafalpiotrowski/simple-binary-encoding.git
 	branch = typescript-support
