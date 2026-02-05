@@ -1,10 +1,11 @@
-import { readFileSync, readdirSync, statSync } from "fs";
+import { readFileSync, readdirSync, rmSync, statSync } from "fs";
 import { resolve } from "path";
 import Module from "module";
 
 import { runGenerator, type GeneratorResult } from "./generator";
 import { DefaultMutableDirectBuffer } from "agrona/src";
 import { XMLParser } from "fast-xml-parser";
+import { pruneSchemaToMessage } from "./schema-prune";
 
 export type Args = {
     schema?: string;
@@ -24,12 +25,18 @@ export async function encodeFromInput(args: Args): Promise<Uint8Array> {
         throw new Error("schema, fixMessage, and messageId are required.");
     }
 
-    const schemaXml = resolveSchemaInput(args.schema);
+    let schemaXml = resolveSchemaInput(args.schema);
+    schemaXml = pruneSchemaToMessage(schemaXml, args.messageId);
+    log("pruned-schema", { messageId: args.messageId, schemaBytes: schemaXml.length });
     log("start", { messageId: args.messageId, schemaBytes: schemaXml.length });
     const generatorResult = await runGenerator(schemaXml);
-    const result = await encodeMessage(args.fixMessage, args.messageId, schemaXml, generatorResult);
-    log("done", { encodedBytes: result.length });
-    return result;
+    try {
+        const result = await encodeMessage(args.fixMessage, args.messageId, schemaXml, generatorResult);
+        log("done", { encodedBytes: result.length });
+        return result;
+    } finally {
+        cleanupGeneratedCodecs(generatorResult.codecsDir);
+    }
 }
 
 export async function encodeMessage(
@@ -44,10 +51,14 @@ export async function encodeMessage(
         throw new Error(`Message id ${messageId} not found in schema.`);
     }
 
+    const loadStart = Date.now();
+    log("load-codecs start", { codecsDir: generatorResult.codecsDir });
     ensureAgronaAlias();
     const indexPath = findGeneratedIndex(generatorResult.codecsDir);
+    purgeGeneratedCodecsCache(generatorResult.codecsDir);
     // ts-node/register can load generated .ts directly in CJS mode.
     const codecs = require(indexPath);
+    log("load-codecs done", { indexPath, durationMs: Date.now() - loadStart });
 
     const messageEncoderName = `${message.name}Encoder`;
     const MessageHeaderEncoder = codecs.MessageHeaderEncoder;
@@ -61,11 +72,17 @@ export async function encodeMessage(
     const headerEncoder = new MessageHeaderEncoder();
     const encoder = new MessageEncoder();
 
+    const encodeStart = Date.now();
     encoder.wrapAndApplyHeader(buffer, 0, headerEncoder);
 
     const tokens = parseFixTokens(fixMessage);
     const groupIds = collectGroupIds(message.nodes);
     const scalarValues = buildScalarMap(tokens, groupIds);
+    log("encode-fields start", {
+        tokenCount: tokens.length,
+        groupCount: groupIds.size,
+        nodeCount: message.nodes.length,
+    });
 
     // Encode fields/groups in schema order.
     for (const node of message.nodes) {
@@ -87,6 +104,7 @@ export async function encodeMessage(
     }
 
     const length = encoder.getLimit();
+    log("encode-fields done", { durationMs: Date.now() - encodeStart, encodedBytes: length });
     return buffer.byteArray().slice(0, length);
 }
 
@@ -435,6 +453,24 @@ function coerceValue(
     }
 
     return rawValue;
+}
+
+function cleanupGeneratedCodecs(codecsDir: string): void {
+    try {
+        rmSync(codecsDir, { recursive: true, force: true });
+        log("cleanup", { codecsDir });
+    } catch (error) {
+        log("cleanup-failed", { codecsDir, error });
+    }
+}
+
+function purgeGeneratedCodecsCache(codecsDir: string): void {
+    const resolvedDir = resolve(codecsDir);
+    for (const cacheKey of Object.keys(require.cache)) {
+        if (cacheKey.startsWith(resolvedDir)) {
+            delete require.cache[cacheKey];
+        }
+    }
 }
 
 function resolvePrimitiveType(typeName: string, typeByName: Map<string, string>): string | null {

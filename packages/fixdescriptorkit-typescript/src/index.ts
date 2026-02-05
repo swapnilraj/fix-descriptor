@@ -35,6 +35,13 @@ export {
   type DictionaryEntry,
 } from './dictionary.js';
 
+export {
+  orchestraToSbe,
+  orchestraToSbeFullSchema,
+  extractMessageIdFromSbe,
+  type OrchestraField,
+} from './orchestraToSbe.js';
+
 import { parseFixDescriptor } from './parse.js';
 import { buildCanonicalTree } from './canonical.js';
 import { encodeCanonicalCBOR } from './cbor.js';

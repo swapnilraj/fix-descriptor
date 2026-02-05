@@ -1,10 +1,11 @@
-import { readFileSync, readdirSync, statSync } from "fs";
+import { readFileSync, readdirSync, rmSync, statSync } from "fs";
 import { resolve } from "path";
 import Module from "module";
 
 import { DefaultMutableDirectBuffer } from "agrona/src";
 import { XMLParser } from "fast-xml-parser";
 import { runGenerator, type GeneratorResult } from "./generator";
+import { pruneSchemaToMessage } from "./schema-prune";
 
 export type DecodeArgs = {
     schema?: string;
@@ -24,16 +25,28 @@ export async function decodeFromInput(args: DecodeArgs): Promise<Record<string, 
         throw new Error("schema and encodedMessage are required.");
     }
 
-    const schemaXml = resolveSchemaInput(args.schema);
+    let schemaXml = resolveSchemaInput(args.schema);
+    let messageId = args.messageId;
+    if (messageId == null) {
+        messageId = extractTemplateId(args.encodedMessage);
+    }
+    if (messageId != null) {
+        schemaXml = pruneSchemaToMessage(schemaXml, messageId);
+        log("pruned-schema", { messageId, schemaBytes: schemaXml.length });
+    }
     log("start", {
-        messageId: args.messageId,
+        messageId,
         schemaBytes: schemaXml.length,
         encodedLength: args.encodedMessage.length,
     });
     const generatorResult = await runGenerator(schemaXml);
-    const result = await decodeMessage(args.encodedMessage, schemaXml, args.messageId, generatorResult);
-    log("done", { decodedFields: Object.keys(result.decodedFields ?? {}).length });
-    return result;
+    try {
+        const result = await decodeMessage(args.encodedMessage, schemaXml, messageId, generatorResult);
+        log("done", { decodedFields: Object.keys(result.decodedFields ?? {}).length });
+        return result;
+    } finally {
+        cleanupGeneratedCodecs(generatorResult.codecsDir);
+    }
 }
 
 export async function decodeMessage(
@@ -53,6 +66,7 @@ export async function decodeMessage(
     ensureTextDecoderEncoding();
     ensureAgronaAlias();
     const indexPath = findGeneratedIndex(generatorResult.codecsDir);
+    purgeGeneratedCodecsCache(generatorResult.codecsDir);
     const codecs = require(indexPath);
 
     const bytes = decodeMessageBytes(encodedMessage);
@@ -428,6 +442,34 @@ function decodeMessageBytes(encodedMessage: string): Uint8Array {
     const isHex = isHexOnly;
     const buffer = isHex ? Buffer.from(cleaned, "hex") : Buffer.from(cleaned, "base64");
     return new Uint8Array(buffer);
+}
+
+function extractTemplateId(encodedMessage: string): number | undefined {
+    try {
+        const bytes = decodeMessageBytes(encodedMessage);
+        if (bytes.length < 4) return undefined;
+        return bytes[2] | (bytes[3] << 8);
+    } catch {
+        return undefined;
+    }
+}
+
+function cleanupGeneratedCodecs(codecsDir: string): void {
+    try {
+        rmSync(codecsDir, { recursive: true, force: true });
+        log("cleanup", { codecsDir });
+    } catch (error) {
+        log("cleanup-failed", { codecsDir, error });
+    }
+}
+
+function purgeGeneratedCodecsCache(codecsDir: string): void {
+    const resolvedDir = resolve(codecsDir);
+    for (const cacheKey of Object.keys(require.cache)) {
+        if (cacheKey.startsWith(resolvedDir)) {
+            delete require.cache[cacheKey];
+        }
+    }
 }
 
 function lowerFirst(value: string): string {

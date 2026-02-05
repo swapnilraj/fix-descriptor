@@ -1,5 +1,5 @@
 import { spawnSync } from "child_process";
-import { existsSync, mkdirSync, readdirSync, writeFileSync } from "fs";
+import { existsSync, mkdirSync, readdirSync, rmSync, writeFileSync } from "fs";
 import { join, resolve } from "path";
 
 export type GeneratorResult = {
@@ -13,6 +13,7 @@ const log = (...args: unknown[]) => {
         console.log("[sbe-generator]", ...args);
     }
 };
+let javaVersionLogged = false;
 
 export function findLocalJar(): string | undefined {
     const candidates = [
@@ -42,9 +43,22 @@ export async function runGenerator(schemaXml: string): Promise<GeneratorResult> 
     }
 
     const outputDir = process.env.SBE_OUTPUT_DIR || "generated";
+    if (existsSync(outputDir)) {
+        rmSync(outputDir, { recursive: true, force: true });
+    }
     mkdirSync(outputDir, { recursive: true });
     const schemaPath = resolveSchemaPath(schemaXml, outputDir);
     const javaCmd = process.env.JAVA || "java";
+    if (isLogEnabled && !javaVersionLogged) {
+        javaVersionLogged = true;
+        const versionCheck = spawnSync(javaCmd, ["-version"], { encoding: "utf8" });
+        log("java", {
+            cmd: javaCmd,
+            status: versionCheck.status,
+            stderr: versionCheck.stderr?.toString().trim(),
+            stdout: versionCheck.stdout?.toString().trim(),
+        });
+    }
     const cmdArgs = [
         `-Dsbe.output.dir=${outputDir}`,
         "-Dsbe.target.language=TypeScript",
@@ -66,6 +80,15 @@ export async function runGenerator(schemaXml: string): Promise<GeneratorResult> 
     log("exit", { status: result.status, durationMs: Date.now() - started });
     if (result.status !== 0) {
         throw new Error(`sbe-ts: generator failed with status ${result.status ?? "unknown"}`);
+    }
+
+    if (isLogEnabled) {
+        const topLevel = readdirSync(outputDir);
+        log("output", {
+            outputDir,
+            entries: topLevel.slice(0, 50),
+            entryCount: topLevel.length,
+        });
     }
 
     return { codecsDir: outputDir, namespace: "fix" };
