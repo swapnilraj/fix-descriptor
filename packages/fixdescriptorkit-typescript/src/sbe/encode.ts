@@ -1,9 +1,9 @@
 import { readFileSync, readdirSync, rmSync, statSync } from "fs";
-import { resolve, sep } from "path";
-import Module from "module";
+import { dirname, resolve, sep } from "path";
+import { fileURLToPath, pathToFileURL } from "url";
 
 import { runGenerator, type GeneratorResult } from "./generator";
-import { DefaultMutableDirectBuffer } from "agrona";
+import { DefaultMutableDirectBuffer } from "../../agrona-ts/src/index";
 import { XMLParser } from "fast-xml-parser";
 import { pruneSchemaToMessage } from "./schema-prune";
 
@@ -19,7 +19,12 @@ const log = (...args: unknown[]) => {
         console.log("[sbe-encode]", ...args);
     }
 };
-const packageRoot = resolve(__dirname, __dirname.endsWith(`${sep}dist`) ? ".." : ".");
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const packageRoot = resolve(
+    __dirname,
+    __dirname.includes(`${sep}dist${sep}`) ? "../../.." : "../..",
+);
 
 export async function encodeFromInput(args: Args): Promise<Uint8Array> {
     if (!args.schema || !args.fixMessage || args.messageId == null) {
@@ -54,11 +59,8 @@ export async function encodeMessage(
 
     const loadStart = Date.now();
     log("load-codecs start", { codecsDir: generatorResult.codecsDir });
-    ensureAgronaAlias();
     const indexPath = findGeneratedIndex(generatorResult.codecsDir);
-    purgeGeneratedCodecsCache(generatorResult.codecsDir);
-    // ts-node/register can load generated .ts directly in CJS mode.
-    const codecs = require(indexPath);
+    const codecs = await importGeneratedCodecs(indexPath);
     log("load-codecs done", { indexPath, durationMs: Date.now() - loadStart });
 
     const messageEncoderName = `${message.name}Encoder`;
@@ -465,15 +467,6 @@ function cleanupGeneratedCodecs(codecsDir: string): void {
     }
 }
 
-function purgeGeneratedCodecsCache(codecsDir: string): void {
-    const resolvedDir = resolve(codecsDir);
-    for (const cacheKey of Object.keys(require.cache)) {
-        if (cacheKey.startsWith(resolvedDir)) {
-            delete require.cache[cacheKey];
-        }
-    }
-}
-
 function resolvePrimitiveType(typeName: string, typeByName: Map<string, string>): string | null {
     if (
         typeName === "char" ||
@@ -516,31 +509,8 @@ function findGeneratedIndex(codecsDir: string): string {
     throw new Error("Generated codecs index.g.{ts,js} not found.");
 }
 
-let agronaAliasInstalled = false;
-function ensureAgronaAlias(): void {
-    if (agronaAliasInstalled) return;
-    agronaAliasInstalled = true;
-
-    const moduleAny = Module as unknown as {
-        _resolveFilename: (
-            request: string,
-            parent: unknown,
-            isMain: boolean,
-            options: unknown,
-        ) => string;
-    };
-    const originalResolve = moduleAny._resolveFilename.bind(Module);
-    const agronaPath = resolve(packageRoot, "agrona-ts", "src", "index.ts");
-
-    moduleAny._resolveFilename = (
-        request: string,
-        parent: unknown,
-        isMain: boolean,
-        options: unknown,
-    ) => {
-        if (request === "agrona") {
-            return agronaPath;
-        }
-        return originalResolve(request, parent, isMain, options);
-    };
+async function importGeneratedCodecs(indexPath: string): Promise<Record<string, unknown>> {
+    const url = pathToFileURL(indexPath).href;
+    const module = await import(`${url}?t=${Date.now()}`);
+    return module as Record<string, unknown>;
 }

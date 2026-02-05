@@ -3,8 +3,8 @@ import { resolve } from "path";
 
 import { encodeFromInput } from "./encode";
 
-const inputPath = process.argv[2] ?? "./test/test-encode-repeating-group.json";
-const fallbackPath = process.argv[3] ?? "../fix-descriptor/sbe-lambda-encoder/test-encode-treasury-full.json";
+const inputPath = process.argv[2] ?? "./test/sbe/test-encode-repeating-group.json";
+const fallbackPath = process.argv[3] ?? "../../sbe-lambda-encoder/test-encode-treasury-full.json";
 const resolvedPath = resolve(process.cwd(), inputPath);
 let input: { schema?: string; fixMessage?: string; messageId?: number };
 try {

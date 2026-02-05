@@ -6,8 +6,12 @@
     "emitDeclarationOnly": false,
     "lib": ["ES2020", "DOM"],
     "module": "ES2020",
-    "moduleResolution": "Bundler"
+    "moduleResolution": "Bundler",
+    "baseUrl": ".",
+    "paths": {
+      "agrona": ["agrona-ts/src/index.ts"]
+    }
   },
-  "include": ["src/**/*", "test/**/*"],
+  "include": ["src/**/*", "test/**/*", "agrona-ts/src/**/*", "generated/**/*"],
   "exclude": ["node_modules", "dist"]
 }

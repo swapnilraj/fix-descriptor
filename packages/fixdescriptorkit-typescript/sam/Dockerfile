@@ -18,4 +18,4 @@ RUN mkdir -p /opt/sbe && cp simple-binary-encoding/sbe-all/build/libs/sbe-all-*.
 ENV SBE_TOOL_JAR=/opt/sbe/sbe-all.jar
 ENV SBE_OUTPUT_DIR=/tmp/sbe-codecs
 
-CMD ["lambda-handler.handler"]
+CMD ["src/sbe/lambda-handler.handler"]

@@ -42,6 +42,18 @@ export {
   type OrchestraField,
 } from './orchestraToSbe.js';
 
+export {
+  encodeFromInput,
+  encodeMessage,
+  decodeFromInput,
+  decodeMessage,
+  runGenerator,
+  findLocalJar,
+  type EncodeArgs,
+  type DecodeArgs,
+  type GeneratorResult,
+} from './sbe/lib.js';
+
 import { parseFixDescriptor } from './parse.js';
 import { buildCanonicalTree } from './canonical.js';
 import { encodeCanonicalCBOR } from './cbor.js';

@@ -14,7 +14,12 @@
     "prepublishOnly": "npm run clean && npm run build",
     "generate-cbor": "npx tsx scripts/generate-solidity-test-data.ts cbor > ../../contracts/src/generated/GeneratedCBORTestData.sol",
     "generate-merkle": "npx tsx scripts/generate-solidity-test-data.ts merkle > ../../contracts/src/generated/GeneratedMerkleData.sol",
-    "generate-test-data": "npm run generate-cbor && npm run generate-merkle"
+    "generate-test-data": "npm run generate-cbor && npm run generate-merkle",
+    "build:sbe-jar": "node scripts/build-sbe-jar.js",
+    "test:encode": "tsx src/sbe/index.ts",
+    "test:decode": "tsx src/sbe/index-decode.ts",
+    "serve": "PORT=8001 tsx src/sbe/serve.ts",
+    "generate:sbe": "tsx scripts/generate-sbe-schema.ts"
   },
   "exports": {
     ".": {
@@ -24,10 +29,23 @@
     "./orchestraToSbe": {
       "import": "./dist/src/orchestraToSbe.js",
       "types": "./dist/src/orchestraToSbe.d.ts"
+    },
+    "./sbe": {
+      "import": "./dist/src/sbe/lib.js",
+      "types": "./dist/src/sbe/lib.d.ts"
+    },
+    "./sbe/encode": {
+      "import": "./dist/src/sbe/encode.js",
+      "types": "./dist/src/sbe/encode.d.ts"
+    },
+    "./sbe/decode": {
+      "import": "./dist/src/sbe/decode.js",
+      "types": "./dist/src/sbe/decode.d.ts"
     }
   },
   "files": [
     "dist/src",
+    "lib",
     "README.md",
     "LICENSE"
   ],
@@ -58,12 +76,16 @@
   },
   "dependencies": {
     "cbor-x": "^1.6.0",
+    "@xmldom/xmldom": "^0.8.10",
+    "fast-xml-parser": "^5.3.0",
     "fixparser": "^9.3.13",
     "viem": "^2.37.8",
     "zod": "^4.1.11"
   },
   "devDependencies": {
     "@types/node": "^24.5.2",
+    "ts-node": "^10.9.2",
+    "tsx": "^4.20.5",
     "typescript": "^5.9.2",
     "vitest": "^3.2.4"
   }

@@ -4,7 +4,7 @@ import { resolve } from "path";
 import { decodeFromInput } from "./decode";
 
 (async () => {
-    const inputPath = resolve("test", "test-decode-repeating-group.json");
+    const inputPath = resolve("test", "sbe", "test-decode-repeating-group.json");
     const raw = readFileSync(inputPath, "utf-8");
     const data = JSON.parse(raw) as {
         schema?: string;

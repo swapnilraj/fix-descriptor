@@ -1,8 +1,11 @@
 import { readFileSync, writeFileSync } from "fs";
-import { resolve } from "path";
+import { dirname, resolve } from "path";
+import { fileURLToPath } from "url";
 
 import { DOMParser } from "@xmldom/xmldom";
 import { orchestraToSbeFullSchema } from "fixdescriptorkit-typescript/orchestraToSbe";
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 const inputPath = resolve(__dirname, "..", "lib", "ORCHESTRAFIX44.xml");
 const outputPath = resolve(__dirname, "..", "lib", "SBE-FULL-FIX44.xml");
 

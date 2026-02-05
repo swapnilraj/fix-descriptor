@@ -1,6 +1,7 @@
 import { spawnSync } from "child_process";
 import { existsSync, mkdirSync, readdirSync, rmSync, writeFileSync } from "fs";
-import { join, resolve, sep } from "path";
+import { dirname, join, resolve, sep } from "path";
+import { fileURLToPath } from "url";
 
 export type GeneratorResult = {
     codecsDir: string;
@@ -14,7 +15,12 @@ const log = (...args: unknown[]) => {
     }
 };
 let javaVersionLogged = false;
-const packageRoot = resolve(__dirname, __dirname.endsWith(`${sep}dist`) ? ".." : ".");
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const packageRoot = resolve(
+    __dirname,
+    __dirname.includes(`${sep}dist${sep}`) ? "../../.." : "../..",
+);
 
 export function findLocalJar(): string | undefined {
     const candidates = [
