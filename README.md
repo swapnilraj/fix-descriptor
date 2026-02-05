@@ -10,7 +10,6 @@ A comprehensive toolkit for converting FIX (Financial Information eXchange) prot
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue.svg)](https://www.typescriptlang.org/)
 [![Next.js](https://img.shields.io/badge/Next.js-15.0+-black.svg)](https://nextjs.org/)
 [![Foundry](https://img.shields.io/badge/Foundry-Latest-red.svg)](https://getfoundry.sh/)
-
 ## 🚀 Features
 
 - **📋 FIX Message Parsing** - Robust parsing of FIX protocol asset descriptors
