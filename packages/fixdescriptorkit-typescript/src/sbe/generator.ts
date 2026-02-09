@@ -23,20 +23,10 @@ const packageRoot = resolve(
 );
 
 export function findLocalJar(): string | undefined {
-    const candidates = [
-        resolve(packageRoot, "simple-binary-encoding", "sbe-all", "build", "libs"),
-        resolve(packageRoot, "simple-binary-encoding", "sbe-tool", "build", "libs"),
-    ];
-
-    for (const dir of candidates) {
-        if (!existsSync(dir)) continue;
-        const files = readdirSync(dir);
-        const sbeAll = files.find((f) => f.startsWith("sbe-all-") && f.endsWith(".jar"));
-        if (sbeAll) return join(dir, sbeAll);
-        const sbeTool = files.find((f) => f.startsWith("sbe-tool-") && f.endsWith(".jar"));
-        if (sbeTool) return join(dir, sbeTool);
+    const bundledJar = resolve(packageRoot, "lib", "sbe-all.jar");
+    if (existsSync(bundledJar)) {
+        return bundledJar;
     }
-
     return undefined;
 }
 

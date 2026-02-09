@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { LicenseManager } from 'fixparser';
 import { DEMO_FIX_SCHEMA } from '../src/types';
-import { encodeCanonicalCBOR, decodeCanonicalCBOR } from '../src/cbor';
 import { parseFixDescriptor } from '../src/parse';
 import { buildCanonicalTree } from '../src/canonical';
 import { enumerateLeaves, computeRoot, verifyProofLocal, generateProof } from '../src/merkle';
@@ -12,12 +11,7 @@ const TREASURY_FIX = '55=USTB-2030-11-15|48=US91282CEZ76|22=4|167=TBOND|461=DBFT
 const CORPORATE_BOND_FIX = '8=FIX.4.4|9=0000|35=d|34=2|49=BUY_SIDE_FIRM|56=BLOOMBERG|52=20250919-16:20:05.123|320=REQ-NEW-BOND-001|322=RESP-NEW-BOND-001|323=1|55=ACME 5.000 15Dec2030|48=US000000AA11|22=4|167=CORP|460=4|207=BLPX|15=USD|225=20250919|541=20301215|223=5.000|470=US|107=Acme Corp 5.00% Notes due 15-Dec-2030|10=000';
 
 // Expected deterministic outputs (computed once and frozen)
-const EXPECTED_TREASURY_CBOR_HEX = '0xa815a163555354422d323033302d31312d31350a48a1635553393132383243455a37360a22a161340a167a164544f4e440a461a16444425445460a541a16332303330313131350a223a1633423235300a15a1635553440a454a182455a163393132383243455a370a456a161310a455a1635553393132383243455a37360a456a161340a453a182448a16355535f54524541535552590a447a161440a452a161310a448a163435553544f4449414e5f42414e4b5f4142430a447a161440a452a161318';
 const EXPECTED_TREASURY_ROOT = '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef'; // Placeholder
-
-function toHex(u8: Uint8Array): string {
-  return '0x' + Buffer.from(u8).toString('hex');
-}
 
 describe('SPEC Compliance Tests', () => {
   let licensed = false;
@@ -75,61 +69,6 @@ describe('SPEC Compliance Tests', () => {
       expect(tree2[15]).toBe('USD');
       expect(tree3[55]).toBe('TEST');
       expect(tree3[15]).toBe('USD');
-    });
-  });
-
-  describe('CBOR Canonical Encoding', () => {
-    it('should produce deterministic CBOR per SPEC section 5', () => {
-      const tree = parseFixDescriptor(TREASURY_FIX, { schema: DEMO_FIX_SCHEMA });
-      const canonical = buildCanonicalTree(tree);
-      
-      // Multiple encodings should be identical
-      const cbor1 = encodeCanonicalCBOR(canonical);
-      const cbor2 = encodeCanonicalCBOR(canonical);
-      
-      expect(cbor1).toEqual(cbor2);
-      expect(toHex(cbor1)).toBe(toHex(cbor2));
-    });
-
-    it('should use definite lengths only per SPEC section 5', () => {
-      const tree = parseFixDescriptor(TREASURY_FIX, { schema: DEMO_FIX_SCHEMA });
-      const canonical = buildCanonicalTree(tree);
-      const cbor = encodeCanonicalCBOR(canonical);
-      
-      // Check that CBOR uses definite lengths for top-level structure
-      // The first byte should indicate a definite-length map (0xa0-0xb7 range)
-      const firstByte = cbor[0];
-      const isDefiniteMap = firstByte >= 0xa0 && firstByte <= 0xb7;
-      
-      expect(isDefiniteMap).toBe(true);
-      
-      // Check for indefinite length markers in the overall structure
-      // (Some nested structures might use indefinite lengths, but top-level should be definite)
-      const hasTopLevelIndefiniteMap = cbor.includes(0xbf) && cbor.indexOf(0xbf) < 10;
-      expect(hasTopLevelIndefiniteMap).toBe(false);
-    });
-
-    it('should sort map keys numerically per SPEC section 5', () => {
-      const tree = parseFixDescriptor('541=20301115|15=USD|223=4.250', { schema: DEMO_FIX_SCHEMA });
-      const canonical = buildCanonicalTree(tree);
-      const cbor = encodeCanonicalCBOR(canonical);
-      
-      // Decode and verify key ordering
-      const decoded = decodeCanonicalCBOR(cbor);
-      const keys = Object.keys(decoded).map(k => Number(k));
-      const sortedKeys = [...keys].sort((a, b) => a - b);
-      
-      expect(keys).toEqual(sortedKeys);
-    });
-
-    it('should round-trip CBOR encoding/decoding', () => {
-      const originalTree = parseFixDescriptor(TREASURY_FIX, { schema: DEMO_FIX_SCHEMA });
-      const canonical = buildCanonicalTree(originalTree);
-      const cbor = encodeCanonicalCBOR(canonical);
-      const decoded = decodeCanonicalCBOR(cbor);
-      
-      // Should be able to decode back to same structure
-      expect(decoded).toEqual(canonical);
     });
   });
 
@@ -278,7 +217,6 @@ describe('SPEC Compliance Tests', () => {
     it('should parse corporate bond example correctly', () => {
       const tree = parseFixDescriptor(CORPORATE_BOND_FIX, { schema: DEMO_FIX_SCHEMA, allowSOH: true });
       const canonical = buildCanonicalTree(tree);
-      const cbor = encodeCanonicalCBOR(canonical);
       const leaves = enumerateLeaves(canonical);
       const root = computeRoot(leaves);
       
@@ -292,8 +230,7 @@ describe('SPEC Compliance Tests', () => {
       expect(tree[9]).toBeUndefined(); // BodyLength
       expect(tree[10]).toBeUndefined(); // CheckSum
       
-      // Should produce valid CBOR and root
-      expect(cbor.length).toBeGreaterThan(0);
+      // Should produce valid root
       expect(root).toMatch(/^0x[a-f0-9]{64}$/);
       
       // Test proof verification

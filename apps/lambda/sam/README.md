@@ -1,10 +1,10 @@
 ## SBE Lambda (encode/decode)
 
-This package deploys serverless `/encode` and `/decode` endpoints backed by the existing `apps/sbe-node` encode/decode logic.
+This package deploys serverless `/encode` and `/decode` endpoints backed by the TypeScript SBE encode/decode logic.
 
 ### Build and deploy (SAM)
 
-From `apps/sbe-node/sam`:
+From `apps/lambda/sam`:
 
 ```
 sam build

@@ -2,7 +2,7 @@ import { readFileSync, readdirSync, rmSync, statSync } from "fs";
 import { dirname, resolve, sep } from "path";
 import { fileURLToPath, pathToFileURL } from "url";
 
-import { DefaultMutableDirectBuffer } from "../../agrona-ts/src/index";
+import { DefaultMutableDirectBuffer } from "./agrona-ts/src/index";
 import { XMLParser } from "fast-xml-parser";
 import { runGenerator, type GeneratorResult } from "./generator";
 import { pruneSchemaToMessage } from "./schema-prune";
@@ -11,6 +11,16 @@ export type DecodeArgs = {
     schema?: string;
     encodedMessage?: string;
     messageId?: number;
+};
+
+type GeneratedConstructor<T = unknown> = new (...args: Array<unknown>) => T;
+type HeaderDecoderConstructor = GeneratedConstructor<{
+    wrap: (buffer: DefaultMutableDirectBuffer, offset: number) => void;
+    templateId: () => number;
+    blockLength: () => number;
+    version: () => number;
+}> & {
+    ENCODED_LENGTH: number;
 };
 
 const isLogEnabled = process.env.SBE_LOG === "1";
@@ -77,7 +87,7 @@ export async function decodeMessage(
     const buffer = new DefaultMutableDirectBuffer(bytes.length);
     buffer.wrap(bytes);
 
-    const MessageHeaderDecoder = codecs.MessageHeaderDecoder;
+    const MessageHeaderDecoder = codecs.MessageHeaderDecoder as HeaderDecoderConstructor | undefined;
     if (!MessageHeaderDecoder) {
         throw new Error("Generated codecs missing MessageHeaderDecoder.");
     }
@@ -112,7 +122,7 @@ export async function decodeMessage(
     }
 
     const decoderName = `${message.name}Decoder`;
-    const MessageDecoder = codecs[decoderName];
+    const MessageDecoder = codecs[decoderName] as GeneratedConstructor<Record<string, unknown>> | undefined;
     if (!MessageDecoder) {
         throw new Error(`Generated codecs missing ${decoderName}.`);
     }

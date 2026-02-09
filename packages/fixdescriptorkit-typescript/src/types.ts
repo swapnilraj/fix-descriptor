@@ -12,7 +12,6 @@ export type DescriptorTree = Record<Tag, FixValue | GroupNode>;
 
 export interface CanonicalResult {
   tree: DescriptorTree;
-  cbor: Uint8Array; // canonical CBOR bytes
   leaves: Array<{
     pathCBOR: Uint8Array;
     valueBytes: Uint8Array;

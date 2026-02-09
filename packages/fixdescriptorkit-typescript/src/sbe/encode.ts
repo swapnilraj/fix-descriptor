@@ -3,7 +3,7 @@ import { dirname, resolve, sep } from "path";
 import { fileURLToPath, pathToFileURL } from "url";
 
 import { runGenerator, type GeneratorResult } from "./generator";
-import { DefaultMutableDirectBuffer } from "../../agrona-ts/src/index";
+import { DefaultMutableDirectBuffer } from "./agrona-ts/src/index";
 import { XMLParser } from "fast-xml-parser";
 import { pruneSchemaToMessage } from "./schema-prune";
 
@@ -12,6 +12,13 @@ export type Args = {
     fixMessage?: string;
     messageId?: number;
 };
+
+type GeneratedConstructor<T = unknown> = new (...args: Array<unknown>) => T;
+type MessageHeaderEncoderLike = Record<string, unknown>;
+type MessageEncoderLike = {
+    wrapAndApplyHeader: (buffer: DefaultMutableDirectBuffer, offset: number, headerEncoder: MessageHeaderEncoderLike) => void;
+    getLimit: () => number;
+} & Record<string, unknown>;
 
 const isLogEnabled = process.env.SBE_LOG === "1";
 const log = (...args: unknown[]) => {
@@ -64,8 +71,8 @@ export async function encodeMessage(
     log("load-codecs done", { indexPath, durationMs: Date.now() - loadStart });
 
     const messageEncoderName = `${message.name}Encoder`;
-    const MessageHeaderEncoder = codecs.MessageHeaderEncoder;
-    const MessageEncoder = codecs[messageEncoderName];
+    const MessageHeaderEncoder = codecs.MessageHeaderEncoder as GeneratedConstructor<MessageHeaderEncoderLike> | undefined;
+    const MessageEncoder = codecs[messageEncoderName] as GeneratedConstructor<MessageEncoderLike> | undefined;
 
     if (!MessageHeaderEncoder || !MessageEncoder) {
         throw new Error(`Generated codecs missing ${messageEncoderName} or MessageHeaderEncoder.`);

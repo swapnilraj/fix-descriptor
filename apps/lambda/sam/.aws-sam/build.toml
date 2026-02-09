@@ -5,8 +5,8 @@ packagetype = "Image"
 functions = ["SbeNodeFunction"]
 
 [function_build_definitions.f030dcdf-ad58-461d-b877-c36a354b1953.metadata]
-Dockerfile = "sam/Dockerfile"
-DockerContext = "/Users/dhruv/Documents/Code/Nethermind/ERCFIX/fix-descriptor/apps/sbe-node"
+Dockerfile = "apps/lambda/sam/Dockerfile"
+DockerContext = "/Users/dhruv/Documents/Code/Nethermind/ERCFIX/fix-descriptor"
 DockerTag = "sbe-node-lambda"
 
 [layer_build_definitions]

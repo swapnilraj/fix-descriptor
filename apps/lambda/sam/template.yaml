@@ -30,8 +30,8 @@ Resources:
           SBE_OUTPUT_DIR: /tmp/sbe-codecs
           SBE_LOG: "0"
     Metadata:
-      Dockerfile: sam/Dockerfile
-      DockerContext: ..
+      Dockerfile: apps/lambda/sam/Dockerfile
+      DockerContext: ../..
       DockerTag: sbe-node-lambda
 
 Outputs:

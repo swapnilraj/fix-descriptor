@@ -12,12 +12,11 @@
     "dev:test": "vitest",
     "clean": "rm -rf dist",
     "prepublishOnly": "npm run clean && npm run build",
-    "generate-cbor": "npx tsx scripts/generate-solidity-test-data.ts cbor > ../../contracts/src/generated/GeneratedCBORTestData.sol",
     "generate-merkle": "npx tsx scripts/generate-solidity-test-data.ts merkle > ../../contracts/src/generated/GeneratedMerkleData.sol",
-    "generate-test-data": "npm run generate-cbor && npm run generate-merkle",
+    "generate-test-data": "npm run generate-merkle",
     "build:sbe-jar": "node scripts/build-sbe-jar.js",
-    "test:encode": "tsx src/sbe/index.ts",
-    "test:decode": "tsx src/sbe/index-decode.ts",
+    "test:encode": "tsx src/sbe/tests/index.ts",
+    "test:decode": "tsx src/sbe/tests/index-decode.ts",
     "serve": "PORT=8001 tsx src/sbe/serve.ts",
     "generate:sbe": "tsx scripts/generate-sbe-schema.ts"
   },
@@ -46,6 +45,7 @@
   "files": [
     "dist/src",
     "lib",
+    "lib/**",
     "README.md",
     "LICENSE"
   ],

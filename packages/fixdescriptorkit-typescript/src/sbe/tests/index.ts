@@ -1,7 +1,7 @@
 import { readFileSync } from "fs";
 import { resolve } from "path";
 
-import { encodeFromInput } from "./encode";
+import { encodeFromInput } from "../encode";
 
 const inputPath = process.argv[2] ?? "./test/sbe/test-encode-repeating-group.json";
 const fallbackPath = process.argv[3] ?? "../../sbe-lambda-encoder/test-encode-treasury-full.json";

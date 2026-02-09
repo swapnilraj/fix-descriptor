@@ -1,7 +1,7 @@
 import { readFileSync } from "fs";
 import { resolve } from "path";
 
-import { decodeFromInput } from "./decode";
+import { decodeFromInput } from "../decode";
 
 (async () => {
     const inputPath = resolve("test", "sbe", "test-decode-repeating-group.json");

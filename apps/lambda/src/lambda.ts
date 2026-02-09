@@ -1,5 +1,5 @@
-import { decodeFromInput, type DecodeArgs } from "./decode";
-import { encodeFromInput, type Args as EncodeArgs } from "./encode";
+import { decodeFromInput, type DecodeArgs } from "@fixdescriptorkit/ts-sdk/sbe/decode";
+import { encodeFromInput, type Args as EncodeArgs } from "@fixdescriptorkit/ts-sdk/sbe/encode";
 
 type LambdaEvent = {
     rawPath?: string;
