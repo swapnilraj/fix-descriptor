@@ -17,7 +17,6 @@
     "build:sbe-jar": "node scripts/build-sbe-jar.js",
     "test:encode": "tsx src/sbe/tests/index.ts",
     "test:decode": "tsx src/sbe/tests/index-decode.ts",
-    "serve": "PORT=8001 tsx src/sbe/serve.ts",
     "generate:sbe": "tsx scripts/generate-sbe-schema.ts"
   },
   "exports": {
@@ -46,6 +45,7 @@
     "dist/src",
     "lib",
     "lib/**",
+    "src/sbe/agrona-ts",
     "README.md",
     "LICENSE"
   ],
@@ -75,6 +75,7 @@
     "url": "https://github.com/swapnilraj/fixdescriptorkit-evm/issues"
   },
   "dependencies": {
+    "agrona": "file:./src/sbe/agrona-ts",
     "cbor-x": "^1.6.0",
     "@xmldom/xmldom": "^0.8.10",
     "fast-xml-parser": "^5.3.0",
