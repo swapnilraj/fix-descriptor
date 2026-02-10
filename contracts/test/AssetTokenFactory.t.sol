@@ -88,11 +88,10 @@ contract AssetTokenFactoryTest is Test {
             fixMajor: 4,
             fixMinor: 4,
             dictHash: keccak256("test-dict"),
-            dictionaryContract: address(0),
             fixRoot: bytes32(uint256(12345)),
-            fixCBORPtr: address(0), // Will be set by factory
-            fixCBORLen: 0,          // Will be set by factory
-            fixURI: "ipfs://test"
+            fixSBEPtr: address(0), // Will be set by factory
+            fixSBELen: 0,          // Will be set by factory
+            schemaURI: "ipfs://test"
         });
 
         // Deploy with descriptor
@@ -118,9 +117,9 @@ contract AssetTokenFactoryTest is Test {
         assertEq(retrieved.fixMinor, 4);
         assertEq(retrieved.dictHash, keccak256("test-dict"));
         assertEq(retrieved.fixRoot, bytes32(uint256(12345)));
-        assertEq(retrieved.fixCBORPtr, cborPtr);
-        assertEq(retrieved.fixCBORLen, uint32(cborData.length));
-        assertEq(retrieved.fixURI, "ipfs://test");
+        assertEq(retrieved.fixSBEPtr, cborPtr);
+        assertEq(retrieved.fixSBELen, uint32(cborData.length));
+        assertEq(retrieved.schemaURI, "ipfs://test");
     }
 
     function testPaginatedTokenList() public {
@@ -175,11 +174,10 @@ contract AssetTokenFactoryTest is Test {
             fixMajor: 4,
             fixMinor: 4,
             dictHash: bytes32(0),
-            dictionaryContract: address(0),
             fixRoot: bytes32(0),
-            fixCBORPtr: address(0),
-            fixCBORLen: 0,
-            fixURI: ""
+            fixSBEPtr: address(0),
+            fixSBELen: 0,
+            schemaURI: ""
         });
 
         // Deployer can set descriptor

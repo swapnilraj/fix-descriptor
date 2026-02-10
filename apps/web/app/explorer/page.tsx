@@ -2,10 +2,18 @@
 import { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
 import Image from 'next/image';
 import Navigation from '@/components/Navigation';
+import CollapsibleSection from '@/components/CollapsibleSection';
+import MessageTypeSelector from '@/components/MessageTypeSelector';
+import ParsedSchemaSection from '@/components/ParsedSchemaSection';
+import MessageBuilderSection from '@/components/MessageBuilderSection';
+import ExampleSelector from '@/components/ExampleSelector';
+import LearnMore from '@/components/LearnMore';
 import { abi as AssetTokenAbi } from '@/lib/abis/AssetTokenERC20';
 import { chainFromEnv } from '@/lib/viemClient';
 import { createPublicClient, http } from 'viem';
 import { AddressLink, TransactionLink } from '@/components/BlockExplorerLink';
+import { orchestraToSbe, orchestraToSbeFullSchema, extractMessageIdFromSbe } from 'fixdescriptorkit-typescript/orchestraToSbe';
+import { FaSyncAlt } from 'react-icons/fa';
 
 // Extend Window interface for MetaMask
 declare global {
@@ -47,6 +55,7 @@ type MerkleNodeData = {
   // For leaves: FIX tag and value information
   tag?: string;
   value?: string;
+  name?: string;
 };
 
 // Example FIX messages for educational purposes
@@ -59,12 +68,12 @@ const EXAMPLES = {
   corporate: {
     name: "Corporate Bond",
     description: "Corporate bond with nested groups and multiple identifiers",
-    fix: "8=FIX.4.4|9=0000|35=d|55=ACME-CORP-2028|48=US000402AJ19|22=1|167=CORP|461=DBFXXX|15=USD|541=20280515|223=3.750|454=2|455=000402AJ1|456=1|455=US000402AJ19|456=4|453=2|448=ISSUER_ACME|447=D|452=1|448=TRUSTEE_BANK|447=D|452=24|10=000"
+    fix: "55=ACME-CORP-2028|48=US000402AJ19|22=1|167=2|461=DBFXXX|15=USD|541=20280515|223=3750"
   },
   simple: {
     name: "Simple Equity",
     description: "Basic equity instrument with minimal fields",
-    fix: "8=FIX.4.4|9=0000|35=d|55=AAPL|48=US0378331005|22=1|167=CS|15=USD|10=000"
+    fix: "55=AAPL|48=US0378331005|22=1|167=3|15=USD"
   }
 };
 
@@ -148,64 +157,6 @@ function Tooltip({ children, content }: { children: React.ReactNode; content: st
   );
 }
 
-function LearnMore({ title, children }: { title: string; children: React.ReactNode }) {
-  const [expanded, setExpanded] = useState(false);
-  
-  return (
-    <div style={{
-      marginBottom: '1.5rem',
-      border: '1px solid rgba(59, 130, 246, 0.2)',
-      borderRadius: '8px',
-      background: 'rgba(59, 130, 246, 0.03)',
-      overflow: 'hidden'
-    }}>
-      <button
-        onClick={() => setExpanded(!expanded)}
-        style={{
-          width: '100%',
-          padding: '1rem 1.25rem',
-          background: 'none',
-          border: 'none',
-          color: 'inherit',
-          cursor: 'pointer',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0.75rem',
-          fontSize: '0.95rem',
-          fontWeight: '500',
-          textAlign: 'left'
-        }}
-      >
-        <svg 
-          width="20" 
-          height="20" 
-          viewBox="0 0 24 24" 
-          fill="none" 
-          stroke="rgba(96, 165, 250, 0.8)" 
-          strokeWidth="2"
-          style={{
-            transition: 'transform 0.2s',
-            transform: expanded ? 'rotate(90deg)' : 'rotate(0deg)'
-          }}
-        >
-          <polyline points="9 18 15 12 9 6" />
-        </svg>
-        <span style={{ color: 'rgba(96, 165, 250, 0.9)' }}>Learn More: {title}</span>
-      </button>
-      {expanded && (
-        <div style={{
-          padding: '0 1.25rem 1.25rem 1.25rem',
-          fontSize: '0.9rem',
-          lineHeight: '1.7',
-          color: 'rgba(255,255,255,0.75)'
-        }}>
-          {children}
-        </div>
-      )}
-    </div>
-  );
-}
-
 // Tree Node Component
 function TreeNode({ 
   node, 
@@ -220,7 +171,6 @@ function TreeNode({
 }) {
   const indent = level * 24;
   const hasChildren = node.children && node.children.length > 0;
-  const tagInfo = node.tag ? FIX_TAGS[node.tag] : null;
 
   return (
     <div style={{ marginLeft: `${indent}px` }}>
@@ -275,7 +225,7 @@ function TreeNode({
               color: 'rgba(255,255,255,0.6)',
               fontFamily: 'ui-monospace, monospace'
             }}>
-              Entry {node.name}
+              {node.name}
             </span>
           )}
           
@@ -289,12 +239,12 @@ function TreeNode({
               }}>
                 {node.tag}
               </span>
-              {tagInfo && (
+              {node.name && (
                 <span style={{ 
                   fontSize: '0.75rem', 
                   color: 'rgba(255,255,255,0.4)'
                 }}>
-                  {tagInfo.name}
+                  {node.name}
                 </span>
               )}
               {node.value && (
@@ -484,13 +434,13 @@ function MerkleTreeNode({
             }}>
               Tag {node.tag}
             </div>
-            {FIX_TAGS[node.tag] && (
+            {node.name && (
               <div style={{
                 fontSize: '0.7rem',
                 color: 'rgba(255,255,255,0.5)',
                 marginBottom: '0.15rem'
               }}>
-                {FIX_TAGS[node.tag].name}
+                {node.name}
               </div>
             )}
             <div style={{
@@ -598,18 +548,375 @@ function MerkleTreeNode({
 
 export default function Page() {
   const [fixRaw, setFixRaw] = useState('');
+  const [schemaInput, setSchemaInput] = useState('');
+  const [availableMessageTypes, setAvailableMessageTypes] = useState<Array<{ name: string; msgType: string }>>([]);
+  const [selectedMessageType, setSelectedMessageType] = useState('SecurityDefinition');
+  const [parsedOrchestra, setParsedOrchestra] = useState<{
+    messageName: string;
+    messageId: string;
+    msgType: string;
+    fields: Array<{ id: string; name: string; type: string; sbeType: string }>;
+  } | null>(null);
+  const [orchestraError, setOrchestraError] = useState<string | null>(null);
+  const [allMessages, setAllMessages] = useState<Array<{ name: string; id: string; msgType: string }>>([]);
+  const [selectedMessageIndex, setSelectedMessageIndex] = useState(0);
+  const [messageBuilderValues, setMessageBuilderValues] = useState<Record<string, string | string[]>>({});
+  const [generatedSbeSchema, setGeneratedSbeSchema] = useState<string>('');
+  const [fullSbeSchema, setFullSbeSchema] = useState<string>('');
+  const [currentMessageId, setCurrentMessageId] = useState<string>('');
+  const [orchestraFieldDictionary, setOrchestraFieldDictionary] = useState<Map<string, { name: string; type: string }>>(new Map());
+  
+  // Extract available message types when Orchestra schema is loaded
+  useEffect(() => {
+    if (!schemaInput.trim()) {
+      setAvailableMessageTypes([]);
+      return;
+    }
+    
+    try {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(schemaInput, 'text/xml');
+      
+      const parserError = doc.querySelector('parsererror');
+      if (parserError) {
+        return;
+      }
+      
+      // Extract all message definitions
+      const messageTypes: Array<{ name: string; msgType: string }> = [];
+      const messages = doc.getElementsByTagName('*');
+      for (let i = 0; i < messages.length; i++) {
+        const el = messages[i];
+        const localName = el.localName || el.tagName.split(':').pop();
+        if (localName === 'message') {
+          const name = el.getAttribute('name');
+          const msgType = el.getAttribute('msgType');
+          if (name && msgType) {
+            messageTypes.push({ name, msgType });
+          }
+        }
+      }
+      
+      console.log(`Found ${messageTypes.length} message types in Orchestra`);
+      setAvailableMessageTypes(messageTypes);
+      
+      // Set default if not already set
+      if (messageTypes.length > 0 && !messageTypes.find(m => m.name === selectedMessageType)) {
+        setSelectedMessageType(messageTypes[0].name);
+      }
+    } catch (error) {
+      console.error('Failed to extract message types:', error);
+    }
+  }, [schemaInput]);
+  
+  // Parse Orchestra XML when schema input or message type changes
+  useEffect(() => {
+    if (!schemaInput.trim()) {
+      setParsedOrchestra(null);
+      setOrchestraError(null);
+      return;
+    }
+    
+    try {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(schemaInput, 'text/xml');
+      
+      const parserError = doc.querySelector('parsererror');
+      if (parserError) {
+        setOrchestraError('Invalid XML syntax');
+        setParsedOrchestra(null);
+        return;
+      }
+      
+      // Build field dictionary from <fields> section ONLY (repository-style Orchestra)
+      const fieldDictionary = new Map<string, { name: string; type: string }>();
+      
+      // Find the <fields> container element first
+      let fieldsContainer: Element | null = null;
+      let fieldsContainerList = doc.getElementsByTagName('fields');
+      if (fieldsContainerList.length === 0) {
+        fieldsContainerList = doc.getElementsByTagName('fixr:fields');
+      }
+      if (fieldsContainerList.length > 0) {
+        fieldsContainer = fieldsContainerList[0];
+        
+        // Only get field elements that are direct children of the fields container
+        const children = fieldsContainer.children;
+        for (let i = 0; i < children.length; i++) {
+          const child = children[i];
+          const tagName = child.tagName.toLowerCase();
+          if (tagName === 'field' || tagName === 'fixr:field') {
+            const id = child.getAttribute('id');
+            const name = child.getAttribute('name');
+            const type = child.getAttribute('type');
+            if (id && name && type) {
+              fieldDictionary.set(id, { name, type });
+            }
+          }
+        }
+      }
+      
+      // Get components (for resolving component references)
+      let components = doc.getElementsByTagName('component');
+      if (components.length === 0) {
+        components = doc.getElementsByTagName('fixr:component');
+      }
+      
+      // Find the selected message definition
+      let messageElement: Element | null = null;
+      const messages = doc.getElementsByTagName('*');
+      for (let i = 0; i < messages.length; i++) {
+        const el = messages[i];
+        const localName = el.localName || el.tagName.split(':').pop();
+        if (localName === 'message' && el.getAttribute('name') === selectedMessageType) {
+          messageElement = el;
+          break;
+        }
+      }
+      
+      if (!messageElement) {
+        console.error(`Message type "${selectedMessageType}" not found in Orchestra XML`);
+        setOrchestraError(`Message type "${selectedMessageType}" not found in Orchestra XML`);
+        setParsedOrchestra(null);
+        setAllMessages([]);
+        return;
+      }
+      
+      console.log(`Found message element for ${selectedMessageType}`);
+      
+      const messageName = messageElement.getAttribute('name') || 'Unknown';
+      const messageId = messageElement.getAttribute('id') || '?';
+      const msgType = messageElement.getAttribute('msgType') || '?';
+      
+      const fields: Array<{ id: string; name: string; type: string; sbeType: string }> = [];
+      const fieldIds = new Set<string>();
+      
+      // Find structure element
+      let structure: Element | null = null;
+      for (let i = 0; i < messageElement.children.length; i++) {
+        const child = messageElement.children[i];
+        const tagName = child.tagName.toLowerCase();
+        if (tagName === 'structure' || tagName === 'fixr:structure') {
+          structure = child;
+          break;
+        }
+      }
+      
+      if (!structure) {
+        console.error(`No structure found for message "${selectedMessageType}"`);
+        setOrchestraError(`No structure found for message "${selectedMessageType}"`);
+        setParsedOrchestra(null);
+        return;
+      }
+      
+      console.log(`Found structure for ${selectedMessageType}`);
+      
+      // Get groups for resolving group references
+      let groups = doc.getElementsByTagName('group');
+      if (groups.length === 0) {
+        groups = doc.getElementsByTagName('fixr:group');
+      }
+      
+      // Helper function to recursively extract fields from an element
+      const extractFieldsFromElement = (element: Element): void => {
+        for (let i = 0; i < element.children.length; i++) {
+          const child = element.children[i];
+          const localName = (child.localName || child.tagName.split(':').pop() || '').toLowerCase();
+          
+          if (localName === 'fieldref') {
+            const id = child.getAttribute('id');
+            if (id) {
+              console.log(`Found fieldRef: ${id}`);
+              fieldIds.add(id);
+            }
+          } else if (localName === 'componentref') {
+            // Resolve component reference
+            const compId = child.getAttribute('id');
+            if (compId) {
+              console.log(`Resolving componentRef: ${compId}`);
+              const comp = Array.from(components).find(c => c.getAttribute('id') === compId);
+              if (comp) {
+                extractFieldsFromElement(comp);
+              } else {
+                console.warn(`Component ${compId} not found`);
+              }
+            }
+          } else if (localName === 'groupref') {
+            // Resolve group reference
+            const groupId = child.getAttribute('id');
+            if (groupId) {
+              console.log(`Resolving groupRef: ${groupId}`);
+              const group = Array.from(groups).find(g => g.getAttribute('id') === groupId);
+              if (group) {
+                extractFieldsFromElement(group);
+              } else {
+                console.warn(`Group ${groupId} not found`);
+              }
+            }
+          }
+        }
+      };
+      
+      console.log(`Starting field extraction from structure with ${structure.children.length} children`);
+      // Extract fields from the message structure
+      extractFieldsFromElement(structure);
+      console.log(`Field extraction complete, found ${fieldIds.size} field IDs`);
+      
+      // Convert field IDs to field definitions
+      for (const id of fieldIds) {
+        if (fieldDictionary.has(id)) {
+          const fieldDef = fieldDictionary.get(id)!;
+          fields.push({ id, name: fieldDef.name, type: fieldDef.type, sbeType: '→ will be converted' });
+        }
+      }
+      
+      // Sort fields by numeric ID
+      fields.sort((a, b) => parseInt(a.id) - parseInt(b.id));
+      
+      console.log(`Extracted ${fields.length} fields for ${selectedMessageType}:`, fields.map(f => `${f.id}:${f.name}`).join(', '));
+      
+      if (fields.length === 0) {
+        console.warn(`No fields found for message "${selectedMessageType}". Message may use nested groups.`);
+        setOrchestraError(`No fields found for message "${selectedMessageType}". Message may use nested groups.`);
+      } else {
+        setOrchestraError(null);
+      }
+      
+      setParsedOrchestra({ messageName, messageId, msgType, fields });
+      setAllMessages([]);
+      
+      // Store the field dictionary for tag name resolution
+      setOrchestraFieldDictionary(fieldDictionary);
+    } catch (error) {
+      setOrchestraError(error instanceof Error ? error.message : 'Parse error');
+      setParsedOrchestra(null);
+    }
+  }, [schemaInput, selectedMessageType]);
+  
+  // Parse FIX raw input and populate message builder (supports repeated tags)
+  useEffect(() => {
+    if (!fixRaw.trim()) return;
+    const fields: Record<string, string | string[]> = {};
+    const pairs = fixRaw.split('|');
+    
+    for (const pair of pairs) {
+      const [tag, value] = pair.split('=');
+      if (!tag) continue;
+      if (fields[tag] === undefined) {
+        fields[tag] = value;
+        continue;
+      }
+      const existing = fields[tag];
+      if (Array.isArray(existing)) {
+        existing.push(value);
+      } else {
+        fields[tag] = [existing, value];
+      }
+    }
+    
+    // Merge with existing values (append, don't replace)
+    setMessageBuilderValues(prev => ({
+      ...prev,
+      ...fields
+    }));
+  }, [fixRaw]);
+
+  // Auto-select message type based on MsgType (35=) in FIX input
+  useEffect(() => {
+    if (!fixRaw.trim() || !schemaInput.trim()) return;
+    const msgTypeMatch = fixRaw.split('|').find(part => part.startsWith('35='));
+    if (!msgTypeMatch) return;
+    const msgType = msgTypeMatch.split('=')[1];
+    if (!msgType) return;
+
+    try {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(schemaInput, 'text/xml');
+      const messages = doc.getElementsByTagName('*');
+      let foundName: string | null = null;
+      for (let i = 0; i < messages.length; i++) {
+        const el = messages[i];
+        const localName = el.localName || el.tagName.split(':').pop();
+        if (localName === 'message' && el.getAttribute('msgType') === msgType) {
+          foundName = el.getAttribute('name');
+          break;
+        }
+      }
+      if (foundName && foundName !== selectedMessageType) {
+        setSelectedMessageType(foundName);
+      }
+    } catch (error) {
+      console.warn('Failed to infer message type from FIX input:', error);
+    }
+  }, [fixRaw, schemaInput, selectedMessageType]);
+
+  // Auto-generate full SBE schema when Orchestra is loaded
+  useEffect(() => {
+    if (schemaInput.trim()) {
+      try {
+        // Generate full SBE schema with ALL message types
+        const fullSchema = orchestraToSbeFullSchema(schemaInput);
+        setFullSbeSchema(fullSchema);
+        console.log('Generated full SBE schema with all messages');
+      } catch (error) {
+        console.error('Failed to generate full SBE schema:', error);
+        setFullSbeSchema('');
+      }
+    } else {
+      setFullSbeSchema('');
+    }
+  }, [schemaInput]);
+
+  // Auto-generate single-message SBE schema and extract messageId when message type changes
+  useEffect(() => {
+    if (schemaInput.trim() && selectedMessageType && fullSbeSchema) {
+      try {
+        // Generate SBE schema for the selected message type (for preview)
+        const sbeSchema = orchestraToSbe(schemaInput, selectedMessageType);
+        setGeneratedSbeSchema(sbeSchema);
+        
+        // Extract messageId from the full schema for the selected message type
+        const messageId = extractMessageIdFromSbe(fullSbeSchema, selectedMessageType);
+        if (messageId) {
+          setCurrentMessageId(messageId);
+          console.log(`Message ID for ${selectedMessageType}: ${messageId}`);
+        } else {
+          console.warn(`Could not find message ID for ${selectedMessageType}`);
+          setCurrentMessageId('');
+        }
+      } catch (error) {
+        console.error('Failed to generate SBE schema:', error);
+        setGeneratedSbeSchema(`<!-- Error generating schema: ${error instanceof Error ? error.message : 'Unknown error'} -->`);
+        setCurrentMessageId('');
+      }
+    } else {
+      setGeneratedSbeSchema('');
+      setCurrentMessageId('');
+    }
+  }, [schemaInput, selectedMessageType, fullSbeSchema]);
+  
+  type ParsedFieldNode = {
+    tag?: string;
+    name?: string;
+    value?: string;
+    type: 'scalar' | 'group' | 'entry';
+    children?: ParsedFieldNode[];
+  };
+
   const [preview, setPreview] = useState<{ 
     root: string; 
-    cborHex: string; 
+    sbeHex: string;
+    sbeBase64: string; 
     leavesCount: number; 
     paths: number[][]; 
     merkleTree: MerkleNodeData;
     treeData?: TreeNodeData;
-    parsedFields?: Array<{ tag: string; value: string; tagInfo?: typeof FIX_TAGS[string] }>;
+    parsedFields?: ParsedFieldNode[];
   } | null>(null);
   const [pathInput, setPathInput] = useState('');
   const [proof, setProof] = useState<ProofResult>(null);
   const [txInfo, setTxInfo] = useState<React.ReactNode>('');
+  const [proofVerificationInfo, setProofVerificationInfo] = useState<React.ReactNode>('');
   const [currentStep, setCurrentStep] = useState<number>(0);
   const [loading, setLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState<string>('');
@@ -621,8 +928,8 @@ export default function Page() {
   
   // Refs for sections
   const introRef = useRef<HTMLDivElement>(null);
-  const examplesRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLDivElement>(null);
+  const messageTypeRef = useRef<HTMLDivElement>(null);
   const resultsRef = useRef<HTMLDivElement>(null);
   const deployRef = useRef<HTMLDivElement>(null);
   const proofRef = useRef<HTMLDivElement>(null);
@@ -637,20 +944,23 @@ export default function Page() {
   const [tokenSupply, setTokenSupply] = useState('1000000');
   const [deployedTokenAddress, setDeployedTokenAddress] = useState<string | null>(null);
   const [onChainVerificationStatus, setOnChainVerificationStatus] = useState<'pending' | 'success' | 'failed' | null>(null);
+  
+  // Background verification state
+  const [verificationNotification, setVerificationNotification] = useState<{
+    message: string;
+    type: 'info' | 'success' | 'warning' | 'error';
+    show: boolean;
+  } | null>(null);
 
-  // CBOR fetching state
-  const [fetchedCBOR, setFetchedCBOR] = useState<string | null>(null);
+  // SBE fetching state
+  const [fetchedSBE, setFetchedSBE] = useState<string | null>(null);
   const [decodedFIX, setDecodedFIX] = useState<string | null>(null);
   const [decodedFIXNamed, setDecodedFIXNamed] = useState<string | null>(null);
-  const [fetchCBORStatus, setFetchCBORStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
-  const [fetchCBORError, setFetchCBORError] = useState<string | null>(null);
+  const [fetchSBEStatus, setFetchSBEStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [fetchSBEError, setFetchSBEError] = useState<string | null>(null);
   
   // Human-readable output state
-  const [decodeMode, setDecodeMode] = useState<'offchain' | 'onchain'>('offchain');
   const [offchainFormat, setOffchainFormat] = useState<'numeric' | 'named'>('numeric');
-  const [onchainReadable, setOnchainReadable] = useState<string | null>(null);
-  const [onchainReadableStatus, setOnchainReadableStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
-  const [onchainReadableError, setOnchainReadableError] = useState<string | null>(null);
 
 
   // Sticky progress indicator
@@ -748,7 +1058,7 @@ export default function Page() {
     },
     { 
       name: "Encode", 
-      description: "CBOR Binary",
+      description: "SBE Binary",
       phase: "offchain",
       icon: (
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -860,18 +1170,6 @@ export default function Page() {
     return () => window.removeEventListener('resize', measure);
   }, [steps.length]);
 
-  function loadExample(key: keyof typeof EXAMPLES) {
-    setFixRaw(EXAMPLES[key].fix);
-    setPreview(null);
-    setProof(null);
-    setCurrentStep(0);
-
-    // Auto-scroll to input section
-    setTimeout(() => {
-      scrollToSection(inputRef);
-    }, 100);
-  }
-
 
   async function doPreview() {
     setProof(null);
@@ -881,15 +1179,36 @@ export default function Page() {
     setCurrentStep(1);
     
     try {
+      // Use the full SBE schema with all messages
+      if (!fullSbeSchema) {
+        alert('SBE schema not available. Please ensure Orchestra XML is valid.');
+        setCurrentStep(0);
+        setLoadingMessage('');
+        setLoading(false);
+        return;
+      }
+      
+      if (!currentMessageId) {
+        alert('Message ID not available. Please select a valid message type.');
+        setCurrentStep(0);
+        setLoadingMessage('');
+        setLoading(false);
+        return;
+      }
+      
       // Simulate step-by-step feedback
       setTimeout(() => setLoadingMessage('Building canonical tree...'), 300);
-      setTimeout(() => setLoadingMessage('Encoding to CBOR...'), 600);
+      setTimeout(() => setLoadingMessage('Encoding to SBE...'), 600);
       setTimeout(() => setLoadingMessage('Generating Merkle tree...'), 900);
       
       const res = await fetch('/api/preview', { 
         method: 'POST', 
         headers: { 'content-type': 'application/json' }, 
-        body: JSON.stringify({ fixRaw }) 
+        body: JSON.stringify({ 
+          fixRaw,
+          schema: fullSbeSchema,
+          messageId: currentMessageId
+        }) 
       });
       
     if (!res.ok) {
@@ -927,24 +1246,159 @@ export default function Page() {
     setOnChainVerificationStatus(null); // Reset verification status when generating new proof
     
     try {
-    const parsedPath = JSON.parse(pathInput || '[]');
+      const parsedPath = JSON.parse(pathInput || '[]');
       const res = await fetch('/api/proof', { 
         method: 'POST', 
         headers: { 'content-type': 'application/json' }, 
-        body: JSON.stringify({ fixRaw, path: parsedPath }) 
+        body: JSON.stringify({ 
+          fixRaw, 
+          path: parsedPath,
+          schema: fullSbeSchema || generatedSbeSchema,
+          messageId: currentMessageId
+        }) 
       });
-    const json: ProofResult = await res.json();
-    setProof(json);
-    
-    // Auto-scroll to proof results
-    setTimeout(() => {
-      scrollToSection(proofResultsRef);
-    }, 100);
+      
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || 'Proof generation failed');
+      }
+      
+      const json: ProofResult = await res.json();
+      setProof(json);
+      
+      // Auto-scroll to proof results
+      setTimeout(() => {
+        scrollToSection(proofResultsRef);
+      }, 100);
+    } catch (error) {
+      console.error('Proof generation error:', error);
+      alert(`Failed to generate proof: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      setProof(null);
     } finally {
       setLoading(false);
     }
   }
 
+  // Background verification function that runs independently
+  async function verifyContractInBackground(
+    tokenAddress: string,
+    transactionHash: string,
+    blockNumber: string
+  ) {
+    const factoryAddress = process.env.NEXT_PUBLIC_TOKEN_FACTORY_ADDRESS;
+    const supplyInWei = BigInt(tokenSupply) * BigInt(10 ** 18);
+    const maxRetries = 10;
+    
+    // Create public client for checking block numbers
+    const publicClient = createPublicClient({
+      chain: chainFromEnv,
+      transport: http(process.env.NEXT_PUBLIC_RPC_URL)
+    });
+    
+    let currentBlockNumber = BigInt(blockNumber);
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        const verifyResponse = await fetch('/api/verify-contract', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            contractAddress: tokenAddress,
+            tokenName,
+            tokenSymbol,
+            initialSupply: supplyInWei.toString(),
+            initialOwner: factoryAddress,
+            chainId: chainFromEnv.id,
+          }),
+        });
+
+        const verifyResult = await verifyResponse.json();
+
+        if (verifyResult.success) {
+          setVerificationNotification({
+            message: `Contract source code verified on Etherscan!`,
+            type: 'success',
+            show: true
+          });
+          // Auto-hide after 10 seconds
+          setTimeout(() => {
+            setVerificationNotification(null);
+          }, 10000);
+          return;
+        }
+
+        // Check if we should retry
+        if (attempt < maxRetries) {
+          // Wait for next block before retry
+          const targetBlock = currentBlockNumber + BigInt(1);
+          let newBlock = currentBlockNumber;
+          
+          while (newBlock < targetBlock) {
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            try {
+              newBlock = await publicClient.getBlockNumber();
+              if (newBlock > currentBlockNumber) {
+                currentBlockNumber = newBlock;
+                break;
+              }
+            } catch (blockError) {
+              console.error('Error checking block number:', blockError);
+            }
+          }
+          
+          continue;
+        }
+
+        // Last attempt failed
+        setVerificationNotification({
+          message: `⚠ Contract source code verification on Etherscan failed after ${maxRetries} attempts. You can verify manually on the block explorer.`,
+          type: 'warning',
+          show: true
+        });
+        // Auto-hide after 15 seconds
+        setTimeout(() => {
+          setVerificationNotification(null);
+        }, 15000);
+
+      } catch (verifyError) {
+        console.error(`Verification attempt ${attempt} error:`, verifyError);
+        
+        if (attempt < maxRetries) {
+          // Wait for next block
+          const targetBlock = currentBlockNumber + BigInt(1);
+          let newBlock = currentBlockNumber;
+          
+          while (newBlock < targetBlock) {
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            try {
+              newBlock = await publicClient.getBlockNumber();
+              if (newBlock > currentBlockNumber) {
+                currentBlockNumber = newBlock;
+                break;
+              }
+            } catch (blockError) {
+              console.error('Error checking block number:', blockError);
+            }
+          }
+          
+          continue;
+        }
+        
+        // Last attempt failed
+        setVerificationNotification({
+          message: `⚠ Contract source code verification on Etherscan encountered an error. You can verify manually on the block explorer.`,
+          type: 'error',
+          show: true
+        });
+        // Auto-hide after 15 seconds
+        setTimeout(() => {
+          setVerificationNotification(null);
+        }, 15000);
+      }
+    }
+  }
 
   async function deployWithFactory() {
     if (!preview) {
@@ -971,8 +1425,9 @@ export default function Page() {
           name: tokenName,
           symbol: tokenSymbol,
           initialSupply: tokenSupply,
-          cborHex: preview.cborHex,
-          root: preview.root
+          sbeHex: preview.sbeHex,
+          root: preview.root,
+          schemaXml: fullSbeSchema || generatedSbeSchema
         })
       });
 
@@ -986,16 +1441,16 @@ export default function Page() {
 
       setDeployedTokenAddress(tokenAddress);
 
-      // Show initial success message
+      // Show deployment success message
       setTxInfo(
         <div>
-          <div style={{ marginBottom: '1rem', fontWeight: '600' }}>✅ Token deployed successfully!</div>
+          <div style={{ marginBottom: '1rem', fontWeight: '600' }}>Token deployed successfully!</div>
           <div style={{ marginBottom: '0.5rem' }}>
             <span style={{ color: 'rgba(255,255,255,0.7)' }}>Token Address: </span>
             <AddressLink address={tokenAddress} chainId={chainFromEnv.id} />
           </div>
           <div style={{ marginBottom: '0.5rem', color: 'rgba(34, 197, 94, 0.9)' }}>
-            ✓ CBOR Deployed<br />
+            ✓ SBE Data Deployed<br />
             ✓ Descriptor Set
           </div>
           <div style={{ marginTop: '0.5rem' }}>
@@ -1005,112 +1460,27 @@ export default function Page() {
           <div style={{ marginTop: '0.5rem', fontSize: '0.875rem', color: 'rgba(255,255,255,0.6)' }}>
             Block: {blockNumber}
           </div>
-          <div style={{ marginTop: '1rem', color: 'rgba(251, 191, 36, 0.9)' }}>
-            ⏳ Verifying contract on block explorer...
+          <div style={{ marginTop: '1rem', color: 'rgba(255,255,255,0.8)' }}>
+            Contract source code verification on Etherscan will continue in the background...
           </div>
         </div>
       );
 
-      // Attempt to verify the contract on Etherscan
-      const factoryAddress = process.env.NEXT_PUBLIC_TOKEN_FACTORY_ADDRESS;
-      const supplyInWei = BigInt(tokenSupply) * BigInt(10 ** 18);
+      // Start background verification (non-blocking)
+      setVerificationNotification({
+        message: 'Verifying contract source code on Etherscan...',
+        type: 'info',
+        show: true
+      });
+      
+      // Run verification in background - don't await
+      verifyContractInBackground(tokenAddress, transactionHash, blockNumber);
 
-      try {
-        const verifyResponse = await fetch('/api/verify-contract', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            contractAddress: tokenAddress,
-            tokenName,
-            tokenSymbol,
-            initialSupply: supplyInWei.toString(),
-            initialOwner: factoryAddress, // Factory was the initial owner
-            chainId: chainFromEnv.id,
-          }),
-        });
-
-        const verifyResult = await verifyResponse.json();
-
-        if (verifyResult.success) {
-          // Update with verification success
-          setTxInfo(
-            <div>
-              <div style={{ marginBottom: '1rem', fontWeight: '600' }}>✅ Token deployed successfully!</div>
-              <div style={{ marginBottom: '0.5rem' }}>
-                <span style={{ color: 'rgba(255,255,255,0.7)' }}>Token Address: </span>
-                <AddressLink address={tokenAddress} chainId={chainFromEnv.id} />
-              </div>
-              <div style={{ marginBottom: '0.5rem', color: 'rgba(34, 197, 94, 0.9)' }}>
-                ✓ CBOR Deployed<br />
-                ✓ Descriptor Set<br />
-                ✓ Contract Verified
-              </div>
-              <div style={{ marginTop: '0.5rem' }}>
-                <span style={{ color: 'rgba(255,255,255,0.7)' }}>Transaction: </span>
-                <TransactionLink hash={transactionHash} chainId={chainFromEnv.id} />
-              </div>
-              <div style={{ marginTop: '1rem', color: 'rgba(255,255,255,0.8)' }}>
-                You can now view the contract source code and verify proofs onchain!
-              </div>
-            </div>
-          );
-        } else {
-          // Update with verification warning (deployment still successful)
-          setTxInfo(
-            <div>
-              <div style={{ marginBottom: '1rem', fontWeight: '600' }}>✅ Token deployed successfully!</div>
-              <div style={{ marginBottom: '0.5rem' }}>
-                <span style={{ color: 'rgba(255,255,255,0.7)' }}>Token Address: </span>
-                <AddressLink address={tokenAddress} chainId={chainFromEnv.id} />
-              </div>
-              <div style={{ marginBottom: '0.5rem', color: 'rgba(34, 197, 94, 0.9)' }}>
-                ✓ CBOR Deployed<br />
-                ✓ Descriptor Set
-              </div>
-              <div style={{ marginBottom: '0.5rem', color: 'rgba(251, 191, 36, 0.9)' }}>
-                ⚠ Verification pending or failed
-              </div>
-              <div style={{ marginTop: '0.5rem' }}>
-                <span style={{ color: 'rgba(255,255,255,0.7)' }}>Transaction: </span>
-                <TransactionLink hash={transactionHash} chainId={chainFromEnv.id} />
-              </div>
-              <div style={{ marginTop: '1rem', fontSize: '0.9rem', color: 'rgba(255,255,255,0.6)' }}>
-                {verifyResult.message || verifyResult.error || 'Verification failed - you can verify manually on the block explorer'}
-              </div>
-            </div>
-          );
-        }
-      } catch (verifyError) {
-        console.error('Verification error:', verifyError);
-        // Still show success for deployment, just note verification issue
-        setTxInfo(
-          <div>
-            <div style={{ marginBottom: '1rem', fontWeight: '600' }}>✅ Token deployed successfully!</div>
-            <div style={{ marginBottom: '0.5rem' }}>
-              <span style={{ color: 'rgba(255,255,255,0.7)' }}>Token Address: </span>
-              <AddressLink address={tokenAddress} chainId={chainFromEnv.id} />
-            </div>
-            <div style={{ marginBottom: '0.5rem', color: 'rgba(34, 197, 94, 0.9)' }}>
-              ✓ CBOR Deployed<br />
-              ✓ Descriptor Set
-            </div>
-            <div style={{ marginBottom: '0.5rem', color: 'rgba(251, 191, 36, 0.9)' }}>
-              ⚠ Verification failed
-            </div>
-            <div style={{ marginTop: '0.5rem' }}>
-              <span style={{ color: 'rgba(255,255,255,0.7)' }}>Transaction: </span>
-              <TransactionLink hash={transactionHash} chainId={chainFromEnv.id} />
-            </div>
-            <div style={{ marginTop: '1rem', fontSize: '0.9rem', color: 'rgba(255,255,255,0.6)' }}>
-              Contract verification failed. You can verify manually on the block explorer.
-            </div>
-          </div>
-        );
-      }
-
-      setShowTokenDeploy(false);
+      // Close modal after short delay to show success message
+      setTimeout(() => {
+        setShowTokenDeploy(false);
+      }, 2000);
+      
       setCurrentStep(5); // Update step indicator to show deployment complete
       
       // Reset form
@@ -1121,23 +1491,23 @@ export default function Page() {
     } catch (error) {
       console.error('Deployment failed:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      setTxInfo(`❌ Deployment failed: ${errorMessage}`);
+      setTxInfo(`Deployment failed: ${errorMessage}`);
       alert(`Deployment failed: ${errorMessage}`);
     } finally {
       setLoading(false);
     }
   }
 
-  async function fetchCBORFromContract() {
+  async function fetchSBEFromContract() {
     if (!deployedTokenAddress) {
-      setFetchCBORError('Please deploy a token first');
+      setFetchSBEError('Please deploy a token first');
       return;
     }
 
     try {
-      setFetchCBORStatus('loading');
-      setFetchCBORError(null);
-      setFetchedCBOR(null);
+      setFetchSBEStatus('loading');
+      setFetchSBEError(null);
+      setFetchedSBE(null);
       setDecodedFIX(null);
 
       const publicClient = createPublicClient({
@@ -1148,7 +1518,7 @@ export default function Page() {
       type Abi = readonly unknown[];
       const tokenAbi: Abi = AssetTokenAbi;
 
-      // First get the descriptor to know the CBOR length and validate it exists
+      // First get the descriptor to know the SBE data length and validate it exists
       let descriptor;
       try {
         descriptor = await publicClient.readContract({
@@ -1156,7 +1526,7 @@ export default function Page() {
           abi: tokenAbi,
           functionName: 'getFixDescriptor',
           args: []
-        }) as { fixCBORLen: number; fixCBORPtr: string };
+        }) as { fixSBELen: number; fixSBEPtr: string };
       } catch (descriptorError) {
         const errorMsg = descriptorError instanceof Error ? descriptorError.message : 'Unknown error';
         if (errorMsg.includes('Descriptor not initialized')) {
@@ -1165,107 +1535,84 @@ export default function Page() {
         throw descriptorError;
       }
 
-      const cborLength = Number(descriptor.fixCBORLen);
-      const cborPtr = descriptor.fixCBORPtr;
+      const sbeLength = Number(descriptor.fixSBELen);
+      const sbePtr = descriptor.fixSBEPtr;
 
-      // Validate CBOR data exists
-      if (!cborPtr || cborPtr === '0x0000000000000000000000000000000000000000') {
-        throw new Error('CBOR data pointer is not set. The descriptor was not properly deployed.');
+      // Validate SBE data exists
+      if (!sbePtr || sbePtr === '0x0000000000000000000000000000000000000000') {
+        throw new Error('SBE data pointer is not set. The descriptor was not properly deployed.');
       }
 
-      if (cborLength === 0) {
-        throw new Error('CBOR length is 0. The descriptor is empty.');
+      if (sbeLength === 0) {
+        throw new Error('SBE length is 0. The descriptor is empty.');
       }
 
-      // Fetch the CBOR data in one call
-      let cborBytes;
+      // Fetch the SBE data in one call
+      let sbeBytes;
       try {
-        cborBytes = await publicClient.readContract({
+        sbeBytes = await publicClient.readContract({
           address: deployedTokenAddress as `0x${string}`,
           abi: tokenAbi,
-          functionName: 'getFixCBORChunk',
-          args: [BigInt(0), BigInt(cborLength)]
+          functionName: 'getFixSBEChunk',
+          args: [BigInt(0), BigInt(sbeLength)]
         }) as `0x${string}`;
       } catch (chunkError) {
         const errorMsg = chunkError instanceof Error ? chunkError.message : 'Unknown error';
-        if (errorMsg.includes('No CBOR data')) {
-          throw new Error('The CBOR data contract is empty. This can happen if the deployment failed or the data was not properly stored.');
+        if (errorMsg.includes('No SBE data') || errorMsg.includes('SBE not deployed')) {
+          throw new Error('The SBE data contract is empty. This can happen if the deployment failed or the data was not properly stored.');
         }
         throw chunkError;
       }
 
-      setFetchedCBOR(cborBytes);
+      setFetchedSBE(sbeBytes);
 
-      // Decode CBOR via API endpoint
-      const decodeResponse = await fetch('/api/decode-cbor', {
+      if (!fullSbeSchema) {
+        throw new Error('No SBE schema available. Please load an Orchestra schema first.');
+      }
+
+      // Decode SBE via API endpoint
+      const decodeResponse = await fetch('/api/decode-sbe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cborHex: cborBytes })
+        body: JSON.stringify({ 
+          encodedMessage: sbeBytes,
+          schema: fullSbeSchema
+        })
       });
 
       if (!decodeResponse.ok) {
         const errorData = await decodeResponse.json();
-        throw new Error(errorData.error || 'Failed to decode CBOR');
+        throw new Error(errorData.error || 'Failed to decode');
       }
 
       const decodeResult = await decodeResponse.json();
-      setDecodedFIX(decodeResult.fixMessage);           // numeric tags
-      setDecodedFIXNamed(decodeResult.fixMessageNamed); // named tags
-      setFetchCBORStatus('success');
+      if (decodeResult?.error) {
+        throw new Error(`SBE decoding failed: ${decodeResult.error}`);
+      }
+
+      // Convert numeric tags to tag names for the named version using Orchestra schema
+      const namedMessage = decodeResult.fixMessage
+        .split('|')
+        .map((pair: string) => {
+          const [tag, value] = pair.split('=');
+          const tagInfo = orchestraFieldDictionary.get(tag);
+          if (tagInfo) {
+            return `${tagInfo.name}=${value}`;
+          }
+          return pair; // Keep original if tag not found
+        })
+        .join('|');
+
+      setDecodedFIX(decodeResult.fixMessage);
+      setDecodedFIXNamed(namedMessage);
+      setFetchSBEStatus('success');
       setCurrentStep(7); // Update step indicator to show retrieval complete
 
     } catch (error) {
-      console.error('Failed to fetch CBOR:', error);
+      console.error('Failed to fetch SBE:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      setFetchCBORError(errorMessage);
-      setFetchCBORStatus('error');
-    }
-  }
-
-  async function fetchHumanReadable() {
-    if (!deployedTokenAddress) {
-      setOnchainReadableError('Please deploy a token first');
-      return;
-    }
-
-    try {
-      setOnchainReadableStatus('loading');
-      setOnchainReadableError(null);
-      setOnchainReadable(null);
-
-      const publicClient = createPublicClient({
-        chain: chainFromEnv,
-        transport: http()
-      });
-
-      type Abi = readonly unknown[];
-      const tokenAbi: Abi = AssetTokenAbi;
-
-      // Call getHumanReadableDescriptor on the token contract
-      const readable = await publicClient.readContract({
-        address: deployedTokenAddress as `0x${string}`,
-        abi: tokenAbi,
-        functionName: 'getHumanReadableDescriptor',
-        args: []
-      }) as string;
-
-      setOnchainReadable(readable);
-      setOnchainReadableStatus('success');
-
-    } catch (error) {
-      console.error('Failed to fetch human-readable descriptor:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      
-      // Provide helpful error messages
-      let userFriendlyError = errorMessage;
-      if (errorMessage.includes('Dictionary not set')) {
-        userFriendlyError = 'This token was not deployed with a FIX Dictionary. Please deploy a new token using the "Quick Deploy Token" button after setting NEXT_PUBLIC_DICTIONARY_ADDRESS in your environment.';
-      } else if (errorMessage.includes('Descriptor not initialized')) {
-        userFriendlyError = 'The token descriptor has not been initialized. Please deploy a new token with the "Quick Deploy Token" button.';
-      }
-      
-      setOnchainReadableError(userFriendlyError);
-      setOnchainReadableStatus('error');
+      setFetchSBEError(errorMessage);
+      setFetchSBEStatus('error');
     }
   }
 
@@ -1300,7 +1647,7 @@ export default function Page() {
         const errorMsg = rootError instanceof Error ? rootError.message : 'Unknown error';
         if (errorMsg.includes('Descriptor not initialized')) {
           setOnChainVerificationStatus('failed');
-          setTxInfo(`❌ Descriptor Not Initialized\n\nThe token at ${deployedTokenAddress} does not have a descriptor set yet.\n\nThis can happen if:\n- The token was deployed without a descriptor\n- The descriptor setup transaction failed\n- You're using a different token\n\nTry deploying a new token using the "Quick Deploy Token" button.`);
+          setProofVerificationInfo(`Descriptor Not Initialized\n\nThe token at ${deployedTokenAddress} does not have a descriptor set yet.\n\nThis can happen if:\n- The token was deployed without a descriptor\n- The descriptor setup transaction failed\n- You're using a different token\n\nTry deploying a new token using the "Quick Deploy Token" button.`);
           return;
         }
         throw rootError;
@@ -1322,9 +1669,9 @@ export default function Page() {
       if (isValid) {
         setOnChainVerificationStatus('success');
         setCurrentStep(6); // Update step indicator to show verification complete
-        setTxInfo(
+        setProofVerificationInfo(
           <div>
-            <div style={{ marginBottom: '1rem', fontWeight: '600' }}>✅ Onchain Verification SUCCESSFUL!</div>
+            <div style={{ marginBottom: '1rem', fontWeight: '600' }}>Merkle Proof Verified Onchain!</div>
             <div style={{ marginBottom: '0.5rem' }}>
               <span style={{ color: 'rgba(255,255,255,0.7)' }}>Token Address: </span>
               <AddressLink address={deployedTokenAddress} chainId={chainFromEnv.id} />
@@ -1352,7 +1699,7 @@ export default function Page() {
         );
       } else {
         setOnChainVerificationStatus('failed');
-        setTxInfo(`❌ Onchain Verification FAILED!\n\nThe proof did not match the committed Merkle root.\n\nDescriptor Root: ${descriptorRoot}\nYour Proof Root: ${preview?.root}\n\nThis could mean:\n- The proof is for a different descriptor\n- The value was modified\n- The path is incorrect\n- The proof is invalid`);
+        setProofVerificationInfo(`Merkle Proof Verification FAILED!\n\nThe proof did not match the committed Merkle root.\n\nDescriptor Root: ${descriptorRoot}\nYour Proof Root: ${preview?.root}\n\nThis could mean:\n- The proof is for a different descriptor\n- The value was modified\n- The path is incorrect\n- The proof is invalid`);
       }
       
     } catch (error) {
@@ -1362,11 +1709,11 @@ export default function Page() {
       
       // Provide helpful error messages
       if (errorMessage.includes('returned no data')) {
-        setTxInfo(`❌ Contract Call Failed\n\nThe contract at ${deployedTokenAddress} returned no data.\n\nPossible causes:\n- The address is not a valid AssetToken contract\n- The contract doesn't implement IFixDescriptor\n- The network is incorrect\n\nPlease ensure you deployed the token using the "Quick Deploy Token" button.`);
+        setProofVerificationInfo(`Contract Call Failed\n\nThe contract at ${deployedTokenAddress} returned no data.\n\nPossible causes:\n- The address is not a valid AssetToken contract\n- The contract doesn't implement IFixDescriptor\n- The network is incorrect\n\nPlease ensure you deployed the token using the "Quick Deploy Token" button.`);
       } else if (errorMessage.includes('Descriptor not initialized')) {
-        setTxInfo(`❌ Descriptor Not Initialized\n\nThe token has not been set up with a FIX descriptor yet.`);
+        setProofVerificationInfo(`Descriptor Not Initialized\n\nThe token has not been set up with a FIX descriptor yet.`);
       } else {
-        setTxInfo(`❌ Onchain verification error:\n\n${errorMessage}`);
+        setProofVerificationInfo(`Merkle proof verification error:\n\n${errorMessage}`);
       }
     } finally {
       setLoading(false);
@@ -1434,7 +1781,8 @@ export default function Page() {
         return {
           ...merkleNode,
           tag: field.tag,
-          value: field.value
+          value: field.value,
+          name: field.name
         };
       }
     }
@@ -1452,8 +1800,7 @@ export default function Page() {
 
   // Helper function to find a field by path in tree data
   function findFieldByPath(node: TreeNodeData, targetPath: number[]): TreeNodeData | null {
-    if (!node.path) return null;
-    if (JSON.stringify(node.path) === JSON.stringify(targetPath)) {
+    if (node.path && JSON.stringify(node.path) === JSON.stringify(targetPath)) {
       return node;
     }
     if (node.children) {
@@ -1467,6 +1814,78 @@ export default function Page() {
 
   const fixFields = preview?.parsedFields || [];
   const displayTreeData = treeData ? updateTreeExpansion(treeData) : null;
+
+  const ParsedFieldRow = ({ field, depth, isLast }: { field: ParsedFieldNode; depth: number; isLast: boolean }) => {
+    if (field.type === 'entry') {
+      return (
+        <div
+          style={{
+            padding: '0.5rem 1rem',
+            borderBottom: isLast ? 'none' : '1px solid rgba(255,255,255,0.05)',
+            fontSize: '0.8rem',
+            color: 'rgba(255,255,255,0.6)'
+          }}
+        >
+          <div style={{ marginLeft: depth * 16 }}>{field.name}</div>
+          {field.children?.map((child, idx) => (
+            <ParsedFieldRow key={idx} field={child} depth={depth + 1} isLast={idx === field.children!.length - 1} />
+          ))}
+        </div>
+      );
+    }
+
+    if (field.type === 'group') {
+      return (
+        <div
+          style={{
+            padding: '0.5rem 1rem',
+            borderBottom: isLast ? 'none' : '1px solid rgba(255,255,255,0.05)',
+            fontSize: '0.85rem'
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginLeft: depth * 16 }}>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <span style={{ fontFamily: 'ui-monospace, monospace', color: 'rgba(255,255,255,0.9)' }}>
+                {field.tag}
+              </span>
+              <span style={{ color: 'rgba(255,255,255,0.4)' }}>{field.name}</span>
+            </div>
+            <span style={{ color: 'rgba(255,255,255,0.6)' }}>{field.value}</span>
+          </div>
+          {field.children?.map((child, idx) => (
+            <ParsedFieldRow key={idx} field={child} depth={depth + 1} isLast={idx === field.children!.length - 1} />
+          ))}
+        </div>
+      );
+    }
+
+    return (
+      <div
+        style={{
+          padding: '0.5rem 1rem',
+          borderBottom: isLast ? 'none' : '1px solid rgba(255,255,255,0.05)',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          fontSize: '0.875rem'
+        }}
+      >
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '0.75rem', marginLeft: depth * 16 }}>
+          <span style={{ fontWeight: '500', fontFamily: 'ui-monospace, monospace', color: 'rgba(255,255,255,0.9)' }}>
+            {field.tag}
+          </span>
+          {field.name && (
+            <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.8rem' }}>
+              {field.name}
+            </span>
+          )}
+        </div>
+        <div style={{ flex: 1, color: 'rgba(255,255,255,0.6)', fontFamily: 'ui-monospace, monospace', textAlign: 'right', fontSize: '0.8rem' }}>
+          {field.value}
+        </div>
+      </div>
+    );
+  };
 
   // Get Merkle tree from API (with all real keccak256 hashes), enrich with tag info, and highlight selected path
   const baseMerkleTree = preview?.merkleTree || null;
@@ -1483,6 +1902,63 @@ export default function Page() {
   return (
     <div style={{ minHeight: '100vh', background: '#0a0a0a', color: '#ffffff' }}>
       <Navigation currentPage="explorer" />
+      
+      {/* Background Verification Notification */}
+      {verificationNotification?.show && (
+        <div style={{
+          position: 'fixed',
+          top: '80px',
+          right: '20px',
+          zIndex: 1000,
+          maxWidth: '400px',
+          padding: '1rem 1.5rem',
+          background: verificationNotification.type === 'success' 
+            ? 'rgba(34, 197, 94, 0.95)' 
+            : verificationNotification.type === 'warning' || verificationNotification.type === 'error'
+            ? 'rgba(251, 191, 36, 0.95)'
+            : 'rgba(59, 130, 246, 0.95)',
+          border: `1px solid ${
+            verificationNotification.type === 'success' 
+              ? 'rgba(34, 197, 94, 1)' 
+              : verificationNotification.type === 'warning' || verificationNotification.type === 'error'
+              ? 'rgba(251, 191, 36, 1)'
+              : 'rgba(59, 130, 246, 1)'
+          }`,
+          borderRadius: '8px',
+          boxShadow: '0 10px 40px rgba(0,0,0,0.4)',
+          color: '#ffffff',
+          fontSize: '0.875rem',
+          fontWeight: '500',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: '1rem',
+          transition: 'opacity 0.3s ease-out'
+        }}>
+          <span>{verificationNotification.message}</span>
+          <button
+            onClick={() => setVerificationNotification(null)}
+            style={{
+              background: 'rgba(255,255,255,0.2)',
+              border: '1px solid rgba(255,255,255,0.3)',
+              borderRadius: '4px',
+              color: '#ffffff',
+              padding: '0.25rem 0.5rem',
+              fontSize: '0.75rem',
+              cursor: 'pointer',
+              flexShrink: 0
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'rgba(255,255,255,0.3)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'rgba(255,255,255,0.2)';
+            }}
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
       
       {/* Introduction Section */}
       <div style={{ maxWidth: '1400px', margin: '0 auto', padding: 'clamp(2rem, 4vw, 3rem) clamp(1rem, 3vw, 2rem)' }}>
@@ -1510,7 +1986,7 @@ export default function Page() {
               color: 'rgba(255,255,255,0.75)',
               marginBottom: '1.5rem'
             }}>
-              This interactive tool demonstrates how <Tooltip content="Financial Information eXchange - a standard messaging protocol used by the financial industry for real-time electronic communication">FIX</Tooltip> descriptors are transformed into verifiable on-chain commitments. Follow along as we parse a FIX message, encode it to <Tooltip content="Concise Binary Object Representation - a compact binary format similar to JSON but smaller and deterministic">CBOR</Tooltip>, generate a <Tooltip content="A cryptographic tree structure that allows you to prove specific data is part of a larger dataset without revealing the entire dataset">Merkle tree</Tooltip>, and deploy it to the blockchain.
+              This interactive tool demonstrates how <Tooltip content="Financial Information eXchange - a standard messaging protocol used by the financial industry for real-time electronic communication">FIX</Tooltip> descriptors are transformed into verifiable on-chain commitments. Follow along as we parse a FIX message, encode it to <Tooltip content="Simple Binary Encoding - a high-performance binary format used in financial systems for deterministic encoding">SBE</Tooltip>, generate a <Tooltip content="A cryptographic tree structure that allows you to prove specific data is part of a larger dataset without revealing the entire dataset">Merkle tree</Tooltip>, and deploy it to the blockchain.
             </p>
             
             <LearnMore title="What is this tool for?">
@@ -1521,7 +1997,7 @@ export default function Page() {
                 <strong>The Solution:</strong> Embed standardized FIX descriptors directly in token contracts. This explorer shows you exactly how that works, step by step.
               </p>
               <p>
-                <strong>What you&apos;ll see:</strong> Input a FIX message → Parse and canonicalize → Encode to CBOR → Generate Merkle root → Deploy to blockchain → Verify proofs → Retrieve data. Each step is explained as you go.
+                <strong>What you&apos;ll see:</strong> Input a FIX message → Parse and canonicalize → Encode to SBE → Generate Merkle root → Deploy to blockchain → Verify proofs → Retrieve data. Each step is explained as you go.
               </p>
             </LearnMore>
 
@@ -1545,7 +2021,7 @@ export default function Page() {
                 </div>
               </div>
               <button
-                onClick={() => scrollToSection(examplesRef)}
+                onClick={() => scrollToSection(inputRef)}
                 style={{
                   padding: '1rem',
                   background: 'rgba(59, 130, 246, 0.1)',
@@ -1569,7 +2045,7 @@ export default function Page() {
                   Interactive
                 </div>
                 <div style={{ fontSize: '1rem', fontWeight: '500', color: 'rgba(255,255,255,0.95)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  Jump to Examples
+                  Get Started
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <polyline points="6 9 12 15 18 9" />
                   </svg>
@@ -1878,8 +2354,8 @@ export default function Page() {
                     },
                     {
                       step: '03',
-                      title: 'CBOR Encode',
-                      description: 'Convert to Concise Binary Object Representation using canonical form for compact, deterministic storage.',
+                      title: 'SBE Encode',
+                      description: 'Convert to Simple Binary Encoding using schema for compact, deterministic, high-performance storage.',
                       icon: (
                         <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                           <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
@@ -1908,7 +2384,7 @@ export default function Page() {
                     {
                       step: '05',
                       title: 'Deploy Token',
-                      description: 'Deploy an ERC20 or ERC721 token contract with the FIX descriptor and CBOR data embedded onchain using SSTORE2, creating a self-contained asset.',
+                      description: 'Deploy an ERC20 or ERC721 token contract with the FIX descriptor and SBE binary data embedded onchain using SSTORE2, creating a self-contained asset.',
                       icon: (
                         <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                           <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
@@ -1934,7 +2410,7 @@ export default function Page() {
                     {
                       step: '07',
                       title: 'Retrieve Offchain',
-                      description: 'Read the CBOR data directly from the contract using SSTORE2 and decode it back to the original FIX message for full transparency and auditability.',
+                      description: 'Read the SBE binary data directly from the contract using SSTORE2 and decode it back to the original FIX message for full transparency and auditability.',
                       icon: (
                         <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                           <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
@@ -2038,61 +2514,6 @@ export default function Page() {
 
       {/* Main Content */}
       <div style={{ maxWidth: '1400px', margin: '0 auto', padding: 'clamp(2rem, 4vw, 3rem) clamp(1rem, 3vw, 2rem)' }}>
-        
-        {/* Examples Section */}
-        <section ref={examplesRef} style={{ marginBottom: '4rem' }}>
-          <div style={{ marginBottom: '2rem' }}>
-            <h2 style={{ 
-              fontSize: 'clamp(1.25rem, 3vw, 1.5rem)', 
-              fontWeight: '500',
-              marginBottom: '0.5rem',
-              letterSpacing: '-0.01em'
-            }}>
-              Examples
-            </h2>
-            <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 'clamp(0.875rem, 2vw, 0.95rem)' }}>
-              Start with a pre-configured FIX message
-            </p>
-          </div>
-          
-          <div style={{ 
-            display: 'grid', 
-            gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))', 
-            gap: 'clamp(0.75rem, 2vw, 1rem)' 
-          }}>
-            {Object.entries(EXAMPLES).map(([key, example]) => (
-              <button
-                key={key}
-                onClick={() => loadExample(key as keyof typeof EXAMPLES)}
-                style={{
-                  background: 'rgba(255,255,255,0.05)',
-                  border: '1px solid rgba(255,255,255,0.1)',
-                  borderRadius: '8px',
-                  padding: '1.5rem',
-                  cursor: 'pointer',
-                  textAlign: 'left',
-                  transition: 'all 0.2s',
-                  color: 'inherit'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = 'rgba(255,255,255,0.08)';
-                  e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
-                  e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)';
-                }}
-              >
-                <div style={{ fontWeight: '500', marginBottom: '0.5rem', fontSize: 'clamp(0.95rem, 2.5vw, 1rem)' }}>
-                  {example.name}
-                </div>
-                <div style={{ fontSize: 'clamp(0.8rem, 2vw, 0.875rem)', color: 'rgba(255,255,255,0.5)', lineHeight: '1.5' }}>
-                  {example.description}
-                </div>
-          </button>
-            ))}
-        </div>
-        </section>
 
         {/* Input Section */}
         <section ref={inputRef} style={{ marginBottom: '4rem' }}>
@@ -2103,52 +2524,249 @@ export default function Page() {
               marginBottom: '0.5rem',
               letterSpacing: '-0.01em'
             }}>
-              1. Input FIX Message
+              1. Input Schema & Message
             </h2>
             <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 'clamp(0.875rem, 2vw, 0.95rem)' }}>
-              Start by entering a <Tooltip content="A tag-value message format used globally by banks, brokers, and exchanges to communicate trade information">FIX Security Definition message</Tooltip>
+              Start by entering an Orchestra XML schema, then build or paste a FIX message
             </p>
           </div>
 
-          <LearnMore title="Understanding FIX Messages">
-            <p style={{ marginBottom: '1rem' }}>
-              <strong>What is FIX?</strong><br/>
-              FIX (Financial Information eXchange) is the messaging standard that powers modern financial markets. Banks, brokers, exchanges, and asset managers use it to communicate trade details, security information, and market data in real-time.
-            </p>
-            <p style={{ marginBottom: '1rem' }}>
-              <strong>Message Format:</strong><br/>
-              FIX messages use a simple tag=value format. Each tag is a number representing a specific field:<br/>
-              • Tag 55 = Symbol (e.g., &ldquo;AAPL&rdquo;)<br/>
-              • Tag 48 = SecurityID (e.g., a CUSIP or ISIN)<br/>
-              • Tag 167 = SecurityType (e.g., &ldquo;TBOND&rdquo; for Treasury Bond)<br/>
-              Tags are separated by the | character (representing SOH - Start of Header in the actual protocol).
-            </p>
-            <p>
-              <strong>What gets encoded?</strong><br/>
-              Only business/instrument fields are encoded into the on-chain commitment. Session fields (tags 8, 9, 10, 35) are excluded because they&apos;re for message transport, not instrument definition.
-            </p>
-          </LearnMore>
+          {/* Schema Input */}
+          <div style={{ marginBottom: '1.5rem' }}>
+            <div style={{
+              fontSize: '0.875rem',
+              color: 'rgba(255,255,255,0.5)',
+              marginBottom: '0.75rem',
+              fontWeight: '500',
+              textTransform: 'uppercase',
+              letterSpacing: '0.05em'
+            }}>
+              Orchestra XML Schema
+            </div>
 
-          <textarea 
-            value={fixRaw} 
-            onChange={(e) => setFixRaw(e.target.value)} 
-            rows={8} 
-            placeholder="Paste FIX message here..."
-            style={{ 
-              width: '100%', 
-              padding: '1rem',
-              borderRadius: '8px',
-              border: '1px solid rgba(255,255,255,0.1)',
-              background: 'rgba(255,255,255,0.03)',
-              color: '#ffffff',
-              fontFamily: 'ui-monospace, monospace',
-              fontSize: 'clamp(0.8rem, 2vw, 0.875rem)',
-              marginBottom: '1.5rem',
-              resize: 'vertical',
-              lineHeight: '1.6',
-              boxSizing: 'border-box'
-            }} 
-          />
+            <LearnMore title="Understanding Orchestra XML">
+              <p style={{ marginBottom: '1rem' }}>
+                <strong>What is Orchestra?</strong><br/>
+                Orchestra is the FIX Trading Community&apos;s modern standard for defining FIX message structures. It uses XML to describe message types, fields, data types, and validation rules in a machine-readable format.
+              </p>
+              <p style={{ marginBottom: '1rem' }}>
+                <strong>Schema Structure:</strong><br/>
+                An Orchestra schema contains:<br/>
+                • Message definitions with their fields and structure<br/>
+                • Data type specifications (strings, integers, enums, etc.)<br/>
+                • Field definitions with tags, names, and types<br/>
+                • Groups and repeating elements for complex structures<br/>
+                This schema is used to validate FIX messages and convert them to binary formats like SBE.
+              </p>
+              <p>
+                <strong>Why Orchestra?</strong><br/>
+                Orchestra provides a single source of truth for message structure, enabling automated code generation, validation, and conversion between different encoding formats (tag=value, SBE, JSON, etc.).
+              </p>
+            </LearnMore>
+
+            <textarea 
+              value={schemaInput} 
+              onChange={(e) => setSchemaInput(e.target.value)} 
+              rows={8} 
+              placeholder="Paste Orchestra XML schema here..."
+              className="no-scrollbar"
+              style={{ 
+                width: '100%', 
+                padding: '1rem',
+                borderRadius: '8px',
+                border: '1px solid rgba(255,255,255,0.1)',
+                background: 'rgba(255,255,255,0.03)',
+                color: '#ffffff',
+                fontFamily: 'ui-monospace, monospace',
+                fontSize: 'clamp(0.8rem, 2vw, 0.875rem)',
+                resize: 'vertical',
+                lineHeight: '1.6',
+                boxSizing: 'border-box'
+              }} 
+            />
+            <button
+              onClick={async () => {
+                try {
+                  const response = await fetch('/ORCHESTRAFIX44.xml');
+                  const text = await response.text();
+                  setSchemaInput(text);
+                  
+                  // Scroll to message type section after loading
+                  setTimeout(() => {
+                    scrollToSection(messageTypeRef);
+                  }, 300);
+                } catch (error) {
+                  console.error('Failed to load Orchestra schema:', error);
+                }
+              }}
+              style={{
+                marginTop: '0.75rem',
+                background: '#ffffff',
+                color: '#0a0a0a',
+                border: 'none',
+                borderRadius: '6px',
+                padding: '0.875rem 2rem',
+                fontSize: 'clamp(0.85rem, 2vw, 0.9rem)',
+                fontWeight: '500',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                minHeight: '44px'
+              }}
+            >
+              Load FIX 4.4 Orchestra Schema
+            </button>
+          </div>
+
+          {/* Only show subsequent sections if Orchestra XML has been entered */}
+          {schemaInput.trim() && (
+            <div ref={messageTypeRef}>
+              {/* Generated SBE Schema Preview - Full Schema with All Messages */}
+              {fullSbeSchema && (
+                <CollapsibleSection 
+                  title="Generated SBE Schema (All Messages)" 
+                  icon={<FaSyncAlt size={18} />}
+                  defaultCollapsed={true}
+                >
+                  <LearnMore title="Understanding SBE Schema">
+                    <p style={{ marginBottom: '1rem' }}>
+                      <strong>What is SBE?</strong><br/>
+                      SBE (Simple Binary Encoding) is a high-performance binary encoding format designed for low-latency financial messaging. It&apos;s significantly more efficient than traditional tag=value FIX encoding.
+                    </p>
+                    <p style={{ marginBottom: '1rem' }}>
+                      <strong>Why Convert to SBE?</strong><br/>
+                      • Compact binary format reduces storage costs on blockchain<br/>
+                      • Deterministic encoding ensures consistent hashes<br/>
+                      • Schema-driven validation prevents malformed data<br/>
+                      • Industry-standard format used by major exchanges
+                    </p>
+                    <p>
+                      <strong>Schema Contents:</strong><br/>
+                      This generated schema defines the binary structure for all message types in your Orchestra file. It specifies field types, byte offsets, and encoding rules that the encoder uses to convert FIX messages to compact binary format.
+                    </p>
+                  </LearnMore>
+
+                  <textarea 
+                    readOnly 
+                    value={fullSbeSchema} 
+                    rows={15}
+                    className="custom-scrollbar"
+                    style={{
+                      width: '100%',
+                      padding: '1rem',
+                      borderRadius: '8px',
+                      border: '1px solid rgba(34, 197, 94, 0.2)',
+                      background: 'rgba(34, 197, 94, 0.03)',
+                      color: 'rgba(34, 197, 94, 0.9)',
+                      fontFamily: 'ui-monospace, monospace',
+                      fontSize: '0.75rem',
+                      lineHeight: '1.5',
+                      resize: 'vertical',
+                      boxSizing: 'border-box'
+                    }}
+                  />
+                </CollapsibleSection>
+              )}
+
+              {/* Message Type Selection */}
+              <MessageTypeSelector
+                availableMessageTypes={availableMessageTypes}
+                selectedMessageType={selectedMessageType}
+                onSelect={setSelectedMessageType}
+                currentMessageId={currentMessageId}
+              />
+
+              {/* Orchestra XML Parser Preview */}
+              {orchestraError && (
+                <div style={{
+                  padding: '1rem',
+                  marginBottom: '1.5rem',
+                  background: 'rgba(239, 68, 68, 0.1)',
+                  border: '1px solid rgba(239, 68, 68, 0.3)',
+                  borderRadius: '8px',
+                  color: 'rgba(239, 68, 68, 0.9)',
+                  fontSize: '0.875rem'
+                }}>
+                  <strong>Parse Error:</strong> {orchestraError}
+                </div>
+              )}
+
+              {parsedOrchestra && (
+                <ParsedSchemaSection
+                  parsedOrchestra={parsedOrchestra}
+                  allMessages={allMessages}
+                  selectedMessageIndex={selectedMessageIndex}
+                  onMessageIndexChange={setSelectedMessageIndex}
+                />
+              )}
+
+              {/* Message Builder */}
+              {parsedOrchestra && (
+                <MessageBuilderSection
+                  parsedOrchestra={parsedOrchestra}
+                  messageBuilderValues={messageBuilderValues as Record<string, string | string[]>}
+                  onValuesChange={setMessageBuilderValues}
+                  onFixMessageChange={setFixRaw}
+                />
+              )}
+
+              {/* FIX Message Input */}
+              <div style={{ marginBottom: '1.5rem' }}>
+            <div style={{
+              fontSize: '0.875rem',
+              color: 'rgba(255,255,255,0.5)',
+              marginBottom: '0.75rem',
+              fontWeight: '500',
+              textTransform: 'uppercase',
+              letterSpacing: '0.05em'
+            }}>
+              FIX Message
+            </div>
+            
+            {/* Example Selector */}
+            <ExampleSelector 
+              examples={EXAMPLES}
+              onSelectExample={setFixRaw}
+            />
+
+            <LearnMore title="Understanding FIX Messages">
+              <p style={{ marginBottom: '1rem' }}>
+                <strong>What is FIX?</strong><br/>
+                FIX (Financial Information eXchange) is the messaging standard that powers modern financial markets. Banks, brokers, exchanges, and asset managers use it to communicate trade details, security information, and market data in real-time.
+              </p>
+              <p style={{ marginBottom: '1rem' }}>
+                <strong>Message Format:</strong><br/>
+                FIX messages use a simple tag=value format. Each tag is a number representing a specific field:<br/>
+                • Tag 55 = Symbol (e.g., &ldquo;AAPL&rdquo;)<br/>
+                • Tag 48 = SecurityID (e.g., a CUSIP or ISIN)<br/>
+                • Tag 167 = SecurityType (e.g., &ldquo;TBOND&rdquo; for Treasury Bond)<br/>
+                Tags are separated by the | character (representing SOH - Start of Header in the actual protocol).
+              </p>
+              <p>
+                <strong>What gets encoded?</strong><br/>
+                Only business/instrument fields are encoded into the on-chain commitment. Session fields (tags 8, 9, 10, 35) are excluded because they&apos;re for message transport, not instrument definition.
+              </p>
+            </LearnMore>
+            <textarea 
+              value={fixRaw} 
+              onChange={(e) => setFixRaw(e.target.value)} 
+              rows={4} 
+              placeholder="Enter business fields only (e.g., 55=AAPL|48=US0378331005) or use the builder above..."
+              className="custom-scrollbar"
+              style={{ 
+                width: '100%', 
+                padding: '1rem',
+                borderRadius: '8px',
+                border: '1px solid rgba(255,255,255,0.1)',
+                background: 'rgba(255,255,255,0.03)',
+                color: '#ffffff',
+                fontFamily: 'ui-monospace, monospace',
+                fontSize: 'clamp(0.8rem, 2vw, 0.875rem)',
+                resize: 'vertical',
+                lineHeight: '1.6',
+                boxSizing: 'border-box'
+              }} 
+            />
+          </div>
 
           {fixFields.length > 0 && (
             <div style={{ marginBottom: '1.5rem' }}>
@@ -2160,88 +2778,42 @@ export default function Page() {
               }}>
                 Parsed Fields ({fixFields.length})
               </div>
-              <div style={{ 
+              <div className="custom-scrollbar" style={{ 
                 maxHeight: '200px', 
                 overflowY: 'auto',
                 border: '1px solid rgba(255,255,255,0.1)',
                 borderRadius: '8px',
                 background: 'rgba(255,255,255,0.03)'
               }}>
-                {fixFields.map((field: { tag: string; value: string; tagInfo?: typeof FIX_TAGS[string] }, idx: number) => (
-                  <div 
-                    key={idx} 
-                    style={{ 
-                      padding: '0.75rem 1rem',
-                      borderBottom: idx < fixFields.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none',
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      fontSize: '0.875rem'
-                    }}
-                  >
-                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                      <span style={{ 
-                        fontWeight: '500',
-                        fontFamily: 'ui-monospace, monospace',
-                        color: ['8', '9', '10', '35'].includes(field.tag) 
-                          ? 'rgba(239, 68, 68, 0.8)' 
-                          : 'rgba(255,255,255,0.9)'
-                      }}>
-                        {field.tag}
-                      </span>
-                      {field.tagInfo && (
-                        <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.8rem' }}>
-                          {field.tagInfo.name}
-                        </span>
-                      )}
-                      {['8', '9', '10', '35'].includes(field.tag) && (
-                        <span style={{ 
-                          fontSize: '0.7rem',
-                          color: 'rgba(239, 68, 68, 0.8)',
-                          background: 'rgba(239, 68, 68, 0.1)',
-                          padding: '0.15rem 0.5rem',
-                          borderRadius: '3px',
-                          fontWeight: '500'
-                        }}>
-                          excluded
-                        </span>
-                      )}
-                    </div>
-                    <div style={{ 
-                      flex: 1, 
-                      color: 'rgba(255,255,255,0.6)',
-                      fontFamily: 'ui-monospace, monospace',
-                      textAlign: 'right',
-                      fontSize: '0.8rem'
-                    }}>
-                      {field.value}
-                    </div>
-                  </div>
+                {fixFields.map((field, idx) => (
+                  <ParsedFieldRow key={idx} field={field} depth={0} isLast={idx === fixFields.length - 1} />
                 ))}
               </div>
             </div>
           )}
 
-          <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-            <button 
-              onClick={doPreview}
-              disabled={!fixRaw || loading}
-              style={{
-                background: fixRaw && !loading ? '#ffffff' : 'rgba(255,255,255,0.1)',
-                color: fixRaw && !loading ? '#0a0a0a' : 'rgba(255,255,255,0.3)',
-                border: 'none',
-                borderRadius: '6px',
-                padding: '0.875rem 2rem',
-                fontSize: 'clamp(0.85rem, 2vw, 0.9rem)',
-                fontWeight: '500',
-                cursor: fixRaw && !loading ? 'pointer' : 'not-allowed',
-                transition: 'all 0.2s',
-                minHeight: '44px'
-              }}
-            >
-              {loading ? 'Processing...' : 'Process'}
-            </button>
-          </div>
+              <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                <button 
+                  onClick={doPreview}
+                  disabled={!fixRaw || loading}
+                  style={{
+                    background: fixRaw && !loading ? '#ffffff' : 'rgba(255,255,255,0.1)',
+                    color: fixRaw && !loading ? '#0a0a0a' : 'rgba(255,255,255,0.3)',
+                    border: 'none',
+                    borderRadius: '6px',
+                    padding: '0.875rem 2rem',
+                    fontSize: 'clamp(0.85rem, 2vw, 0.9rem)',
+                    fontWeight: '500',
+                    cursor: fixRaw && !loading ? 'pointer' : 'not-allowed',
+                    transition: 'all 0.2s',
+                    minHeight: '44px'
+                  }}
+                >
+                  {loading ? 'Processing...' : 'Process'}
+                </button>
+              </div>
+            </div>
+          )}
         </section>
 
         {/* Results Section */}
@@ -2278,14 +2850,14 @@ export default function Page() {
                   </h2>
                 </div>
                 <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: 'clamp(0.875rem, 2vw, 0.95rem)', marginLeft: '2.25rem' }}>
-                  Your FIX message has been parsed, encoded to <Tooltip content="A space-efficient binary format that's deterministic - the same data always produces the same bytes">CBOR</Tooltip>, and a <Tooltip content="A hash-based tree where each leaf is a field, allowing you to cryptographically prove any field's value">Merkle root</Tooltip> has been generated
+                  Your FIX message has been parsed, encoded to <Tooltip content="Simple Binary Encoding - a high-performance binary format that's deterministic and used in financial systems">SBE</Tooltip>, and a <Tooltip content="A hash-based tree where each leaf is a field, allowing you to cryptographically prove any field's value">Merkle root</Tooltip> has been generated
                 </p>
               </div>
 
-              <LearnMore title="Understanding CBOR and Merkle Trees">
+              <LearnMore title="Understanding SBE and Merkle Trees">
                 <p style={{ marginBottom: '1rem' }}>
-                  <strong>Why CBOR?</strong><br/>
-                  CBOR (Concise Binary Object Representation) is like JSON but binary and smaller. More importantly, it&apos;s <em>deterministic</em> - the same data always encodes to the exact same bytes. This is critical for blockchain because we need everyone to agree on the exact commitment.
+                  <strong>Why SBE?</strong><br/>
+                  SBE (Simple Binary Encoding) is a high-performance binary format used in financial systems. It&apos;s <em>deterministic</em> - the same data with the same schema always encodes to the exact same bytes. This is critical for blockchain because we need everyone to agree on the exact commitment.
                 </p>
                 <p style={{ marginBottom: '1rem' }}>
                   <strong>What&apos;s a Merkle Tree?</strong><br/>
@@ -2352,9 +2924,9 @@ export default function Page() {
                       <span style={{ fontWeight: '500', fontSize: '0.875rem' }}>{preview.leavesCount}</span>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.875rem' }}>CBOR Size</span>
+                      <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.875rem' }}>Encoded Size</span>
                       <span style={{ fontWeight: '500', fontSize: '0.875rem' }}>
-                        {Math.floor((preview.cborHex.length - 2) / 2)} bytes
+                        {Math.floor((preview.sbeBase64.length * 3) / 4)} bytes
                       </span>
                     </div>
                   </div>
@@ -2365,7 +2937,7 @@ export default function Page() {
               <div style={{ marginBottom: '1.5rem' }}>
                 <div style={{ display: 'flex', gap: '0.5rem', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
                   {[
-                    { key: 'hex', label: 'CBOR Hex' },
+                    { key: 'hex', label: 'Encoded Base64' },
                     { key: 'tree', label: 'Tree View' },
                     { key: 'merkle', label: 'Merkle Tree' }
                   ].map(({ key, label }) => (
@@ -2402,12 +2974,13 @@ export default function Page() {
                       textTransform: 'uppercase',
                       letterSpacing: '0.05em'
                     }}>
-                      CBOR Hex
+                      SBE Encoded Base64
                     </div>
                     <textarea 
                       readOnly 
-                      value={preview.cborHex} 
-                      rows={6} 
+                      value={preview.sbeBase64} 
+                      rows={6}
+                      className="custom-scrollbar"
                       style={{ 
                         width: '100%',
                         padding: '1rem',
@@ -2531,14 +3104,14 @@ export default function Page() {
                     3. Deploy to Blockchain
                   </h3>
                   <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: 'clamp(0.875rem, 2vw, 0.95rem)' }}>
-                    Store your <Tooltip content="The cryptographic hash that represents your entire FIX descriptor">Merkle root</Tooltip> and <Tooltip content="The encoded binary data of your FIX message">CBOR data</Tooltip> on the <Tooltip content="Sepolia is a test network - no real money is used. Get free testnet ETH from faucets.">Sepolia testnet</Tooltip>
+                    Store your <Tooltip content="The cryptographic hash that represents your entire FIX descriptor">Merkle root</Tooltip> and <Tooltip content="The SBE encoded binary data of your FIX message">encoded data</Tooltip> on the <Tooltip content="Sepolia is a test network - no real money is used. Get free testnet ETH from faucets.">Sepolia testnet</Tooltip>
                   </p>
                 </div>
 
                 <LearnMore title="About Blockchain Deployment">
                   <p style={{ marginBottom: '1rem' }}>
                     <strong>What happens when you deploy?</strong><br/>
-                    Deployment creates a new ERC20 token contract on the blockchain with your FIX descriptor embedded. The CBOR data is stored using SSTORE2 (an efficient storage technique), and the Merkle root is saved in the contract.
+                    Deployment creates a new ERC20 token contract on the blockchain with your FIX descriptor embedded. The SBE encoded data is stored using SSTORE2 (an efficient storage technique), and the Merkle root is saved in the contract.
                   </p>
                   <p style={{ marginBottom: '1rem' }}>
                     <strong>Is this free?</strong><br/>
@@ -2546,7 +3119,7 @@ export default function Page() {
                   </p>
                   <p>
                     <strong>What can I do with a deployed token?</strong><br/>
-                    Once deployed, anyone can read the CBOR data from the contract, verify Merkle proofs against the root, and decode the full FIX message. This demonstrates how real tokenized securities could work - with verifiable, standardized descriptors.
+                    Once deployed, anyone can read the encoded data from the contract, verify Merkle proofs against the root, and decode the full FIX message. This demonstrates how real tokenized securities could work - with verifiable, standardized descriptors.
                   </p>
                 </LearnMore>
 
@@ -2571,7 +3144,7 @@ export default function Page() {
                       e.currentTarget.style.background = showTokenDeploy ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.1)';
                     }}
                   >
-                    {showTokenDeploy ? '− Hide Deployment Form' : '🚀 Deploy to Testnet'}
+                    {showTokenDeploy ? '− Hide Deployment Form' : 'Deploy to Testnet'}
                   </button>
           </div>
                 {txInfo && (
@@ -2720,7 +3293,7 @@ export default function Page() {
                           width: '100%'
                         }}
                       >
-                        {loading ? '⏳ Deploying...' : '🚀 Deploy Token with Descriptor'}
+                        {loading ? 'Deploying...' : 'Deploy Token with Descriptor'}
                       </button>
                     </div>
                   </div>
@@ -2740,19 +3313,19 @@ export default function Page() {
                   4. Generate Merkle Proof
                 </h2>
                 <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 'clamp(0.875rem, 2vw, 0.95rem)' }}>
-                  Select a FIX field and create a cryptographic proof that can verify the field&apos;s value <Tooltip content="The proof allows efficient onchain verification of a specific field without decoding the entire CBOR descriptor">onchain with minimal gas</Tooltip>
+                  Select a FIX field and create a cryptographic proof that can verify the field&apos;s value <Tooltip content="The proof allows efficient onchain verification of a specific field without decoding the entire SBE descriptor">onchain with minimal gas</Tooltip>
                 </p>
               </div>
 
               <LearnMore title="How Merkle Proofs Work">
                 <p style={{ marginBottom: '1rem' }}>
                   <strong>What&apos;s a Merkle Proof?</strong><br/>
-                  A Merkle proof lets you verify that a specific field exists in the onchain descriptor with a specific value, without needing to download and decode the entire CBOR data. This makes verification extremely gas-efficient.
+                  A Merkle proof lets you verify that a specific field exists in the onchain descriptor with a specific value, without needing to download and decode the entire SBE binary data. This makes verification extremely gas-efficient.
                 </p>
                 <p style={{ marginBottom: '1rem' }}>
                   <strong>How it works:</strong><br/>
-                  The full FIX descriptor is stored onchain as CBOR data, along with a Merkle root hash. To verify a field:
-                  <br/>• You provide the field value and its path in the CBOR structure
+                  The full FIX descriptor is stored onchain as SBE binary data, along with a Merkle root hash. To verify a field:
+                  <br/>• You provide the field value and its path in the data structure
                   <br/>• You provide a &ldquo;proof&rdquo; - a small set of sibling hashes from the Merkle tree
                   <br/>• The smart contract recomputes the Merkle root from this data
                   <br/>• If the recomputed root matches the stored root, the field is verified
@@ -2763,7 +3336,7 @@ export default function Page() {
                 </p>
                 <p>
                   <strong>What&apos;s a &ldquo;path&rdquo;?</strong><br/>
-                  The path is how we navigate the CBOR tree to find a field. For simple fields, the path is just the tag number: [15] means &ldquo;FIX tag 15.&rdquo; For nested group fields, paths include the group tag, entry index, and field tag.
+                  The path is how we navigate the data structure to find a field. For simple fields, the path is just the tag number: [15] means &ldquo;FIX tag 15.&rdquo; For nested group fields, paths include the group tag, entry index, and field tag.
                 </p>
               </LearnMore>
 
@@ -2792,147 +3365,171 @@ export default function Page() {
                   }}>
                     Select a Field to Prove
                   </div>
-                  <div style={{
-                    maxHeight: '300px',
-                    overflowY: 'auto',
-                    border: '1px solid rgba(255,255,255,0.1)',
-                    borderRadius: '8px',
-                    background: 'rgba(255,255,255,0.03)'
-                  }}>
-                    {preview.paths.map((path, idx) => {
-                      // Get the corresponding tag info
-                      // For simple scalar fields, path is [tagNumber]
-                      // For nested fields in groups, path is [groupTag, entryIndex, fieldTag]
+                <div style={{
+                  maxHeight: '300px',
+                  overflowY: 'auto',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  borderRadius: '8px',
+                  background: 'rgba(255,255,255,0.03)',
+                  padding: '0.5rem'
+                }}>
+                  {(() => {
+                    const normalizePath = (rawPath: number[]) => {
+                      if (rawPath.length < 3) return rawPath.map((value) => Number(value));
+                      const normalized = rawPath.map((value) => Number(value));
+                      for (let i = 1; i < normalized.length; i += 2) {
+                        normalized[i] = normalized[i] + 1;
+                      }
+                      return normalized;
+                    };
+
+                    const findFieldByPath = (node: TreeNodeData, targetPath: number[]): TreeNodeData | null => {
+                      if (node.path && JSON.stringify(node.path) === JSON.stringify(targetPath)) {
+                        return node;
+                      }
+                      if (node.children) {
+                        for (const child of node.children) {
+                          const found = findFieldByPath(child, targetPath);
+                          if (found) return found;
+                        }
+                      }
+                      return null;
+                    };
+
+                    const scalarPaths = preview.paths.filter((p) => p.length === 1);
+                    const groupPaths = preview.paths.filter((p) => p.length > 1);
+                    const groups = new Map<number, Map<number, Array<{ path: number[]; tag?: string; value?: string; name?: string }>>>();
+
+                    for (const rawPath of groupPaths) {
+                      const normalizedPath = normalizePath(rawPath);
+                      const groupTag = normalizedPath[0];
+                      const entryIndex = normalizedPath[1];
+                      const leafTag = normalizedPath[normalizedPath.length - 1];
                       let tag: string | undefined;
                       let value: string | undefined;
-                      let tagInfo: typeof FIX_TAGS[string] | undefined;
-
-                      // Try to match against tree data first
+                      let name: string | undefined;
                       if (displayTreeData) {
-                        const findFieldByPath = (node: TreeNodeData, targetPath: number[]): TreeNodeData | null => {
-                          if (!node.path) return null;
-                          if (JSON.stringify(node.path) === JSON.stringify(targetPath)) {
-                            return node;
-                          }
-                          if (node.children) {
-                            for (const child of node.children) {
-                              const found = findFieldByPath(child, targetPath);
-                              if (found) return found;
-                            }
-                          }
-                          return null;
-                        };
-
-                        const field = findFieldByPath(displayTreeData, path);
+                        const field = findFieldByPath(displayTreeData, normalizedPath);
                         if (field?.type === 'scalar') {
                           tag = field.tag;
                           value = field.value;
-                          tagInfo = tag ? FIX_TAGS[tag] : undefined;
+                          name = field.name;
                         }
                       }
-
-                      // Fallback: if path is simple [tagNumber], look it up in parsed fields
-                      if (!tag && path.length === 1 && fixFields) {
-                        const tagNum = String(path[0]);
-                        const parsedField = fixFields.find(f => f.tag === tagNum);
-                        if (parsedField) {
-                          tag = parsedField.tag;
-                          value = parsedField.value;
-                          tagInfo = parsedField.tagInfo;
-                        }
+                      if (!tag && Number.isFinite(leafTag)) {
+                        tag = String(leafTag);
                       }
+                      if (!groups.has(groupTag)) {
+                        groups.set(groupTag, new Map());
+                      }
+                      const entryMap = groups.get(groupTag)!;
+                      if (!entryMap.has(entryIndex)) {
+                        entryMap.set(entryIndex, []);
+                      }
+                      entryMap.get(entryIndex)!.push({ path: rawPath, tag, value, name });
+                    }
 
-                      return (
-                        <button
-                          key={idx}
-                          onClick={() => setPathInput(JSON.stringify(path))}
-                          style={{
-                            display: 'flex',
-                            width: '100%',
-                            textAlign: 'left',
-                            padding: '0.875rem 1rem',
-                            background: pathInput === JSON.stringify(path) ? 'rgba(168, 85, 247, 0.1)' : 'transparent',
-                            border: 'none',
-                            borderBottom: idx < preview.paths.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none',
-                            cursor: 'pointer',
-                            fontSize: '0.875rem',
-                            color: 'rgba(255,255,255,0.7)',
-                            transition: 'all 0.2s',
-                            alignItems: 'center',
-                            gap: '0.75rem'
-                          }}
-                          onMouseEnter={(e) => {
-                            if (pathInput !== JSON.stringify(path)) {
-                              e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
-                            }
-                            e.currentTarget.style.color = 'rgba(255,255,255,0.9)';
-                          }}
-                          onMouseLeave={(e) => {
-                            if (pathInput !== JSON.stringify(path)) {
-                              e.currentTarget.style.background = 'transparent';
-                            }
-                            e.currentTarget.style.color = 'rgba(255,255,255,0.7)';
-                          }}
-                        >
-                          {tag && value ? (
-                            <>
-                              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                  <span style={{
-                                    fontFamily: 'ui-monospace, monospace',
-                                    fontWeight: '600',
-                                    color: 'rgba(96, 165, 250, 0.9)',
-                                    fontSize: '0.95rem'
-                                  }}>
-                                    Tag {tag}
-                                  </span>
-                                  {tagInfo && (
-                                    <span style={{
-                                      color: 'rgba(255,255,255,0.5)',
-                                      fontSize: '0.8rem'
-                                    }}>
-                                      {tagInfo.name}
-                                    </span>
-                                  )}
-                                </div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                  <span style={{
-                                    fontSize: '0.75rem',
-                                    color: 'rgba(255,255,255,0.4)'
-                                  }}>
-                                    Prove that:
-                                  </span>
-                                  <span style={{
-                                    fontFamily: 'ui-monospace, monospace',
-                                    fontSize: '0.85rem',
-                                    color: 'rgba(255,255,255,0.8)',
-                                    fontWeight: '500'
-                                  }}>
-                                    {tag} = {value}
-                                  </span>
-                                </div>
-                              </div>
-                              <div style={{
-                                fontFamily: 'ui-monospace, monospace',
-                                fontSize: '0.7rem',
-                                color: 'rgba(255,255,255,0.3)',
-                                minWidth: 'fit-content'
-                              }}>
-                                {JSON.stringify(path)}
-                              </div>
-                            </>
-                          ) : (
-                            <div style={{
+                    const renderPathButton = (item: { path: number[]; tag?: string; value?: string; name?: string }) => (
+                      <button
+                        key={JSON.stringify(item.path)}
+                        onClick={() => setPathInput(JSON.stringify(item.path))}
+                        style={{
+                          display: 'flex',
+                          width: '100%',
+                          textAlign: 'left',
+                          padding: '0.6rem 0.75rem',
+                          background: pathInput === JSON.stringify(item.path) ? 'rgba(168, 85, 247, 0.1)' : 'transparent',
+                          border: 'none',
+                          borderBottom: '1px solid rgba(255,255,255,0.05)',
+                          cursor: 'pointer',
+                          fontSize: '0.85rem',
+                          color: 'rgba(255,255,255,0.75)',
+                          transition: 'all 0.2s',
+                          alignItems: 'center',
+                          gap: '0.75rem'
+                        }}
+                      >
+                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <span style={{
                               fontFamily: 'ui-monospace, monospace',
-                              flex: 1
+                              fontWeight: '600',
+                              color: 'rgba(96, 165, 250, 0.9)',
+                              fontSize: '0.9rem'
                             }}>
-                              {JSON.stringify(path)}
+                              {item.tag ? (item.name ? `${item.name} (${item.tag})` : `Tag ${item.tag}`) : JSON.stringify(item.path)}
+                            </span>
+                          </div>
+                          {item.tag && item.value !== undefined && (
+                            <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.45)' }}>
+                              {item.tag} = {item.value}
                             </div>
                           )}
-                        </button>
-                      );
-                    })}
-                  </div>
+                        </div>
+                        <div style={{
+                          fontFamily: 'ui-monospace, monospace',
+                          fontSize: '0.7rem',
+                          color: 'rgba(255,255,255,0.3)'
+                        }}>
+                          [{item.path.join(',')}]
+                        </div>
+                      </button>
+                    );
+
+                    return (
+                      <div>
+                        {scalarPaths.map((path) => {
+                          let tag: string | undefined;
+                          let value: string | undefined;
+                          let name: string | undefined;
+                          if (displayTreeData?.children) {
+                            const tagNum = String(path[0]);
+                            const parsedField = displayTreeData.children.find(
+                              (child) => child.type === 'scalar' && child.tag === tagNum,
+                            );
+                            if (parsedField) {
+                              tag = parsedField.tag;
+                              value = parsedField.value;
+                              name = parsedField.name;
+                            }
+                          }
+                          if (!tag && path.length === 1) {
+                            tag = String(path[0]);
+                          }
+                          return renderPathButton({ path, tag, value, name });
+                        })}
+
+                        {Array.from(groups.entries()).map(([groupTag, entries]) => {
+                          const groupName = displayTreeData?.children?.find(
+                            (child) => child.type === 'group' && child.tag === String(groupTag),
+                          )?.name;
+                          return (
+                          <div key={groupTag} style={{ marginTop: '0.75rem' }}>
+                            <div style={{
+                              padding: '0.5rem 0.75rem',
+                              fontSize: '0.85rem',
+                              fontWeight: 600,
+                              color: 'rgba(255,255,255,0.85)',
+                              background: 'rgba(255,255,255,0.04)',
+                              borderRadius: '6px'
+                            }}>
+                              Group {groupTag}{groupName ? ` · ${groupName}` : ''}
+                            </div>
+                            {Array.from(entries.entries()).map(([entryIndex, items]) => (
+                              <div key={entryIndex} style={{ marginLeft: '0.75rem', marginTop: '0.5rem' }}>
+                                <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.5)', marginBottom: '0.25rem' }}>
+                                  Entry {entryIndex}
+                                </div>
+                                {items.map(renderPathButton)}
+                              </div>
+                            ))}
+                          </div>
+                        );
+                      })}
+                      </div>
+                    );
+                  })()}
+                </div>
                 </div>
               )}
 
@@ -2953,8 +3550,7 @@ export default function Page() {
                     try {
                       const parsedPath = JSON.parse(pathInput);
                       const findFieldByPath = (node: TreeNodeData, targetPath: number[]): TreeNodeData | null => {
-                        if (!node.path) return null;
-                        if (JSON.stringify(node.path) === JSON.stringify(targetPath)) {
+                        if (node.path && JSON.stringify(node.path) === JSON.stringify(targetPath)) {
                           return node;
                         }
                         if (node.children) {
@@ -2967,7 +3563,6 @@ export default function Page() {
                       };
                       const field = findFieldByPath(displayTreeData, parsedPath);
                       if (field && field.type === 'scalar') {
-                        const tagInfo = field.tag ? FIX_TAGS[field.tag] : null;
                         return (
                           <span style={{
                             fontSize: '0.75rem',
@@ -2975,7 +3570,7 @@ export default function Page() {
                             fontWeight: '500',
                             textTransform: 'none'
                           }}>
-                            Tag {field.tag}{tagInfo ? ` (${tagInfo.name})` : ''} = {field.value}
+                            Tag {field.tag}{field.name ? ` (${field.name})` : ''} = {field.value}
                           </span>
                         );
                       }
@@ -3061,7 +3656,6 @@ export default function Page() {
                       };
                       const field = findFieldByPath(displayTreeData, parsedPath);
                       if (field && field.type === 'scalar') {
-                        const tagInfo = field.tag ? FIX_TAGS[field.tag] : null;
                         return (
                           <div style={{
                             padding: '1.5rem',
@@ -3090,12 +3684,12 @@ export default function Page() {
                                 }}>
                                   Tag {field.tag}
                                 </span>
-                                {tagInfo && (
+                                {field.name && (
                                   <span style={{
                                     color: 'rgba(255,255,255,0.6)',
                                     fontSize: '0.9rem'
                                   }}>
-                                    ({tagInfo.name})
+                                    ({field.name})
                                   </span>
                                 )}
                                 <span style={{
@@ -3113,16 +3707,6 @@ export default function Page() {
                                   {field.value}
                                 </span>
                               </div>
-                              {tagInfo?.description && (
-                                <div style={{
-                                  fontSize: '0.8rem',
-                                  color: 'rgba(255,255,255,0.5)',
-                                  fontStyle: 'italic',
-                                  marginTop: '0.25rem'
-                                }}>
-                                  {tagInfo.description}
-                                </div>
-                              )}
                             </div>
                           </div>
                         );
@@ -3150,9 +3734,9 @@ export default function Page() {
                               '1px solid rgba(59, 130, 246, 0.3)',
                     }}>
                       <div style={{ fontSize: '1.5rem' }}>
-                        {onChainVerificationStatus === 'success' ? '✅' :
-                         onChainVerificationStatus === 'failed' ? '❌' :
-                         '⏳'}
+                        {onChainVerificationStatus === 'success' ? '●' :
+                         onChainVerificationStatus === 'failed' ? '●' :
+                         '●'}
                       </div>
                       <div>
                         <div style={{
@@ -3188,7 +3772,7 @@ export default function Page() {
                       textTransform: 'uppercase',
                       letterSpacing: '0.05em'
                     }}>
-                      Path CBOR (hex)
+                      Field Path (hex)
       </div>
                     <textarea 
                       readOnly 
@@ -3354,10 +3938,10 @@ export default function Page() {
                                    onChainVerificationStatus === 'failed' ? 'rgba(239, 68, 68, 0.9)' :
                                    'rgba(59, 130, 246, 0.9)'
                           }}>
-                            {onChainVerificationStatus === null ? '🔗 Ready for Onchain Verification' :
-                             onChainVerificationStatus === 'success' ? '✅ Verified Onchain' :
-                             onChainVerificationStatus === 'failed' ? '❌ Verification Failed' :
-                             '⏳ Verifying...'}
+                            {onChainVerificationStatus === null ? 'Ready for Onchain Verification' :
+                             onChainVerificationStatus === 'success' ? 'Verified Onchain' :
+                             onChainVerificationStatus === 'failed' ? 'Verification Failed' :
+                             'Verifying...'}
                           </strong>
                         <div style={{ 
                           fontSize: 'clamp(0.7rem, 1.5vw, 0.75rem)', 
@@ -3418,11 +4002,29 @@ export default function Page() {
                           }
                         }}
                       >
-                        {loading || onChainVerificationStatus === 'pending' ? '⏳ Verifying Onchain...' :
-                         onChainVerificationStatus === 'success' ? '✅ Re-verify Proof' :
-                         onChainVerificationStatus === 'failed' ? '🔄 Try Again' :
-                         '🔗 Verify Proof Onchain'}
+                        {loading || onChainVerificationStatus === 'pending' ? 'Verifying Onchain...' :
+                         onChainVerificationStatus === 'success' ? 'Re-verify Proof' :
+                         onChainVerificationStatus === 'failed' ? 'Try Again' :
+                         'Verify Proof Onchain'}
                       </button>
+                      
+                      {proofVerificationInfo && (
+                        <div style={{
+                          marginTop: '1rem',
+                          padding: '1rem',
+                          background: onChainVerificationStatus === 'success' ? 'rgba(34, 197, 94, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                          border: `1px solid ${onChainVerificationStatus === 'success' ? 'rgba(34, 197, 94, 0.2)' : 'rgba(239, 68, 68, 0.2)'}`,
+                          borderRadius: '6px',
+                          fontSize: 'clamp(0.8rem, 2vw, 0.875rem)',
+                          color: onChainVerificationStatus === 'success' ? 'rgba(34, 197, 94, 0.9)' : 'rgba(239, 68, 68, 0.9)',
+                          wordBreak: 'break-all',
+                          fontFamily: 'ui-monospace, monospace',
+                          lineHeight: '1.6',
+                          whiteSpace: 'pre-wrap'
+                        }}>
+                          {proofVerificationInfo}
+                        </div>
+                      )}
                       
                       <div style={{
                         fontSize: 'clamp(0.7rem, 1.5vw, 0.75rem)',
@@ -3457,7 +4059,7 @@ export default function Page() {
                     6. Retrieve & Decode Data
                   </h2>
                   <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 'clamp(0.875rem, 2vw, 0.95rem)' }}>
-                    Fetch the <Tooltip content="The binary-encoded FIX message stored using SSTORE2">CBOR data</Tooltip> from the deployed contract and decode it back to the original FIX message
+                    Fetch the <Tooltip content="The SBE binary-encoded FIX message stored using SSTORE2">encoded data</Tooltip> from the deployed contract and decode it back to the original FIX message
                   </p>
                   <div style={{
                     marginTop: '0.75rem',
@@ -3484,31 +4086,30 @@ export default function Page() {
                 }}>
                   <button
                     onClick={() => {
-                      fetchCBORFromContract();
-                      fetchHumanReadable();
+                      fetchSBEFromContract();
                     }}
-                    disabled={fetchCBORStatus === 'loading' || onchainReadableStatus === 'loading'}
+                    disabled={fetchSBEStatus === 'loading'}
                     style={{
-                      background: fetchCBORStatus === 'loading' ?
+                      background: fetchSBEStatus === 'loading' ?
                         'rgba(59, 130, 246, 0.2)' :
-                        fetchCBORStatus === 'success' ?
+                        fetchSBEStatus === 'success' ?
                         'rgba(34, 197, 94, 0.15)' :
-                        fetchCBORStatus === 'error' ?
+                        fetchSBEStatus === 'error' ?
                         'rgba(239, 68, 68, 0.15)' :
                         'rgba(255, 255, 255, 0.1)',
-                      color: fetchCBORStatus === 'loading' ?
+                      color: fetchSBEStatus === 'loading' ?
                         'rgba(59, 130, 246, 0.9)' :
-                        fetchCBORStatus === 'success' ?
+                        fetchSBEStatus === 'success' ?
                         'rgba(34, 197, 94, 0.9)' :
-                        fetchCBORStatus === 'error' ?
+                        fetchSBEStatus === 'error' ?
                         'rgba(239, 68, 68, 0.9)' :
                         'rgba(255, 255, 255, 0.9)',
                       border: `1px solid ${
-                        fetchCBORStatus === 'loading' ?
+                        fetchSBEStatus === 'loading' ?
                         'rgba(59, 130, 246, 0.3)' :
-                        fetchCBORStatus === 'success' ?
+                        fetchSBEStatus === 'success' ?
                         'rgba(34, 197, 94, 0.3)' :
-                        fetchCBORStatus === 'error' ?
+                        fetchSBEStatus === 'error' ?
                         'rgba(239, 68, 68, 0.3)' :
                         'rgba(255, 255, 255, 0.2)'
                       }`,
@@ -3516,20 +4117,20 @@ export default function Page() {
                       padding: '0.875rem 1.5rem',
                       fontSize: 'clamp(0.85rem, 2vw, 0.9rem)',
                       fontWeight: '600',
-                      cursor: fetchCBORStatus === 'loading' ? 'not-allowed' : 'pointer',
+                      cursor: fetchSBEStatus === 'loading' ? 'not-allowed' : 'pointer',
                       width: '100%',
                       transition: 'all 0.2s',
                       marginBottom: '1.5rem',
                       minHeight: '44px'
                     }}
                   >
-                    {fetchCBORStatus === 'loading' ? '⏳ Fetching from Contract...' :
-                     fetchCBORStatus === 'success' ? '✅ Fetch Again' :
-                     fetchCBORStatus === 'error' ? '🔄 Retry' :
-                     '📡 Fetch FIX Message from Contract'}
+                    {fetchSBEStatus === 'loading' ? 'Fetching from Contract...' :
+                     fetchSBEStatus === 'success' ? 'Fetch Again' :
+                     fetchSBEStatus === 'error' ? 'Retry' :
+                     'Fetch FIX Message from Contract'}
                   </button>
 
-                  {fetchCBORError && (
+                  {fetchSBEError && (
                     <div style={{
                       padding: '1rem',
                       background: 'rgba(239, 68, 68, 0.1)',
@@ -3539,11 +4140,11 @@ export default function Page() {
                       fontSize: '0.875rem',
                       marginBottom: '1.5rem'
                     }}>
-                      ❌ Error: {fetchCBORError}
+                      Error: {fetchSBEError}
                     </div>
                   )}
 
-                  {fetchedCBOR && (
+                  {fetchedSBE && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                       <div>
                         <div style={{
@@ -3554,11 +4155,11 @@ export default function Page() {
                           textTransform: 'uppercase',
                           letterSpacing: '0.05em'
                         }}>
-                          Raw CBOR (Hex)
+                          Raw SBE (Hex)
                         </div>
-                        <textarea
+                        <textarea 
                           readOnly
-                          value={fetchedCBOR}
+                          value={fetchedSBE || ''}
                           rows={4}
                           style={{
                             width: '100%',
@@ -3581,72 +4182,12 @@ export default function Page() {
                           marginTop: '0.5rem',
                           lineHeight: '1.5'
                         }}>
-                          This is the canonical CBOR encoding retrieved from the contract&apos;s SSTORE2 data pointer
+                          This is the SBE encoding retrieved from the contract&apos;s SSTORE2 data pointer
                         </div>
                       </div>
 
-                      {(decodedFIX || onchainReadable) && (
+                      {decodedFIX && (
                         <div>
-                          {/* Toggle buttons for decode mode */}
-                          <div style={{
-                            display: 'flex',
-                            gap: '0.5rem',
-                            marginBottom: '1rem',
-                            padding: '0.5rem',
-                            background: 'rgba(255,255,255,0.03)',
-                            borderRadius: '8px',
-                            border: '1px solid rgba(255,255,255,0.1)'
-                          }}>
-                            <button
-                              onClick={() => setDecodeMode('offchain')}
-                              style={{
-                                flex: 1,
-                                padding: '0.625rem 1rem',
-                                background: decodeMode === 'offchain' 
-                                  ? 'rgba(59, 130, 246, 0.2)' 
-                                  : 'transparent',
-                                border: decodeMode === 'offchain'
-                                  ? '1px solid rgba(59, 130, 246, 0.4)'
-                                  : '1px solid rgba(255,255,255,0.1)',
-                                borderRadius: '6px',
-                                color: decodeMode === 'offchain'
-                                  ? 'rgba(59, 130, 246, 0.9)'
-                                  : 'rgba(255,255,255,0.6)',
-                                fontSize: 'clamp(0.8rem, 2vw, 0.875rem)',
-                                fontWeight: '600',
-                                cursor: 'pointer',
-                                transition: 'all 0.2s',
-                                minHeight: '44px'
-                              }}
-                            >
-                              🔧 Off-chain Decoded
-                            </button>
-                            <button
-                              onClick={() => setDecodeMode('onchain')}
-                              style={{
-                                flex: 1,
-                                padding: '0.625rem 1rem',
-                                background: decodeMode === 'onchain' 
-                                  ? 'rgba(34, 197, 94, 0.2)' 
-                                  : 'transparent',
-                                border: decodeMode === 'onchain'
-                                  ? '1px solid rgba(34, 197, 94, 0.4)'
-                                  : '1px solid rgba(255,255,255,0.1)',
-                                borderRadius: '6px',
-                                color: decodeMode === 'onchain'
-                                  ? 'rgba(34, 197, 94, 0.9)'
-                                  : 'rgba(255,255,255,0.6)',
-                                fontSize: 'clamp(0.8rem, 2vw, 0.875rem)',
-                                fontWeight: '600',
-                                cursor: 'pointer',
-                                transition: 'all 0.2s',
-                                minHeight: '44px'
-                              }}
-                            >
-                              ⛓️ On-chain Human-Readable
-                            </button>
-                          </div>
-
                           <div style={{
                             fontSize: '0.8rem',
                             color: 'rgba(255,255,255,0.5)',
@@ -3655,10 +4196,10 @@ export default function Page() {
                             textTransform: 'uppercase',
                             letterSpacing: '0.05em'
                           }}>
-                            {decodeMode === 'offchain' ? 'Decoded FIX Message (Off-chain)' : 'Human-Readable Descriptor (On-chain)'}
+                            Decoded FIX Message (Off-chain)
                           </div>
                           {/* Off-chain decoded view */}
-                          {decodeMode === 'offchain' && decodedFIX && (
+                          {decodedFIX && (
                             <>
                               {/* Sub-toggle for numeric vs named */}
                               <div style={{
@@ -3746,73 +4287,8 @@ export default function Page() {
                               }}>
                                 {offchainFormat === 'numeric' 
                                   ? 'Decoded off-chain using fixparser library. Shows numeric tags (e.g., "55=AAPL").'
-                                  : 'Decoded off-chain with tag names from TypeScript FIX_44_DICTIONARY package. Shows human-readable names (e.g., "Symbol=AAPL"). Dictionary source: npm package (off-chain).'}
+                                  : 'Decoded off-chain with tag names from the loaded Orchestra XML schema. Shows human-readable names (e.g., "Symbol=AAPL"). Dictionary source: Orchestra schema fields (off-chain).'}
                               </div>
-                            </>
-                          )}
-
-                          {/* On-chain human-readable view */}
-                          {decodeMode === 'onchain' && (
-                            <>
-                              {onchainReadableStatus === 'loading' && (
-                                <div style={{
-                                  padding: '2rem',
-                                  background: 'rgba(59, 130, 246, 0.1)',
-                                  border: '1px solid rgba(59, 130, 246, 0.2)',
-                                  borderRadius: '8px',
-                                  textAlign: 'center',
-                                  color: 'rgba(59, 130, 246, 0.9)',
-                                  fontSize: '0.875rem'
-                                }}>
-                                  ⏳ Fetching human-readable output from blockchain...
-                                </div>
-                              )}
-
-                              {onchainReadableStatus === 'error' && onchainReadableError && (
-                                <div style={{
-                                  padding: '1rem',
-                                  background: 'rgba(239, 68, 68, 0.1)',
-                                  border: '1px solid rgba(239, 68, 68, 0.3)',
-                                  borderRadius: '8px',
-                                  color: 'rgba(239, 68, 68, 0.9)',
-                                  fontSize: '0.875rem'
-                                }}>
-                                  ❌ {onchainReadableError}
-                                </div>
-                              )}
-
-                              {onchainReadableStatus === 'success' && onchainReadable && (
-                                <>
-                                  <textarea
-                                    readOnly
-                                    value={onchainReadable}
-                                    rows={6}
-                                    style={{
-                                      width: '100%',
-                                      padding: '1rem',
-                                      borderRadius: '8px',
-                                      border: '1px solid rgba(34, 197, 94, 0.2)',
-                                      background: 'rgba(34, 197, 94, 0.05)',
-                                      color: 'rgba(34, 197, 94, 0.9)',
-                                      fontFamily: 'ui-monospace, monospace',
-                                      fontSize: 'clamp(0.8rem, 2vw, 0.875rem)',
-                                      resize: 'vertical',
-                                      lineHeight: '1.6',
-                                      fontWeight: '500',
-                                      boxSizing: 'border-box',
-                                      wordBreak: 'break-word'
-                                    }}
-                                  />
-                                  <div style={{
-                                    fontSize: 'clamp(0.7rem, 1.5vw, 0.75rem)',
-                                    color: 'rgba(255,255,255,0.4)',
-                                    marginTop: '0.5rem',
-                                    lineHeight: '1.5'
-                                  }}>
-                                    Generated entirely on-chain by calling getHumanReadableDescriptor(). Tag names from on-chain FixDictionary contract. Fully trustless and composable with other smart contracts.
-                                  </div>
-                                </>
-                              )}
                             </>
                           )}
                         </div>

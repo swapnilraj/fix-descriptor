@@ -1,0 +1,22 @@
+FROM public.ecr.aws/lambda/nodejs:20
+
+RUN (dnf -y install java-17-amazon-corretto-devel findutils || yum -y install java-17-amazon-corretto-devel findutils) \
+  && (dnf clean all || yum clean all)
+
+WORKDIR /var/task
+COPY . .
+
+WORKDIR /var/task/apps/lambda
+ENV NODE_ENV=development
+RUN npm install
+
+WORKDIR /var/task/packages/fixdescriptorkit-typescript/simple-binary-encoding
+RUN ./gradlew :sbe-all:jar
+
+WORKDIR /var/task
+RUN mkdir -p /opt/sbe && cp packages/fixdescriptorkit-typescript/simple-binary-encoding/sbe-all/build/libs/sbe-all-*.jar /opt/sbe/sbe-all.jar
+
+ENV SBE_TOOL_JAR=/opt/sbe/sbe-all.jar
+ENV SBE_OUTPUT_DIR=/tmp/sbe-codecs
+
+CMD ["apps/lambda/src/lambda-handler.handler"]

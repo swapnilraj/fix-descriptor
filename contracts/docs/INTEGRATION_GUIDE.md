@@ -47,7 +47,7 @@ contract MyToken is ERC20, IFixDescriptor {
 }
 ```
 
-That's it! All the complex logic (SSTORE2 reading, Merkle verification, CBOR parsing) is handled by the library.
+That's it! All the complex logic (SSTORE2 reading, Merkle verification) is handled by the library.
 
 ---
 
@@ -95,16 +95,12 @@ contract MyBondToken is ERC20, Ownable, ERC165, IFixDescriptor {
     }
 
     function verifyField(
-        bytes calldata pathCBOR,
+        bytes calldata pathSBE,
         bytes calldata value,
         bytes32[] calldata proof,
         bool[] calldata directions
     ) external view override returns (bool) {
-        return _fixDescriptor.verifyFieldProof(pathCBOR, value, proof, directions);
-    }
-
-    function getHumanReadableDescriptor() external view override returns (string memory) {
-        return _fixDescriptor.getHumanReadable();
+        return _fixDescriptor.verifyFieldProof(pathSBE, value, proof, directions);
     }
 
     // ERC165 support
@@ -378,17 +374,17 @@ contract MyUniqueNFT is ERC721, IFixDescriptor {
 
 ## Gas Optimization Tips
 
-### 1. Batch CBOR Reads
+### 1. Batch SBE Reads
 
 Instead of multiple small reads:
 
 ```solidity
 // ❌ Inefficient
-bytes memory chunk1 = getFixCBORChunk(0, 100);
-bytes memory chunk2 = getFixCBORChunk(100, 100);
+bytes memory chunk1 = getFixSBEChunk(0, 100);
+bytes memory chunk2 = getFixSBEChunk(100, 100);
 
 // ✅ Efficient
-bytes memory allData = getFixCBORChunk(0, 200);
+bytes memory allData = getFixSBEChunk(0, 200);
 ```
 
 ### 2. Cache Descriptor Reads

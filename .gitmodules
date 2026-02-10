@@ -1,3 +1,14 @@
 [submodule "contracts/lib/openzeppelin-contracts"]
 	path = contracts/lib/openzeppelin-contracts
 	url = https://github.com/OpenZeppelin/openzeppelin-contracts
+[submodule "contracts/lib/forge-std"]
+	path = contracts/lib/forge-std
+	url = https://github.com/foundry-rs/forge-std
+[submodule "sbe-node/simple-binary-encoding"]
+	path = packages/fixdescriptorkit-typescript/simple-binary-encoding
+	url = git@github.com:rafalpiotrowski/simple-binary-encoding.git
+	branch = typescript-support
+[submodule "packages/fixdescriptorkit-typescript/agrona-ts"]
+	path = packages/fixdescriptorkit-typescript/agrona-ts
+	url = git@github.com:rafalpiotrowski/agrona-ts.git
+	branch = main

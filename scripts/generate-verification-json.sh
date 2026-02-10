@@ -5,7 +5,7 @@
 # Run this script after modifying AssetTokenERC20.sol
 # Includes smart caching to skip regeneration when contracts haven't changed
 
-set -e
+set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
@@ -20,9 +20,12 @@ calculate_contract_hash() {
   find src -name "*.sol" -type f -exec cat {} \; | cat - foundry.toml | shasum -a 256 | cut -d' ' -f1
 }
 
-# Check if output file exists
+# Check if output file exists and is non-empty
 if [ ! -f "$OUTPUT_FILE" ]; then
   echo "📝 Standard JSON file doesn't exist, will generate..."
+  FORCE_REGENERATE=true
+elif [ ! -s "$OUTPUT_FILE" ]; then
+  echo "📝 Standard JSON file is empty, will regenerate..."
   FORCE_REGENERATE=true
 else
   FORCE_REGENERATE=false
@@ -64,13 +67,15 @@ if [ "$NEEDS_REGENERATION" = true ]; then
   # Generate standard JSON input
   # Using a dummy address since we only need the source structure
   echo "📝 Generating standard JSON input..."
+  TMP_OUTPUT="$(mktemp)"
   forge verify-contract \
     --show-standard-json-input \
     0x0000000000000000000000000000000000000000 \
     src/AssetTokenERC20.sol:AssetTokenERC20 \
-    2>/dev/null | jq '.' > "$OUTPUT_FILE"
+    2>/dev/null | jq '.' > "$TMP_OUTPUT"
   
-  if [ -f "$OUTPUT_FILE" ]; then
+  if [ -s "$TMP_OUTPUT" ]; then
+    mv "$TMP_OUTPUT" "$OUTPUT_FILE"
     FILE_SIZE=$(wc -c < "$OUTPUT_FILE" | tr -d ' ')
     echo "✅ Standard JSON generated successfully!"
     echo "   Output: $OUTPUT_FILE"
@@ -85,7 +90,8 @@ if [ "$NEEDS_REGENERATION" = true ]; then
     echo "   git add $OUTPUT_FILE $CACHE_FILE"
     echo "   git commit -m \"Update contract verification JSON\""
   else
-    echo "❌ Failed to generate standard JSON"
+    rm -f "$TMP_OUTPUT"
+    echo "❌ Failed to generate standard JSON (empty output)"
     exit 1
   fi
 fi

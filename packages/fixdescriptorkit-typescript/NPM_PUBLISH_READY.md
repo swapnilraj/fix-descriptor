@@ -7,7 +7,7 @@ Your TypeScript package `@fixdescriptorkit/ts-sdk` is now fully configured and r
 ✅ **Package Metadata**
 - Name: `@fixdescriptorkit/ts-sdk` (scoped package)
 - Version: `1.0.0`
-- Description: Transform FIX asset descriptors into canonical CBOR payloads and Merkle commitments for blockchain verification
+- Description: Transform FIX asset descriptors into canonical trees and Merkle commitments for blockchain verification
 - Author: Swapnil Raj <swp@nethermind.io>
 - License: ISC
 
@@ -88,7 +88,6 @@ npm install @fixdescriptorkit/ts-sdk
 import { 
   parseFixDescriptor, 
   buildCanonicalTree, 
-  encodeCanonicalCBOR,
   computeRoot,
   generateProof
 } from '@fixdescriptorkit/ts-sdk';
@@ -97,8 +96,6 @@ import {
 const fixMessage = "55=ACME|48=US000000AA11|167=CORP|15=USD";
 const tree = parseFixDescriptor(fixMessage);
 const canonical = buildCanonicalTree(tree);
-const cbor = encodeCanonicalCBOR(canonical);
-
 // Generate Merkle proof
 const leaves = enumerateLeaves(canonical);
 const root = computeRoot(leaves);

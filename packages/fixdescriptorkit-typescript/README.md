@@ -1,6 +1,6 @@
 # FixDescriptorKit TypeScript Library
 
-> **Core library for transforming FIX asset descriptors into canonical CBOR and Merkle commitments**
+> **Core library for transforming FIX asset descriptors into canonical trees and Merkle commitments**
 
 A TypeScript library that provides the fundamental building blocks for converting FIX (Financial Information eXchange) protocol messages into deterministic, verifiable onchain commitments.
 
@@ -14,9 +14,8 @@ This is the **core transformation engine** for FixDescriptorKit. It handles:
 
 1. **FIX Message Parsing** - Convert FIX protocol messages to structured trees
 2. **Canonicalization** - Transform trees into deterministic, sorted representations
-3. **CBOR Encoding** - Serialize canonical trees to compact binary format
-4. **Merkle Tree Generation** - Create cryptographic commitments with proof support
-5. **Type Safety** - Fully typed API with runtime validation
+3. **Merkle Tree Generation** - Create cryptographic commitments with proof support
+4. **Type Safety** - Fully typed API with runtime validation
 
 ## 🎯 Use Cases
 
@@ -42,7 +41,6 @@ npm run build
 import {
   parseFixDescriptor,
   buildCanonicalTree,
-  encodeCanonicalCBOR,
   enumerateLeaves,
   computeRoot,
   generateProof,
@@ -56,21 +54,17 @@ const tree = parseFixDescriptor(fixMessage);
 // 2. Build canonical tree (sorted, deterministic)
 const canonical = buildCanonicalTree(tree);
 
-// 3. Encode to CBOR
-const cborBytes = encodeCanonicalCBOR(canonical);
-console.log(`CBOR size: ${cborBytes.length} bytes`);
-
-// 4. Generate Merkle commitment
+// 3. Generate Merkle commitment
 const leaves = enumerateLeaves(canonical);
 const merkleRoot = computeRoot(leaves);
 console.log(`Merkle root: ${merkleRoot}`);
 
-// 5. Generate proof for a specific field
+// 4. Generate proof for a specific field
 const currencyPath = [15]; // FIX tag 15 = Currency
 const proof = generateProof(leaves, currencyPath);
 console.log(`Proof for Currency field:`, proof);
 
-// 6. Verify the proof
+// 5. Verify the proof
 const isValid = verifyProof(merkleRoot, currencyPath, "USD", proof, leaves);
 console.log(`Proof valid: ${isValid}`);
 ```
@@ -140,31 +134,6 @@ const canonical = buildCanonicalTree(tree);
 - **Deterministic**: Same input → same output
 - **Sorted**: All map keys in ascending order
 - **Canonical**: Single valid representation per descriptor
-
----
-
-#### `encodeCanonicalCBOR(node: CanonicalNode): Uint8Array`
-
-Encodes a canonical tree to CBOR (Concise Binary Object Representation) format.
-
-**Parameters:**
-- `node` - Canonical tree from `buildCanonicalTree()`
-
-**Returns:**
-- `Uint8Array` - Deterministic CBOR bytes
-
-**Example:**
-```typescript
-const cbor = encodeCanonicalCBOR(canonical);
-console.log(`Size: ${cbor.length} bytes`);
-console.log(`Hex: ${Buffer.from(cbor).toString('hex')}`);
-```
-
-**Properties:**
-- **Compact**: Binary format, smaller than JSON
-- **Deterministic**: Always produces identical bytes for same input
-- **Standard**: RFC 8949 canonical CBOR
-- **No Indefinite Lengths**: All lengths are definite for consistency
 
 ---
 
@@ -302,9 +271,6 @@ src/
 │   └── parseFixDescriptor()
 ├── canonical.ts       # Tree canonicalization
 │   └── buildCanonicalTree()
-├── cbor.ts            # CBOR encoding/decoding
-│   ├── encodeCanonicalCBOR()
-│   └── decodeCanonicalCBOR()
 ├── merkle.ts          # Merkle tree operations
 │   ├── enumerateLeaves()
 │   ├── computeRoot()
@@ -313,7 +279,6 @@ src/
 └── test/              # Unit tests
     ├── parse.test.ts
     ├── canonical.test.ts
-    ├── cbor.test.ts
     └── merkle.test.ts
 ```
 
@@ -378,12 +343,11 @@ npm test -- --coverage
 ### Example 1: Simple Descriptor
 
 ```typescript
-import { parseFixDescriptor, buildCanonicalTree, encodeCanonicalCBOR } from 'fixdescriptorkit-typescript';
+import { parseFixDescriptor, buildCanonicalTree } from 'fixdescriptorkit-typescript';
 
 const fix = "55=ACME|48=US000000AA11|167=CORP|15=USD";
 const tree = parseFixDescriptor(fix);
 const canonical = buildCanonicalTree(tree);
-const cbor = encodeCanonicalCBOR(canonical);
 
 console.log(JSON.stringify(canonical, null, 2));
 // {
@@ -428,7 +392,7 @@ console.log(`Directions: ${proof.directions}`);
 
 All functions produce deterministic output:
 - **Sorting**: Map keys always sorted
-- **CBOR**: Canonical form (RFC 8949)
+- **Path encoding**: Canonical CBOR for Merkle paths (RFC 8949)
 - **Hashing**: keccak256 (Ethereum-compatible)
 
 This ensures:
@@ -471,7 +435,7 @@ Output: `dist/` directory with compiled JavaScript and TypeScript declarations.
 ### Dependencies
 
 - **fixparser** - FIX protocol parsing (requires license key for testing)
-- **cbor-x** - CBOR encoding/decoding
+- **cbor-x** - CBOR path encoding for Merkle leaves
 - **viem** - Ethereum utilities (keccak256 hashing)
 - **zod** - Runtime type validation
 - **vitest** - Testing framework

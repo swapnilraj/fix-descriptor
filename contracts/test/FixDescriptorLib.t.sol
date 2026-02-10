@@ -16,15 +16,15 @@ contract FixDescriptorLibTest is Test {
     TestToken testToken;
 
     // Sample data
-    bytes sampleCBOR = hex"a2011901f70266555344"; // CBOR map with two fields
+    bytes sampleSBE = hex"a2011901f70266555344"; // SBE encoded data
     bytes32 sampleRoot = bytes32(uint256(0x123456));
     bytes32 sampleDictHash = keccak256("test-dictionary");
 
     event FixDescriptorSet(
         bytes32 indexed fixRoot,
         bytes32 indexed dictHash,
-        address fixCBORPtr,
-        uint32 fixCBORLen
+        address fixSBEPtr,
+        uint32 fixSBELen
     );
 
     event FixDescriptorUpdated(
@@ -38,17 +38,16 @@ contract FixDescriptorLibTest is Test {
     }
 
     function testSetDescriptor() public {
-        address cborPtr = SSTORE2.write(sampleCBOR);
+        address sbePtr = SSTORE2.write(sampleSBE);
 
         IFixDescriptor.FixDescriptor memory descriptor = IFixDescriptor.FixDescriptor({
             fixMajor: 4,
             fixMinor: 4,
             dictHash: sampleDictHash,
-            dictionaryContract: address(0),
             fixRoot: sampleRoot,
-            fixCBORPtr: cborPtr,
-            fixCBORLen: uint32(sampleCBOR.length),
-            fixURI: ""
+            fixSBEPtr: sbePtr,
+            fixSBELen: uint32(sampleSBE.length),
+            schemaURI: ""
         });
 
         // Expect FixDescriptorSet event
@@ -56,8 +55,8 @@ contract FixDescriptorLibTest is Test {
         emit FixDescriptorSet(
             sampleRoot,
             sampleDictHash,
-            cborPtr,
-            uint32(sampleCBOR.length)
+            sbePtr,
+            uint32(sampleSBE.length)
         );
 
         testToken.setDescriptor(descriptor);
@@ -68,52 +67,50 @@ contract FixDescriptorLibTest is Test {
         assertEq(stored.fixMinor, 4);
         assertEq(stored.dictHash, sampleDictHash);
         assertEq(stored.fixRoot, sampleRoot);
-        assertEq(stored.fixCBORPtr, cborPtr);
-        assertEq(stored.fixCBORLen, uint32(sampleCBOR.length));
+        assertEq(stored.fixSBEPtr, sbePtr);
+        assertEq(stored.fixSBELen, uint32(sampleSBE.length));
     }
 
     function testUpdateDescriptor() public {
         // Set initial descriptor
-        address cborPtr1 = SSTORE2.write(sampleCBOR);
+        address sbePtr1 = SSTORE2.write(sampleSBE);
         IFixDescriptor.FixDescriptor memory descriptor1 = IFixDescriptor.FixDescriptor({
             fixMajor: 4,
             fixMinor: 4,
             dictHash: sampleDictHash,
-            dictionaryContract: address(0),
             fixRoot: sampleRoot,
-            fixCBORPtr: cborPtr1,
-            fixCBORLen: uint32(sampleCBOR.length),
-            fixURI: ""
+            fixSBEPtr: sbePtr1,
+            fixSBELen: uint32(sampleSBE.length),
+            schemaURI: ""
         });
 
         testToken.setDescriptor(descriptor1);
 
         // Update with new descriptor
         bytes32 newRoot = bytes32(uint256(0x654321));
-        bytes memory newCBOR = hex"a1011902"; 
-        address cborPtr2 = SSTORE2.write(newCBOR);
+        bytes memory newSBE = hex"a1011902"; 
+        address sbePtr2 = SSTORE2.write(newSBE);
 
         IFixDescriptor.FixDescriptor memory descriptor2 = IFixDescriptor.FixDescriptor({
             fixMajor: 4,
             fixMinor: 4,
             dictHash: sampleDictHash,
-            dictionaryContract: address(0),
             fixRoot: newRoot,
-            fixCBORPtr: cborPtr2,
-            fixCBORLen: uint32(newCBOR.length),
-            fixURI: ""
+            fixSBEPtr: sbePtr2,
+            fixSBELen: uint32(newSBE.length),
+            schemaURI: ""
         });
 
         // Expect FixDescriptorUpdated event
         vm.expectEmit(true, true, false, true);
-        emit FixDescriptorUpdated(sampleRoot, newRoot, cborPtr2);
+        emit FixDescriptorUpdated(sampleRoot, newRoot, sbePtr2);
 
         testToken.setDescriptor(descriptor2);
 
         // Verify descriptor was updated
         IFixDescriptor.FixDescriptor memory stored = testToken.getDescriptor();
         assertEq(stored.fixRoot, newRoot);
-        assertEq(stored.fixCBORPtr, cborPtr2);
+        assertEq(stored.fixSBEPtr, sbePtr2);
     }
 
     function testGetDescriptorNotInitialized() public {
@@ -124,17 +121,16 @@ contract FixDescriptorLibTest is Test {
     }
 
     function testGetRoot() public {
-        address cborPtr = SSTORE2.write(sampleCBOR);
+        address sbePtr = SSTORE2.write(sampleSBE);
 
         IFixDescriptor.FixDescriptor memory descriptor = IFixDescriptor.FixDescriptor({
             fixMajor: 4,
             fixMinor: 4,
             dictHash: sampleDictHash,
-            dictionaryContract: address(0),
             fixRoot: sampleRoot,
-            fixCBORPtr: cborPtr,
-            fixCBORLen: uint32(sampleCBOR.length),
-            fixURI: ""
+            fixSBEPtr: sbePtr,
+            fixSBELen: uint32(sampleSBE.length),
+            schemaURI: ""
         });
 
         testToken.setDescriptor(descriptor);
@@ -150,19 +146,18 @@ contract FixDescriptorLibTest is Test {
         uninitializedToken.getRoot();
     }
 
-    function testGetFixCBORChunk() public {
+    function testGetFixSBEChunk() public {
         bytes memory testData = hex"0102030405060708090a0b0c0d0e0f"; // 15 bytes
-        address cborPtr = SSTORE2.write(testData);
+        address sbePtr = SSTORE2.write(testData);
 
         IFixDescriptor.FixDescriptor memory descriptor = IFixDescriptor.FixDescriptor({
             fixMajor: 4,
             fixMinor: 4,
             dictHash: sampleDictHash,
-            dictionaryContract: address(0),
             fixRoot: sampleRoot,
-            fixCBORPtr: cborPtr,
-            fixCBORLen: uint32(testData.length),
-            fixURI: ""
+            fixSBEPtr: sbePtr,
+            fixSBELen: uint32(testData.length),
+            schemaURI: ""
         });
 
         testToken.setDescriptor(descriptor);
@@ -184,65 +179,42 @@ contract FixDescriptorLibTest is Test {
         assertEq(empty.length, 0);
     }
 
-    function testGetFixCBORChunkNotInitialized() public {
+    function testGetFixSBEChunkNotInitialized() public {
         TestToken uninitializedToken = new TestToken();
 
         vm.expectRevert("Descriptor not initialized");
         uninitializedToken.getCBORChunk(0, 10);
     }
 
-    function testGetFixCBORChunkNoCBORDeployed() public {
+    function testGetFixSBEChunkNoSBEDeployed() public {
         IFixDescriptor.FixDescriptor memory descriptor = IFixDescriptor.FixDescriptor({
             fixMajor: 4,
             fixMinor: 4,
             dictHash: sampleDictHash,
-            dictionaryContract: address(0),
             fixRoot: sampleRoot,
-            fixCBORPtr: address(0), // No CBOR deployed
-            fixCBORLen: 0,
-            fixURI: ""
+            fixSBEPtr: address(0), // No SBE deployed
+            fixSBELen: 0,
+            schemaURI: ""
         });
 
         testToken.setDescriptor(descriptor);
 
-        vm.expectRevert("CBOR not deployed");
+        vm.expectRevert("SBE not deployed");
         testToken.getCBORChunk(0, 10);
-    }
-
-    function testGetFullCBORData() public {
-        bytes memory testData = hex"a201190037026455534454"; 
-        address cborPtr = SSTORE2.write(testData);
-
-        IFixDescriptor.FixDescriptor memory descriptor = IFixDescriptor.FixDescriptor({
-            fixMajor: 4,
-            fixMinor: 4,
-            dictHash: sampleDictHash,
-            dictionaryContract: address(0),
-            fixRoot: sampleRoot,
-            fixCBORPtr: cborPtr,
-            fixCBORLen: uint32(testData.length),
-            fixURI: ""
-        });
-
-        testToken.setDescriptor(descriptor);
-
-        bytes memory fullData = testToken.getFullCBOR();
-        assertEq(fullData, testData);
     }
 
     function testIsInitialized() public {
         assertFalse(testToken.isInitialized());
 
-        address cborPtr = SSTORE2.write(sampleCBOR);
+        address sbePtr = SSTORE2.write(sampleSBE);
         IFixDescriptor.FixDescriptor memory descriptor = IFixDescriptor.FixDescriptor({
             fixMajor: 4,
             fixMinor: 4,
             dictHash: sampleDictHash,
-            dictionaryContract: address(0),
             fixRoot: sampleRoot,
-            fixCBORPtr: cborPtr,
-            fixCBORLen: uint32(sampleCBOR.length),
-            fixURI: ""
+            fixSBEPtr: sbePtr,
+            fixSBELen: uint32(sampleSBE.length),
+            schemaURI: ""
         });
 
         testToken.setDescriptor(descriptor);
@@ -258,12 +230,12 @@ contract FixDescriptorLibTest is Test {
 
     function testVerifyFieldProof() public {
         // Set up descriptor with a simple root (single leaf for simplicity)
-        address cborPtr = SSTORE2.write(sampleCBOR);
+        address sbePtr = SSTORE2.write(sampleSBE);
         
-        // Create a simple merkle tree with one leaf: hash(pathCBOR || value)
-        bytes memory pathCBOR = hex"01";  // Simple CBOR-encoded path
+        // Create a simple merkle tree with one leaf: hash(pathSBE || value)
+        bytes memory pathSBE = hex"01";  // Simple SBE-encoded path
         bytes memory value = hex"37";
-        bytes32 leaf = keccak256(abi.encodePacked(pathCBOR, value));
+        bytes32 leaf = keccak256(abi.encodePacked(pathSBE, value));
         
         // For a single-leaf tree, the root IS the leaf
         bytes32 testRoot = leaf;
@@ -272,11 +244,10 @@ contract FixDescriptorLibTest is Test {
             fixMajor: 4,
             fixMinor: 4,
             dictHash: sampleDictHash,
-            dictionaryContract: address(0),
             fixRoot: testRoot,
-            fixCBORPtr: cborPtr,
-            fixCBORLen: uint32(sampleCBOR.length),
-            fixURI: ""
+            fixSBEPtr: sbePtr,
+            fixSBELen: uint32(sampleSBE.length),
+            schemaURI: ""
         });
 
         testToken.setDescriptor(descriptor);
@@ -286,7 +257,7 @@ contract FixDescriptorLibTest is Test {
         bool[] memory directions = new bool[](0);
 
         bool result = testToken.verifyFieldProofWrapper(
-            pathCBOR,
+            pathSBE,
             value,
             proof,
             directions
@@ -300,19 +271,18 @@ contract FixDescriptorLibTest is Test {
         uint16 minor,
         bytes32 dictHash,
         bytes32 root,
-        uint32 cborLen
+        uint32 sbeLen
     ) public {
-        address cborPtr = address(uint160(uint256(keccak256(abi.encodePacked(cborLen)))));
+        address sbePtr = address(uint160(uint256(keccak256(abi.encodePacked(sbeLen)))));
 
         IFixDescriptor.FixDescriptor memory descriptor = IFixDescriptor.FixDescriptor({
             fixMajor: major,
             fixMinor: minor,
             dictHash: dictHash,
-            dictionaryContract: address(0),
             fixRoot: root,
-            fixCBORPtr: cborPtr,
-            fixCBORLen: cborLen,
-            fixURI: ""
+            fixSBEPtr: sbePtr,
+            fixSBELen: sbeLen,
+            schemaURI: ""
         });
 
         testToken.setDescriptor(descriptor);
@@ -322,7 +292,7 @@ contract FixDescriptorLibTest is Test {
         assertEq(stored.fixMinor, minor);
         assertEq(stored.dictHash, dictHash);
         assertEq(stored.fixRoot, root);
-        assertEq(stored.fixCBORLen, cborLen);
+        assertEq(stored.fixSBELen, sbeLen);
     }
 }
 
@@ -346,15 +316,7 @@ contract TestToken {
     }
 
     function getCBORChunk(uint256 start, uint256 size) external view returns (bytes memory) {
-        return _fixDescriptor.getFixCBORChunk(start, size);
-    }
-
-    function getFullCBOR() external view returns (bytes memory) {
-        return _fixDescriptor.getFullCBORData();
-    }
-
-    function getHumanReadable() external view returns (string memory) {
-        return _fixDescriptor.getHumanReadable();
+        return _fixDescriptor.getFixSBEChunk(start, size);
     }
 
     function isInitialized() external view returns (bool) {
@@ -362,12 +324,12 @@ contract TestToken {
     }
 
     function verifyFieldProofWrapper(
-        bytes calldata pathCBOR,
+        bytes calldata pathSBE,
         bytes calldata value,
         bytes32[] calldata proof,
         bool[] calldata directions
     ) external view returns (bool) {
-        return _fixDescriptor.verifyFieldProof(pathCBOR, value, proof, directions);
+        return _fixDescriptor.verifyFieldProof(pathSBE, value, proof, directions);
     }
 }
 

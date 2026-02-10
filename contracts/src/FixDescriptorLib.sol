@@ -3,8 +3,6 @@ pragma solidity ^0.8.20;
 
 import "./IFixDescriptor.sol";
 import "./FixMerkleVerifier.sol";
-import "./FixHumanReadable.sol";
-import "./FixDictionary.sol";
 
 /**
  * @title FixDescriptorLib
@@ -51,14 +49,14 @@ library FixDescriptorLib {
             emit IFixDescriptor.FixDescriptorUpdated(
                 oldRoot,
                 descriptor.fixRoot,
-                descriptor.fixCBORPtr
+                descriptor.fixSBEPtr
             );
         } else {
             emit IFixDescriptor.FixDescriptorSet(
                 descriptor.fixRoot,
                 descriptor.dictHash,
-                descriptor.fixCBORPtr,
-                descriptor.fixCBORLen
+                descriptor.fixSBEPtr,
+                descriptor.fixSBELen
             );
             self.initialized = true;
         }
@@ -95,7 +93,7 @@ library FixDescriptorLib {
     /**
      * @notice Verify a specific field against the committed descriptor
      * @param self Storage reference
-     * @param pathCBOR Canonical CBOR bytes of the field path
+     * @param pathSBE SBE-encoded bytes of the field path
      * @param value Raw FIX value bytes
      * @param proof Merkle proof (sibling hashes)
      * @param directions Direction array (true=right child, false=left child)
@@ -103,7 +101,7 @@ library FixDescriptorLib {
      */
     function verifyFieldProof(
         Storage storage self,
-        bytes calldata pathCBOR,
+        bytes calldata pathSBE,
         bytes calldata value,
         bytes32[] calldata proof,
         bool[] calldata directions
@@ -111,7 +109,7 @@ library FixDescriptorLib {
         require(self.initialized, "Descriptor not initialized");
         return FixMerkleVerifier.verify(
             self.descriptor.fixRoot,
-            pathCBOR,
+            pathSBE,
             value,
             proof,
             directions
@@ -119,23 +117,23 @@ library FixDescriptorLib {
     }
 
     /**
-     * @notice Get CBOR data chunk from SSTORE2 storage
+     * @notice Get SBE data chunk from SSTORE2 storage
      * @dev Handles all the complexity of reading from SSTORE2 contract bytecode
      *      including the STOP byte offset and range validation
      * @param self Storage reference
      * @param start Start offset (in the data, not including STOP byte)
      * @param size Number of bytes to read
-     * @return chunk The requested CBOR data
+     * @return chunk The requested SBE data
      */
-    function getFixCBORChunk(
+    function getFixSBEChunk(
         Storage storage self,
         uint256 start,
         uint256 size
     ) internal view returns (bytes memory chunk) {
         require(self.initialized, "Descriptor not initialized");
-        require(self.descriptor.fixCBORPtr != address(0), "CBOR not deployed");
+        require(self.descriptor.fixSBEPtr != address(0), "SBE not deployed");
 
-        address ptr = self.descriptor.fixCBORPtr;
+        address ptr = self.descriptor.fixSBEPtr;
 
         // Get code size using extcodesize
         uint256 codeSize;
@@ -143,7 +141,7 @@ library FixDescriptorLib {
             codeSize := extcodesize(ptr)
         }
 
-        require(codeSize > 0, "No CBOR data");
+        require(codeSize > 0, "No SBE data");
 
         // Data starts at byte 1 (after STOP byte at position 0)
         // Data length is codeSize - 1
@@ -167,66 +165,6 @@ library FixDescriptorLib {
         assembly {
             extcodecopy(ptr, add(chunk, 0x20), add(start, 1), actualSize)
         }
-    }
-
-    /**
-     * @notice Get complete CBOR data from SSTORE2 storage
-     * @dev Convenience function to read all CBOR data at once
-     * @param self Storage reference
-     * @return cborData The complete CBOR-encoded descriptor
-     */
-    function getFullCBORData(Storage storage self)
-        internal
-        view
-        returns (bytes memory cborData)
-    {
-        require(self.initialized, "Descriptor not initialized");
-        require(self.descriptor.fixCBORPtr != address(0), "CBOR not deployed");
-
-        address ptr = self.descriptor.fixCBORPtr;
-        uint256 codeSize;
-        assembly {
-            codeSize := extcodesize(ptr)
-        }
-
-        require(codeSize > 1, "No CBOR data");
-
-        // Data starts at byte 1 (after STOP byte)
-        uint256 dataLength = codeSize - 1;
-        cborData = new bytes(dataLength);
-
-        assembly {
-            extcodecopy(ptr, add(cborData, 0x20), 1, dataLength)
-        }
-    }
-
-    /**
-     * @notice Get human-readable FIX descriptor output
-     * @dev Uses dictionaryContract to map tag numbers to names
-     *      Reads full CBOR data and formats as pipe-delimited FIX string
-     * @param self Storage reference
-     * @return Human-readable FIX string (pipe-delimited format)
-     */
-    function getHumanReadable(Storage storage self)
-        internal
-        view
-        returns (string memory)
-    {
-        require(self.initialized, "Descriptor not initialized");
-        require(
-            self.descriptor.dictionaryContract != address(0),
-            "Dictionary not set"
-        );
-        require(self.descriptor.fixCBORPtr != address(0), "CBOR not deployed");
-
-        // Read full CBOR data
-        bytes memory cborData = getFullCBORData(self);
-
-        // Use library to format human-readable output
-        FixDictionary dictionary = FixDictionary(
-            self.descriptor.dictionaryContract
-        );
-        return FixHumanReadable.toHumanReadable(cborData, dictionary);
     }
 
     /**

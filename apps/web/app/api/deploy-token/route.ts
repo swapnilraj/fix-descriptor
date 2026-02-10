@@ -18,9 +18,14 @@ export async function POST(request: NextRequest) {
       name,
       symbol,
       initialSupply,
-      cborHex,
-      root
+      sbeHex,
+      cborHex, // Legacy support
+      root,
+      schemaXml
     } = body;
+    
+    // Use sbeHex if provided, otherwise fall back to cborHex for backward compatibility
+    const dataHex = sbeHex || cborHex;
 
     // Validate inputs
     if (!name || !symbol || !initialSupply) {
@@ -30,9 +35,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!cborHex || !root) {
+    if (!dataHex || !root) {
       return NextResponse.json(
-        { error: 'Missing descriptor data (cborHex, root)' },
+        { error: 'Missing descriptor data (sbeHex or cborHex, root)' },
+        { status: 400 }
+      );
+    }
+
+    if (!schemaXml || typeof schemaXml !== 'string') {
+      return NextResponse.json(
+        { error: 'Missing schemaXml (generated SBE schema XML)' },
         { status: 400 }
       );
     }
@@ -41,7 +53,7 @@ export async function POST(request: NextRequest) {
     const privateKey = process.env.PRIVATE_KEY;
     const rpcUrl = process.env.NEXT_PUBLIC_RPC_URL;
     const factoryAddress = process.env.NEXT_PUBLIC_TOKEN_FACTORY_ADDRESS;
-    const dictionaryAddress = process.env.NEXT_PUBLIC_DICTIONARY_ADDRESS;
+    const gistToken = process.env.GITHUB_GIST_TOKEN;
 
     if (!privateKey) {
       return NextResponse.json(
@@ -60,6 +72,48 @@ export async function POST(request: NextRequest) {
     if (!factoryAddress) {
       return NextResponse.json(
         { error: 'Token factory not configured (NEXT_PUBLIC_TOKEN_FACTORY_ADDRESS missing)' },
+        { status: 500 }
+      );
+    }
+
+    if (!gistToken) {
+      return NextResponse.json(
+        { error: 'Gist upload not configured (GITHUB_GIST_TOKEN missing)' },
+        { status: 500 }
+      );
+    }
+
+    const gistResponse = await fetch('https://api.github.com/gists', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${gistToken}`,
+        'User-Agent': 'fix-descriptor-web'
+      },
+      body: JSON.stringify({
+        description: 'SBE schema for token deployment',
+        public: true,
+        files: {
+          'schema.xml': {
+            content: schemaXml
+          }
+        }
+      })
+    });
+
+    if (!gistResponse.ok) {
+      const errorText = await gistResponse.text();
+      return NextResponse.json(
+        { error: `Failed to upload schema to Gist: ${errorText}` },
+        { status: 500 }
+      );
+    }
+
+    const gistJson = await gistResponse.json();
+    const schemaURI = gistJson?.files?.['schema.xml']?.raw_url;
+    if (!schemaURI) {
+      return NextResponse.json(
+        { error: 'Gist upload succeeded but raw_url was missing' },
         { status: 500 }
       );
     }
@@ -83,34 +137,56 @@ export async function POST(request: NextRequest) {
     // Dictionary hash for DEMO_FIX_SCHEMA
     const dictHash = '0xb24215c985384ddaa6767272d452780aa4352201a1df669564cde3905cb6a215' as `0x${string}`;
 
-    // Prepare descriptor
+    // Prepare descriptor (factory will set fixSBEPtr and fixSBELen)
     const descriptor = {
       fixMajor: 4,
       fixMinor: 4,
       dictHash: dictHash,
       fixRoot: root as `0x${string}`,
-      fixCBORPtr: '0x0000000000000000000000000000000000000000' as `0x${string}`,
-      fixCBORLen: 0,
-      fixURI: '',
-      dictionaryContract: (dictionaryAddress || '0x0000000000000000000000000000000000000000') as `0x${string}`
+      fixSBEPtr: '0x0000000000000000000000000000000000000000' as `0x${string}`,
+      fixSBELen: 0,
+      schemaURI: schemaURI
     };
 
     // Convert supply to wei (18 decimals)
     const supplyInWei = BigInt(initialSupply) * BigInt(10 ** 18);
 
-    // Ensure CBOR hex has 0x prefix
-    const cborHexData = cborHex.startsWith('0x')
-      ? cborHex as `0x${string}`
-      : `0x${cborHex}` as `0x${string}`;
+    // Ensure data hex has 0x prefix
+    const dataHexFormatted = dataHex.startsWith('0x')
+      ? dataHex as `0x${string}`
+      : `0x${dataHex}` as `0x${string}`;
 
     console.log('Deploying token with parameters:', {
       name,
       symbol,
       supply: supplyInWei.toString(),
-      cborLength: cborHexData.length,
+      dataLength: dataHexFormatted.length,
       root,
       factoryAddress
     });
+
+    // Simulate the transaction first to get better error messages
+    try {
+      await publicClient.simulateContract({
+        address: factoryAddress as `0x${string}`,
+        abi: TokenFactoryAbi,
+        functionName: 'deployWithDescriptor',
+        args: [
+          name,
+          symbol,
+          supplyInWei,
+          dataHexFormatted,
+          descriptor
+        ],
+        account: account.address
+      });
+    } catch (simError: any) {
+      console.error('Simulation failed:', simError);
+      return NextResponse.json(
+        { error: `Deployment would fail: ${simError.message}` },
+        { status: 400 }
+      );
+    }
 
     // Deploy the token
     const hash = await walletClient.writeContract({
@@ -121,9 +197,10 @@ export async function POST(request: NextRequest) {
         name,
         symbol,
         supplyInWei,
-        cborHexData,
+        dataHexFormatted,
         descriptor
-      ]
+      ],
+      gas: BigInt(5_000_000)
     });
 
     console.log('Transaction submitted:', hash);
@@ -206,7 +283,7 @@ export async function GET() {
     dictionaryAddress: process.env.NEXT_PUBLIC_DICTIONARY_ADDRESS || null,
     instructions: {
       step1: 'Generate FIX descriptor using /api/preview',
-      step2: 'Deploy token using POST /api/deploy-token with { name, symbol, initialSupply, cborHex, root }',
+      step2: 'Deploy token using POST /api/deploy-token with { name, symbol, initialSupply, sbeHex, root, schemaURI (optional) }',
       step3: 'Backend handles wallet signing and gas fees automatically',
       step4: 'Receive tokenAddress and transactionHash in response'
     },

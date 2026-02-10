@@ -1,15 +1,14 @@
 #!/usr/bin/env node
 
 /**
- * Generate Solidity test data from TypeScript CBOR encoder
+ * Generate Solidity test data from TypeScript Merkle encoder
  * This ensures test data is consistent between TypeScript and Solidity
  *
  * Usage:
- *   npx tsx scripts/generate-solidity-test-data.ts cbor    # Generate CBOR test data
  *   npx tsx scripts/generate-solidity-test-data.ts merkle  # Generate Merkle proofs
  */
 
-import { encodeCanonicalCBOR, enumerateLeaves, computeRoot, generateProof } from '../src/index';
+import { enumerateLeaves, computeRoot, generateProof } from '../src/index';
 import type { DescriptorTree, GroupNode } from '../src/types';
 import { bytesToHex } from 'viem';
 
@@ -17,26 +16,14 @@ import { bytesToHex } from 'viem';
 const args = process.argv.slice(2);
 const mode = args[0]?.toLowerCase();
 
-if (!mode || !['cbor', 'merkle'].includes(mode)) {
-  console.error('Usage: generate-solidity-test-data.ts [cbor|merkle]');
-  console.error('  cbor   - Generate CBOR test data');
+if (!mode || mode !== 'merkle') {
+  console.error('Usage: generate-solidity-test-data.ts merkle');
   console.error('  merkle - Generate Merkle roots and proofs');
   process.exit(1);
 }
 
-function toHex(bytes: Uint8Array): string {
-  return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
-}
-
-function toSolidityHex(bytes: Uint8Array): string {
-  const hex = toHex(bytes);
-  // Add underscores every 16 chars for readability
-  const parts = hex.match(/.{1,16}/g) || [hex];
-  return 'hex"' + parts.join('_') + '"';
-}
-
 // ============================================================================
-// Test Case Definitions (Shared between CBOR and Merkle generation)
+// Test Case Definitions
 // ============================================================================
 
 // Test 1: Simple descriptor
@@ -198,52 +185,6 @@ const testCases: TestCase[] = [
 ];
 
 // ============================================================================
-// Generate CBOR Test Data
-// ============================================================================
-
-function generateCBOR() {
-  const output: string[] = [];
-
-  output.push('// SPDX-License-Identifier: MIT');
-  output.push('// Auto-generated test data from TypeScript CBOR encoder');
-  output.push('// Generated at: ' + new Date().toISOString());
-  output.push('// Source: packages/fixdescriptorkit-typescript/scripts/generate-solidity-test-data.ts');
-  output.push('');
-  output.push('pragma solidity ^0.8.28;');
-  output.push('');
-  output.push('library GeneratedCBORTestData {');
-  output.push('');
-
-  for (const tc of testCases) {
-    const cbor = encodeCanonicalCBOR(tc.tree);
-    output.push(`    // ${tc.comment}`);
-    output.push(`    function get${tc.name}Descriptor() internal pure returns (bytes memory) {`);
-    output.push(`        return ${toSolidityHex(cbor)};`);
-    output.push(`    }`);
-    output.push('');
-  }
-
-  output.push('}');
-  output.push('');
-
-  // Add verification info as comment
-  output.push('/*');
-  output.push('VERIFICATION INFO:');
-  output.push('==================');
-  output.push('');
-  for (const tc of testCases) {
-    const cbor = encodeCanonicalCBOR(tc.tree);
-    output.push(`${tc.name} descriptor CBOR: ${toHex(cbor)}`);
-  }
-  output.push('');
-  output.push('To verify, compare these hex values with test expectations.');
-  output.push('To regenerate: npm run generate-test-data');
-  output.push('*/');
-
-  return output.join('\n');
-}
-
-// ============================================================================
 // Generate Merkle Roots and Proofs
 // ============================================================================
 
@@ -334,8 +275,6 @@ function generateMerkle() {
 // Main Execution
 // ============================================================================
 
-if (mode === 'cbor') {
-  console.log(generateCBOR());
-} else if (mode === 'merkle') {
+if (mode === 'merkle') {
   console.log(generateMerkle());
 }
