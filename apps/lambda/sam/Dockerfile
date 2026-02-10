@@ -3,12 +3,15 @@ FROM public.ecr.aws/lambda/nodejs:20
 RUN (dnf -y install java-17-amazon-corretto-devel findutils || yum -y install java-17-amazon-corretto-devel findutils) \
   && (dnf clean all || yum clean all)
 
+RUN corepack enable && corepack prepare pnpm@latest --activate
+
 WORKDIR /var/task
 COPY . .
 
 WORKDIR /var/task/apps/lambda
 ENV NODE_ENV=development
-RUN npm install
+ENV CI=true
+RUN pnpm install
 
 WORKDIR /var/task/packages/fixdescriptorkit-typescript/simple-binary-encoding
 RUN ./gradlew :sbe-all:jar

@@ -33,17 +33,14 @@ export {
   type OrchestraField,
 } from './orchestraToSbe.js';
 
-export {
-  encodeFromInput,
-  encodeMessage,
-  decodeFromInput,
-  decodeMessage,
-  runGenerator,
-  findLocalJar,
-  type EncodeArgs,
-  type DecodeArgs,
-  type GeneratorResult,
-} from './sbe/lib.js';
+// SBE encode/decode functions are available via subpath exports:
+//   import { encodeFromInput } from '@fixdescriptorkit/ts-sdk/sbe/encode'
+//   import { decodeFromInput } from '@fixdescriptorkit/ts-sdk/sbe/decode'
+// They are NOT re-exported from the main entry to avoid bundler issues
+// with their dynamic imports and child_process usage.
+export type { EncodeArgs } from './sbe/lib.js';
+export type { DecodeArgs } from './sbe/lib.js';
+export type { GeneratorResult } from './sbe/lib.js';
 
 import { parseFixDescriptor } from './parse.js';
 import { buildCanonicalTree } from './canonical.js';

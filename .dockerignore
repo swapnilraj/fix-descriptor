@@ -1,0 +1,8 @@
+node_modules
+.git
+.aws-sam
+.DS_Store
+*.log
+.idea
+.vscode
+*.iml
