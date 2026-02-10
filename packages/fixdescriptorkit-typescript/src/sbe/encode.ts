@@ -2,10 +2,10 @@ import { readFileSync, readdirSync, rmSync, statSync } from "fs";
 import { dirname, resolve, sep } from "path";
 import { fileURLToPath, pathToFileURL } from "url";
 
-import { runGenerator, type GeneratorResult } from "./generator";
-import { DefaultMutableDirectBuffer } from "./agrona-ts/src/index";
+import { runGenerator, type GeneratorResult } from "./generator.js";
+import { DefaultMutableDirectBuffer } from "./agrona-ts/src/index.js";
 import { XMLParser } from "fast-xml-parser";
-import { pruneSchemaToMessage } from "./schema-prune";
+import { pruneSchemaToMessage } from "./schema-prune.js";
 
 export type Args = {
     schema?: string;

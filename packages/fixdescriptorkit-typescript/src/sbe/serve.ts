@@ -1,7 +1,7 @@
 import { createServer } from "http";
 
-import { decodeFromInput, type DecodeArgs } from "./decode";
-import { encodeFromInput, type Args as EncodeArgs } from "./encode";
+import { decodeFromInput, type DecodeArgs } from "./decode.js";
+import { encodeFromInput, type Args as EncodeArgs } from "./encode.js";
 
 const port = Number.parseInt(process.env.PORT ?? "3000", 10);
 
