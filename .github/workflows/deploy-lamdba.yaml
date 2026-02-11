@@ -10,6 +10,7 @@ permissions:
 env:
   AWS_REGION: us-east-1
   ECR_REPOSITORY: ubs-discovery-images-repository
+  LAMBDA_FUNCTION_NAME: descriptor-function
 
 jobs:
   pm-dash-backend-deploy:
@@ -54,3 +55,24 @@ jobs:
           echo "IMAGE_URI=$IMAGE_URI" >> $GITHUB_ENV
           docker buildx build --platform=linux/amd64 -f ./apps/lambda/sam/Dockerfile -t $IMAGE_URI .
           docker push $IMAGE_URI
+
+      - name: Update Lambda function image
+        run: |
+          aws lambda update-function-code \
+            --function-name "${{ env.LAMBDA_FUNCTION_NAME }}" \
+            --image-uri "$IMAGE_URI"
+
+      - name: Wait for Lambda update to complete
+        run: |
+          aws lambda wait function-updated \
+            --function-name "${{ env.LAMBDA_FUNCTION_NAME }}"
+
+      - name: Publish new Lambda version (revision)
+        id: publish-version
+        run: |
+          VERSION=$(aws lambda publish-version \
+            --function-name "${{ env.LAMBDA_FUNCTION_NAME }}" \
+            --query 'Version' --output text)
+          echo "LAMBDA_VERSION=$VERSION" >> $GITHUB_ENV
+          echo "Published version: $VERSION"
+
