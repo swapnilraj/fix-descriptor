@@ -11,9 +11,7 @@ COPY . .
 WORKDIR /var/task/apps/lambda
 ENV NODE_ENV=development
 ENV CI=true
-RUN pnpm install
-# Ensure generated codecs importing "agrona" resolve to the vendored agrona-ts inside ts-sdk
-RUN ln -sfn /var/task/apps/lambda/node_modules/@fixdescriptorkit/ts-sdk/src/sbe/agrona-ts /var/task/apps/lambda/node_modules/agrona
+RUN pnpm install --config.public-hoist-pattern[]=agrona
 
 WORKDIR /var/task/packages/fixdescriptorkit-typescript/simple-binary-encoding
 RUN ./gradlew :sbe-all:jar

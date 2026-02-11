@@ -3,14 +3,13 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "start": "node src/lambda-handler.cjs",
+    "start": "node --import tsx src/lambda-handler.ts",
     "serve": "PORT=8001 tsx src/serve.ts"
   },
   "dependencies": {
     "@fixdescriptorkit/ts-sdk": "file:../../packages/fixdescriptorkit-typescript",
-    "ts-node": "^10.9.2",
+    "tsx": "^4.20.5",
     "typescript": "^5.9.2"
-    
   },
   "devDependencies": {
     "@types/node": "^24.5.2"
