@@ -13,9 +13,6 @@ ENV NODE_ENV=development
 ENV CI=true
 RUN pnpm install
 
-WORKDIR /var/task/packages/fixdescriptorkit-typescript/simple-binary-encoding
-RUN ./gradlew :sbe-all:jar
-
 WORKDIR /var/task
 RUN mkdir -p /opt/sbe && cp packages/fixdescriptorkit-typescript/simple-binary-encoding/sbe-all/build/libs/sbe-all-*.jar /opt/sbe/sbe-all.jar
 
