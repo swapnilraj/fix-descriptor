@@ -16,7 +16,10 @@ RUN pnpm install
 WORKDIR /var/task
 RUN mkdir -p /opt/sbe && cp packages/fixdescriptorkit-typescript/simple-binary-encoding/sbe-all/build/libs/sbe-all-*.jar /opt/sbe/sbe-all.jar
 
+RUN npm install -g tsx
+
 ENV SBE_TOOL_JAR=/opt/sbe/sbe-all.jar
 ENV SBE_OUTPUT_DIR=/tmp/sbe-codecs
+ENV NODE_OPTIONS="--import tsx"
 
 CMD ["apps/lambda/src/lambda-handler.handler"]

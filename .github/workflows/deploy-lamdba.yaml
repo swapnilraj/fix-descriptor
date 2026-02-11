@@ -1,0 +1,78 @@
+name: Build Image on AWS 
+on:
+  push:
+    branches: [main,feat/ci-workflow]
+
+permissions:
+  id-token: write
+  contents: write
+
+env:
+  AWS_REGION: us-east-1
+  ECR_REPOSITORY: ubs-discovery-images-repository
+  LAMBDA_FUNCTION_NAME: descriptor-function
+
+jobs:
+  pm-dash-backend-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      
+      - name: Check if Docker is installed
+        run: |
+          if ! command -v docker &> /dev/null
+          then
+            sudo apt-get update
+            sudo apt-get install -y docker.io
+            sudo apt-get install -y docker-compose
+          fi
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::619071347993:role/venice-ubs-github-oidc-role
+          role-session-name: Github
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+        with:
+          mask-password: "true"
+
+      - name: Build, tag, and push image to Amazon ECR
+        id: build-image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: ${{ env.ECR_REPOSITORY }}
+        run: |
+          IMAGE_TAG=descriptor-${{ github.sha }}
+          IMAGE_URI=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          echo "IMAGE_URI=$IMAGE_URI" >> $GITHUB_ENV
+          docker buildx build --platform=linux/amd64 -f ./apps/lambda/sam/Dockerfile -t $IMAGE_URI .
+          docker push $IMAGE_URI
+
+      - name: Update Lambda function image
+        run: |
+          aws lambda update-function-code \
+            --function-name "${{ env.LAMBDA_FUNCTION_NAME }}" \
+            --image-uri "$IMAGE_URI"
+
+      - name: Wait for Lambda update to complete
+        run: |
+          aws lambda wait function-updated \
+            --function-name "${{ env.LAMBDA_FUNCTION_NAME }}"
+
+      - name: Publish new Lambda version (revision)
+        id: publish-version
+        run: |
+          VERSION=$(aws lambda publish-version \
+            --function-name "${{ env.LAMBDA_FUNCTION_NAME }}" \
+            --query 'Version' --output text)
+          echo "LAMBDA_VERSION=$VERSION" >> $GITHUB_ENV
+          echo "Published version: $VERSION"
+
