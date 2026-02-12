@@ -13,9 +13,15 @@ ENV CI=true
 RUN pnpm install
 
 
+# Build SDK from source package (contains tsconfig/scripts).
 RUN cd /var/task/packages/fixdescriptorkit-typescript && pnpm install && pnpm run build
+# Always materialize built artifacts into runtime package path.
+RUN rm -rf /var/task/apps/lambda/node_modules/fixdescriptorkit-typescript/dist /var/task/apps/lambda/node_modules/fixdescriptorkit-typescript/lib && \
+  mkdir -p /var/task/apps/lambda/node_modules/fixdescriptorkit-typescript/dist /var/task/apps/lambda/node_modules/fixdescriptorkit-typescript/lib && \
+  cp -R /var/task/packages/fixdescriptorkit-typescript/dist/. /var/task/apps/lambda/node_modules/fixdescriptorkit-typescript/dist/ && \
+  cp -R /var/task/packages/fixdescriptorkit-typescript/lib/. /var/task/apps/lambda/node_modules/fixdescriptorkit-typescript/lib/
 # Keep compatibility with any stale dist/src resolver expectations.
-RUN ln -sfn /var/task/packages/fixdescriptorkit-typescript/dist /var/task/packages/fixdescriptorkit-typescript/dist/src
+RUN ln -sfn /var/task/apps/lambda/node_modules/fixdescriptorkit-typescript/dist /var/task/apps/lambda/node_modules/fixdescriptorkit-typescript/dist/src
 # Ensure generated codecs importing "agrona" resolve to the vendored agrona-ts inside ts-sdk
 RUN ln -sfn /var/task/apps/lambda/node_modules/fixdescriptorkit-typescript/src/sbe/agrona-ts /var/task/apps/lambda/node_modules/agrona
 
