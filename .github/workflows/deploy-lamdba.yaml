@@ -1,7 +1,7 @@
 name: Build Image on AWS 
 on:
   push:
-    branches: [main]
+    branches: [main,feat/ci-workflow]
 
 permissions:
   id-token: write
@@ -13,7 +13,7 @@ env:
   LAMBDA_FUNCTION_NAME: descriptor-function
 
 jobs:
-  backend-deploy:
+  pm-dash-backend-deploy:
     runs-on: ubuntu-latest
 
     steps:
@@ -43,6 +43,10 @@ jobs:
         uses: aws-actions/amazon-ecr-login@v2
         with:
           mask-password: "true"
+
+      - name: Build fixdescriptorkit-typescript package
+        run: |
+          npm -w fixdescriptorkit-typescript run build
 
       - name: Build, tag, and push image to Amazon ECR
         id: build-image
