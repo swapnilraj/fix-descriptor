@@ -13,5 +13,11 @@
     }
   },
   "include": ["src/**/*", "test/**/*", "generated/**/*", "src/sbe/agrona-ts/src/**/*"],
-  "exclude": ["node_modules", "dist"]
+  "exclude": [
+    "node_modules",
+    "dist",
+    "test/**/*",
+    "src/**/*.test.ts",
+    "src/**/tests/**/*"
+  ]
 }

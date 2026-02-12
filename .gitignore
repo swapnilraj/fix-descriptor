@@ -258,6 +258,8 @@ lib/
 !apps/web/lib/abis/
 !apps/web/lib/abis/*.ts
 !apps/web/lib/abis/*.md
+!packages/fixdescriptorkit-typescript/lib/
+!packages/fixdescriptorkit-typescript/lib/sbe-all.jar
 
 # Package manager lock files (keep only one)
 # yarn.lock

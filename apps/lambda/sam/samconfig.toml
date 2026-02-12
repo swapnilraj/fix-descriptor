@@ -1,0 +1,20 @@
+version = 0.1
+
+[default.build.parameters]
+template_file = "template.yaml"
+cached = true
+parallel = true
+
+[default.deploy.parameters]
+template_file = ".aws-sam/build/template.yaml"
+stack_name = "sbe-node-lambda-stack"
+region = "us-east-1"
+capabilities = "CAPABILITY_IAM"
+resolve_s3 = true
+resolve_image_repos = true
+confirm_changeset = false
+fail_on_empty_changeset = false
+
+[default.local_start_api.parameters]
+template_file = ".aws-sam/build/template.yaml"
+port = 3001

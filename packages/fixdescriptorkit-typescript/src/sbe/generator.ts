@@ -32,11 +32,9 @@ export function findLocalJar(): string | undefined {
 
 export async function runGenerator(schemaXml: string): Promise<GeneratorResult> {
     const started = Date.now();
-    const jarPath = process.env.SBE_TOOL_JAR || findLocalJar();
+    const jarPath = findLocalJar();
     if (!jarPath) {
-        throw new Error(
-            "sbe-ts: could not find sbe-tool jar. Provide --jar or set SBE_TOOL_JAR, or build sbe-tool locally.",
-        );
+        throw new Error("sbe-ts: could not find bundled sbe-tool jar at lib/sbe-all.jar.");
     }
 
     const outputDir = process.env.SBE_OUTPUT_DIR || resolve(packageRoot, "generated");
