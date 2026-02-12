@@ -8,10 +8,10 @@ import "./FixDescriptorLib.sol";
 
 /**
  * @title AssetTokenERC721
- * @notice Example ERC721 NFT with embedded FIX descriptor
- * @dev Demonstrates how to integrate FixDescriptor into an ERC721 token using FixDescriptorLib
- * This example uses a single descriptor for the entire collection.
- * For per-token descriptors, use mapping(uint256 => FixDescriptorLib.Storage)
+ * @notice Example ERC721 NFT with FIX descriptor support
+ * @dev Uses FixDescriptorLib for embedded descriptor storage
+ *      This example uses a single descriptor for the entire collection.
+ *      For per-token descriptors, use mapping(uint256 => FixDescriptorLib.Storage)
  */
 contract AssetTokenERC721 is ERC721, Ownable, IFixDescriptor {
     using FixDescriptorLib for FixDescriptorLib.Storage;
@@ -45,7 +45,7 @@ contract AssetTokenERC721 is ERC721, Ownable, IFixDescriptor {
 
     /**
      * @notice Set the FIX descriptor for this collection
-     * @dev Can only be called by owner. Emits appropriate event.
+     * @dev Can only be called by owner
      * @param descriptor The complete FixDescriptor struct
      */
     function setFixDescriptor(FixDescriptor calldata descriptor) external onlyOwner {
@@ -90,6 +90,13 @@ contract AssetTokenERC721 is ERC721, Ownable, IFixDescriptor {
         returns (bytes memory chunk)
     {
         return _fixDescriptor.getFixSBEChunk(start, size);
+    }
+
+    /**
+     * @inheritdoc IFixDescriptor
+     */
+    function getDescriptorEngine() external view override returns (address engine) {
+        return address(0); // Not using engine pattern
     }
 
     /**

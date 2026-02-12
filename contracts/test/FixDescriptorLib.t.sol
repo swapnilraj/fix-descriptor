@@ -5,7 +5,6 @@ import "forge-std/Test.sol";
 import "../src/FixDescriptorLib.sol";
 import "../src/IFixDescriptor.sol";
 import "../src/SSTORE2.sol";
-import "../src/FixDictionary.sol";
 
 /// @title FixDescriptorLibTest
 /// @notice Test suite for FixDescriptorLib library

@@ -9,8 +9,8 @@ import "./FixDescriptorLib.sol";
 
 /**
  * @title AssetTokenERC20
- * @notice Example ERC20 token with embedded FIX descriptor
- * @dev Demonstrates how to integrate FixDescriptor into an ERC20 token using FixDescriptorLib
+ * @notice Example ERC20 token with FIX descriptor support
+ * @dev Uses FixDescriptorLib for embedded descriptor storage
  */
 contract AssetTokenERC20 is ERC20, Ownable, ERC165, IFixDescriptor {
     using FixDescriptorLib for FixDescriptorLib.Storage;
@@ -36,7 +36,7 @@ contract AssetTokenERC20 is ERC20, Ownable, ERC165, IFixDescriptor {
 
     /**
      * @notice Set the FIX descriptor for this asset
-     * @dev Can only be called by owner. Emits appropriate event.
+     * @dev Can only be called by owner
      * @param descriptor The complete FixDescriptor struct
      */
     function setFixDescriptor(FixDescriptor calldata descriptor) external onlyOwner {
@@ -81,6 +81,13 @@ contract AssetTokenERC20 is ERC20, Ownable, ERC165, IFixDescriptor {
         returns (bytes memory chunk)
     {
         return _fixDescriptor.getFixSBEChunk(start, size);
+    }
+
+    /**
+     * @inheritdoc IFixDescriptor
+     */
+    function getDescriptorEngine() external view override returns (address engine) {
+        return address(0); // Not using engine pattern
     }
 
     /**

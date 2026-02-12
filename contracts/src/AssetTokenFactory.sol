@@ -103,7 +103,7 @@ contract AssetTokenFactory {
         AssetTokenERC20 token = new AssetTokenERC20(name, symbol, initialSupply, address(this));
         tokenAddress = address(token);
 
-        // Set the descriptor (we own the token at this point)
+        // Set descriptor directly on token using embedded storage
         token.setFixDescriptor(descriptor);
 
         // Transfer ownership and tokens to the caller

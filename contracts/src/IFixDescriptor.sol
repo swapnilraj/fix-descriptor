@@ -59,4 +59,11 @@ interface IFixDescriptor {
         bytes32[] calldata proof,
         bool[] calldata directions
     ) external view returns (bool valid);
+
+    /**
+     * @notice Get the descriptor engine address (optional)
+     * @dev Returns address(0) if token uses embedded storage instead of engine
+     * @return engine Address of the FixDescriptorEngine contract, or address(0) if not using engine
+     */
+    function getDescriptorEngine() external view returns (address engine);
 }

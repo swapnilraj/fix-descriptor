@@ -7,13 +7,17 @@ import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 import "../IFixDescriptor.sol";
 import "../FixDescriptorLib.sol";
 import "../FixMerkleVerifier.sol";
-import "../FixValueParser.sol";
 import "../SSTORE2.sol";
 
 /// @title BondDescriptorMerkle
 /// @notice ERC20 bond token using Merkle proof verification for FIX field access
 /// @dev Demonstrates Merkle-based approach: stores SBE via SSTORE2 + Merkle root
 ///      Clients generate proofs offchain and submit them for verification
+///      
+///      IMPORTANT: This example demonstrates verification-only patterns. All value parsing
+///      and business logic calculations (e.g., date parsing, numeric conversions) must
+///      be performed off-chain. The contract only verifies Merkle proofs and returns
+///      raw byte values as strings.
 contract BondDescriptorMerkle is ERC20, Ownable, ERC165, IFixDescriptor {
     using FixDescriptorLib for FixDescriptorLib.Storage;
 
@@ -91,9 +95,11 @@ contract BondDescriptorMerkle is ERC20, Ownable, ERC165, IFixDescriptor {
     }
 
     /// @notice Read bond symbol with Merkle proof verification
+    /// @dev Verifies the Merkle proof and returns the raw value as a string.
+    ///      No parsing or interpretation is performed on-chain.
     /// @param valueBytes The symbol value as bytes
     /// @param merkleProof Merkle proof data (proof hashes and directions)
-    /// @return symbol The bond symbol (e.g., "US0378331005")
+    /// @return symbol The bond symbol (e.g., "US0378331005") as verified string
     function readSymbolWithProof(
         bytes calldata valueBytes,
         MerkleProof calldata merkleProof
@@ -111,15 +117,15 @@ contract BondDescriptorMerkle is ERC20, Ownable, ERC165, IFixDescriptor {
     }
 
     /// @notice Read coupon rate with Merkle proof verification
+    /// @dev Verifies the Merkle proof and returns the raw value as a string.
+    ///      Parsing to numeric types (e.g., basis points) must be done off-chain.
     /// @param valueBytes The coupon rate value as bytes (e.g., "4.250")
     /// @param merkleProof Merkle proof data (proof hashes and directions)
-    /// @param decimals Number of decimals for fixed-point conversion
-    /// @return bps Coupon rate in basis points
+    /// @return value The coupon rate value as verified string (parsing required off-chain)
     function readCouponRateWithProof(
         bytes calldata valueBytes,
-        MerkleProof calldata merkleProof,
-        uint8 decimals
-    ) public view returns (uint256 bps) {
+        MerkleProof calldata merkleProof
+    ) public view returns (string memory value) {
         // Build pathSBE for tag 223: [223] -> 0x8118df
         bytes memory pathSBE = abi.encodePacked(uint8(0x81), uint8(0x18), uint8(TAG_COUPON_RATE));
         
@@ -128,17 +134,19 @@ contract BondDescriptorMerkle is ERC20, Ownable, ERC165, IFixDescriptor {
             "Invalid Merkle proof for CouponRate"
         );
 
-        return FixValueParser.parseFixedPoint(valueBytes, decimals);
+        return string(valueBytes);
     }
 
     /// @notice Read maturity date with Merkle proof verification
+    /// @dev Verifies the Merkle proof and returns the raw value as a string.
+    ///      Date parsing and comparison with block.timestamp must be done off-chain.
     /// @param valueBytes The maturity date value as bytes (e.g., "20250615")
     /// @param merkleProof Merkle proof data (proof hashes and directions)
-    /// @return timestamp Maturity date timestamp
+    /// @return date The maturity date value as verified string (parsing required off-chain)
     function readMaturityDateWithProof(
         bytes calldata valueBytes,
         MerkleProof calldata merkleProof
-    ) public view returns (uint256 timestamp) {
+    ) public view returns (string memory date) {
         // Build pathSBE for tag 541: [541] -> 0x81_19_021d
         bytes memory pathSBE = abi.encodePacked(uint8(0x81), uint8(0x19), uint16(TAG_MATURITY_DATE));
         
@@ -147,17 +155,19 @@ contract BondDescriptorMerkle is ERC20, Ownable, ERC165, IFixDescriptor {
             "Invalid Merkle proof for MaturityDate"
         );
 
-        return FixValueParser.parseDate(valueBytes);
+        return string(valueBytes);
     }
 
     /// @notice Read alternative security ID with Merkle proof verification
+    /// @dev Verifies Merkle proofs for both SecurityAltID and SecurityAltIDSource fields.
+    ///      Returns raw string values - no parsing or interpretation performed.
     /// @param index Index of the security ID in the group (0-based)
     /// @param altIdValueBytes The SecurityAltID value as bytes
     /// @param altIdProof Merkle proof for SecurityAltID
     /// @param altIdSourceValueBytes The SecurityAltIDSource value as bytes
     /// @param altIdSourceProof Merkle proof for SecurityAltIDSource
-    /// @return altId The alternative security ID
-    /// @return altIdSource The source of the ID
+    /// @return altId The alternative security ID as verified string
+    /// @return altIdSource The source of the ID as verified string
     function readSecurityAltIdWithProof(
         uint256 index,
         bytes calldata altIdValueBytes,
@@ -220,11 +230,13 @@ contract BondDescriptorMerkle is ERC20, Ownable, ERC165, IFixDescriptor {
     }
 
     /// @notice Get ISIN with Merkle proof verification
+    /// @dev Verifies that the first SecurityAltID has source "1" (ISIN) and returns the ID.
+    ///      This demonstrates multi-field verification pattern.
     /// @param valueBytes The ISIN value as bytes
     /// @param merkleProof Merkle proof for ISIN
     /// @param sourceValueBytes The SecurityAltIDSource value (should be "1" for ISIN)
     /// @param sourceProof Merkle proof for source
-    /// @return isin The ISIN identifier
+    /// @return isin The ISIN identifier as verified string
     function getISINWithProof(
         bytes calldata valueBytes,
         MerkleProof calldata merkleProof,
@@ -245,32 +257,6 @@ contract BondDescriptorMerkle is ERC20, Ownable, ERC165, IFixDescriptor {
         );
 
         return altId;
-    }
-
-    /// @notice Check if bond has matured (with Merkle proof)
-    /// @param maturityValueBytes The maturity date value as bytes
-    /// @param merkleProof Merkle proof data
-    /// @return True if maturity date has passed
-    function hasMaturedWithProof(
-        bytes calldata maturityValueBytes,
-        MerkleProof calldata merkleProof
-    ) public view returns (bool) {
-        uint256 maturityDate = readMaturityDateWithProof(maturityValueBytes, merkleProof);
-        return block.timestamp >= maturityDate;
-    }
-
-    /// @notice Calculate total interest payment (with Merkle proof)
-    /// @param couponValueBytes The coupon rate value as bytes
-    /// @param merkleProof Merkle proof data
-    /// @param principal Principal amount in wei
-    /// @return Total interest in wei
-    function calculateTotalInterestWithProof(
-        bytes calldata couponValueBytes,
-        MerkleProof calldata merkleProof,
-        uint256 principal
-    ) public view returns (uint256) {
-        uint256 couponBps = readCouponRateWithProof(couponValueBytes, merkleProof, 4);
-        return (principal * couponBps) / 10000;
     }
 
     /**
@@ -297,6 +283,13 @@ contract BondDescriptorMerkle is ERC20, Ownable, ERC165, IFixDescriptor {
         bool[] calldata directions
     ) external view override returns (bool) {
         return _fixDescriptor.verifyFieldProof(pathSBE, value, proof, directions);
+    }
+
+    /**
+     * @inheritdoc IFixDescriptor
+     */
+    function getDescriptorEngine() external view override returns (address engine) {
+        return address(0); // This example uses embedded storage, not engine
     }
 
     /**
