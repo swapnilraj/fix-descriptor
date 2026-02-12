@@ -1,5 +1,5 @@
 {
-  "buildCommand": "cd ../.. && npm -w @fixdescriptorkit/ts-sdk run build && npm run generate-verification-json-if-possible && cd apps/web && npm run build",
+  "buildCommand": "cd ../.. && npm -w fixdescriptorkit-typescript run build && npm run generate-verification-json-if-possible && cd apps/web && npm run build",
   "installCommand": "cd ../.. && npm install",
   "framework": "nextjs"
 }

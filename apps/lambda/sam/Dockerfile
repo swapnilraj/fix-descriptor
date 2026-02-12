@@ -13,7 +13,7 @@ ENV NODE_ENV=development
 ENV CI=true
 RUN pnpm install
 # Ensure generated codecs importing "agrona" resolve to the vendored agrona-ts inside ts-sdk
-RUN ln -sfn /var/task/apps/lambda/node_modules/@fixdescriptorkit/ts-sdk/src/sbe/agrona-ts /var/task/apps/lambda/node_modules/agrona
+RUN ln -sfn /var/task/apps/lambda/node_modules/fixdescriptorkit-typescript/src/sbe/agrona-ts /var/task/apps/lambda/node_modules/agrona
 
 RUN node /var/task/packages/fixdescriptorkit-typescript/scripts/build-sbe-jar.js
 

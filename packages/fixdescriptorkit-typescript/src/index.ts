@@ -34,8 +34,8 @@ export {
 } from './orchestraToSbe.js';
 
 // SBE encode/decode functions are available via subpath exports:
-//   import { encodeFromInput } from '@fixdescriptorkit/ts-sdk/sbe/encode'
-//   import { decodeFromInput } from '@fixdescriptorkit/ts-sdk/sbe/decode'
+//   import { encodeFromInput } from 'fixdescriptorkit-typescript/sbe/encode'
+//   import { decodeFromInput } from 'fixdescriptorkit-typescript/sbe/decode'
 // They are NOT re-exported from the main entry to avoid bundler issues
 // with their dynamic imports and child_process usage.
 export type { EncodeArgs } from './sbe/lib.js';
