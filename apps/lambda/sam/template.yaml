@@ -26,7 +26,6 @@ Resources:
             Method: POST
       Environment:
         Variables:
-          SBE_OUTPUT_DIR: /tmp/sbe-codecs
           SBE_LOG: "0"
           NODE_PATH: /var/task/apps/lambda/node_modules
           NODE_OPTIONS: "--import tsx"
