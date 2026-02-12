@@ -48,7 +48,8 @@ export async function runGenerator(schemaXml: string): Promise<GeneratorResult> 
         throw new Error("sbe-ts: could not find bundled sbe-tool jar at lib/sbe-all.jar.");
     }
 
-    const outputDir = process.env.SBE_OUTPUT_DIR || resolve(packageRoot, "generated");
+    // Lambda containers allow writing to /tmp; avoid writing under package/node_modules paths.
+    const outputDir = "/tmp/sbe-codecs";
     if (existsSync(outputDir)) {
         rmSync(outputDir, { recursive: true, force: true });
     }
