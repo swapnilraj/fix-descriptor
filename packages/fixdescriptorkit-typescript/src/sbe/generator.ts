@@ -17,10 +17,21 @@ const log = (...args: unknown[]) => {
 let javaVersionLogged = false;
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-const packageRoot = resolve(
-    __dirname,
-    __dirname.includes(`${sep}dist${sep}`) ? "../../.." : "../..",
-);
+function resolvePackageRoot(): string {
+    // Support both source runs (`src/sbe`) and compiled runs (`dist/sbe` or older `dist/src/sbe`).
+    const candidates = [
+        resolve(__dirname, "../.."),
+        resolve(__dirname, "../../.."),
+    ];
+    for (const candidate of candidates) {
+        if (existsSync(resolve(candidate, "package.json"))) {
+            return candidate;
+        }
+    }
+    return candidates[0];
+}
+
+const packageRoot = resolvePackageRoot();
 
 export function findLocalJar(): string | undefined {
     const bundledJar = resolve(packageRoot, "lib", "sbe-all.jar");
