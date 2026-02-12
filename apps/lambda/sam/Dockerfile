@@ -4,7 +4,6 @@ RUN (dnf -y install java-17-amazon-corretto-devel findutils || yum -y install ja
   && (dnf clean all || yum clean all)
 
 RUN corepack enable && corepack prepare pnpm@latest --activate
-
 WORKDIR /var/task
 COPY . .
 
@@ -12,13 +11,15 @@ WORKDIR /var/task/apps/lambda
 ENV NODE_ENV=development
 ENV CI=true
 RUN pnpm install
+
+
+RUN cd /var/task/packages/fixdescriptorkit-typescript && pnpm install && pnpm run build
+# Keep compatibility with any stale dist/src resolver expectations.
+RUN ln -sfn /var/task/packages/fixdescriptorkit-typescript/dist /var/task/packages/fixdescriptorkit-typescript/dist/src
 # Ensure generated codecs importing "agrona" resolve to the vendored agrona-ts inside ts-sdk
 RUN ln -sfn /var/task/apps/lambda/node_modules/fixdescriptorkit-typescript/src/sbe/agrona-ts /var/task/apps/lambda/node_modules/agrona
 
 RUN ln -s /var/task/apps/lambda/node_modules /var/task/node_modules
 
-ENV SBE_OUTPUT_DIR=/tmp/sbe-codecs
-ENV NODE_PATH=/var/task/apps/lambda/node_modules
-ENV NODE_OPTIONS="--import tsx"
 
 CMD ["apps/lambda/src/lambda-handler.handler"]
