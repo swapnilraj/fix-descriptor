@@ -1,7 +1,7 @@
 name: Build Image on AWS 
 on:
   push:
-    branches: [main,feat/ci-workflow]
+    branches: [main]
 
 permissions:
   id-token: write
@@ -13,7 +13,7 @@ env:
   LAMBDA_FUNCTION_NAME: descriptor-function
 
 jobs:
-  pm-dash-backend-deploy:
+  backend-deploy:
     runs-on: ubuntu-latest
 
     steps:
