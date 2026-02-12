@@ -1,10 +1,10 @@
 {
-  "name": "@fixdescriptorkit/ts-sdk",
+  "name": "fixdescriptorkit-typescript",
   "version": "1.0.1",
   "description": "Transform FIX asset descriptors into canonical CBOR payloads and Merkle commitments for blockchain verification",
-  "main": "dist/src/index.js",
-  "module": "dist/src/index.js",
-  "types": "dist/src/index.d.ts",
+  "main": "dist/index.js",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
   "type": "module",
   "scripts": {
     "build": "tsc -p tsconfig.json",
@@ -21,28 +21,28 @@
   },
   "exports": {
     ".": {
-      "import": "./dist/src/index.js",
-      "types": "./dist/src/index.d.ts"
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
     },
     "./orchestraToSbe": {
-      "import": "./dist/src/orchestraToSbe.js",
-      "types": "./dist/src/orchestraToSbe.d.ts"
+      "import": "./dist/orchestraToSbe.js",
+      "types": "./dist/orchestraToSbe.d.ts"
     },
     "./sbe": {
-      "import": "./dist/src/sbe/lib.js",
-      "types": "./dist/src/sbe/lib.d.ts"
+      "import": "./dist/sbe/lib.js",
+      "types": "./dist/sbe/lib.d.ts"
     },
     "./sbe/encode": {
-      "import": "./dist/src/sbe/encode.js",
-      "types": "./dist/src/sbe/encode.d.ts"
+      "import": "./dist/sbe/encode.js",
+      "types": "./dist/sbe/encode.d.ts"
     },
     "./sbe/decode": {
-      "import": "./dist/src/sbe/decode.js",
-      "types": "./dist/src/sbe/decode.d.ts"
+      "import": "./dist/sbe/decode.js",
+      "types": "./dist/sbe/decode.d.ts"
     }
   },
   "files": [
-    "dist/src",
+    "dist",
     "lib",
     "lib/**",
     "src/sbe/agrona-ts",
