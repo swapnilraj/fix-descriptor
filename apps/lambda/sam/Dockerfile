@@ -15,12 +15,10 @@ RUN pnpm install
 # Ensure generated codecs importing "agrona" resolve to the vendored agrona-ts inside ts-sdk
 RUN ln -sfn /var/task/apps/lambda/node_modules/@fixdescriptorkit/ts-sdk/src/sbe/agrona-ts /var/task/apps/lambda/node_modules/agrona
 
-WORKDIR /var/task
-RUN mkdir -p /opt/sbe && cp packages/fixdescriptorkit-typescript/simple-binary-encoding/sbe-all/build/libs/sbe-all-*.jar /opt/sbe/sbe-all.jar
+RUN node /var/task/packages/fixdescriptorkit-typescript/scripts/build-sbe-jar.js
 
 RUN ln -s /var/task/apps/lambda/node_modules /var/task/node_modules
 
-ENV SBE_TOOL_JAR=/opt/sbe/sbe-all.jar
 ENV SBE_OUTPUT_DIR=/tmp/sbe-codecs
 ENV NODE_PATH=/var/task/apps/lambda/node_modules
 ENV NODE_OPTIONS="--import tsx"

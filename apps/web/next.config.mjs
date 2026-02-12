@@ -7,7 +7,7 @@ const __dirname = path.dirname(__filename);
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   // External packages for server components
-  serverExternalPackages: ['fixdescriptorkit-typescript', '@fixdescriptorkit/ts-sdk'],
+  serverExternalPackages: ['fixdescriptorkit-typescript'],
   
   // Turbopack configuration
   turbopack: {
