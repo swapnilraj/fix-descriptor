@@ -134,14 +134,12 @@ export async function POST(request: NextRequest) {
       transport: http(rpcUrl)
     });
 
-    // Dictionary hash for DEMO_FIX_SCHEMA
-    const dictHash = '0xb24215c985384ddaa6767272d452780aa4352201a1df669564cde3905cb6a215' as `0x${string}`;
+    // Schema hash for DEMO_FIX_SCHEMA
+    const schemaHash = '0xb24215c985384ddaa6767272d452780aa4352201a1df669564cde3905cb6a215' as `0x${string}`;
 
     // Prepare descriptor (factory will set fixSBEPtr and fixSBELen)
     const descriptor = {
-      fixMajor: 4,
-      fixMinor: 4,
-      dictHash: dictHash,
+      schemaHash: schemaHash,
       fixRoot: root as `0x${string}`,
       fixSBEPtr: '0x0000000000000000000000000000000000000000' as `0x${string}`,
       fixSBELen: 0,

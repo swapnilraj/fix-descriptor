@@ -85,17 +85,7 @@ export const abi = [
         "internalType": "struct IFixDescriptor.FixDescriptor",
         "components": [
           {
-            "name": "fixMajor",
-            "type": "uint16",
-            "internalType": "uint16"
-          },
-          {
-            "name": "fixMinor",
-            "type": "uint16",
-            "internalType": "uint16"
-          },
-          {
-            "name": "dictHash",
+            "name": "schemaHash",
             "type": "bytes32",
             "internalType": "bytes32"
           },

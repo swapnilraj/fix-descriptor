@@ -54,7 +54,7 @@ library FixDescriptorLib {
         } else {
             emit IFixDescriptor.FixDescriptorSet(
                 descriptor.fixRoot,
-                descriptor.dictHash,
+                descriptor.schemaHash,
                 descriptor.fixSBEPtr,
                 descriptor.fixSBELen
             );

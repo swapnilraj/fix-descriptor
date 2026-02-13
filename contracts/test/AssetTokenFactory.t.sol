@@ -85,9 +85,7 @@ contract AssetTokenFactoryTest is Test {
         
         // Create descriptor
         IFixDescriptor.FixDescriptor memory descriptor = IFixDescriptor.FixDescriptor({
-            fixMajor: 4,
-            fixMinor: 4,
-            dictHash: keccak256("test-dict"),
+            schemaHash: keccak256("test-dict"),
             fixRoot: bytes32(uint256(12345)),
             fixSBEPtr: address(0), // Will be set by factory
             fixSBELen: 0,          // Will be set by factory
@@ -113,9 +111,7 @@ contract AssetTokenFactoryTest is Test {
 
         // Verify descriptor
         IFixDescriptor.FixDescriptor memory retrieved = token.getFixDescriptor();
-        assertEq(retrieved.fixMajor, 4);
-        assertEq(retrieved.fixMinor, 4);
-        assertEq(retrieved.dictHash, keccak256("test-dict"));
+        assertEq(retrieved.schemaHash, keccak256("test-dict"));
         assertEq(retrieved.fixRoot, bytes32(uint256(12345)));
         assertEq(retrieved.fixSBEPtr, cborPtr);
         assertEq(retrieved.fixSBELen, uint32(cborData.length));
@@ -171,9 +167,7 @@ contract AssetTokenFactoryTest is Test {
 
         // Only owner can set descriptor
         IFixDescriptor.FixDescriptor memory descriptor = IFixDescriptor.FixDescriptor({
-            fixMajor: 4,
-            fixMinor: 4,
-            dictHash: bytes32(0),
+            schemaHash: bytes32(0),
             fixRoot: bytes32(0),
             fixSBEPtr: address(0),
             fixSBELen: 0,

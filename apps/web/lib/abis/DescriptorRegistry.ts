@@ -63,7 +63,6 @@ export const abi = [
             "internalType": "uint16"
           },
           {
-            "name": "dictHash",
             "type": "bytes32",
             "internalType": "bytes32"
           },
@@ -130,7 +129,6 @@ export const abi = [
             "internalType": "uint16"
           },
           {
-            "name": "dictHash",
             "type": "bytes32",
             "internalType": "bytes32"
           },
@@ -177,7 +175,7 @@ export const abi = [
         "internalType": "bytes32"
       },
       {
-        "name": "dictHash",
+        "name": "schemaHash",
         "type": "bytes32",
         "indexed": false,
         "internalType": "bytes32"
