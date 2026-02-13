@@ -124,9 +124,7 @@ Onchain verification and storage components.
 
 ```solidity
 struct FixDescriptor {
-    uint16  fixMajor;     // FIX version major
-    uint16  fixMinor;     // FIX version minor
-    bytes32 dictHash;     // FIX dictionary hash
+    bytes32 schemaHash;   // FIX schema/dictionary hash
     bytes32 fixRoot;      // Merkle root
     address fixCBORPtr;   // CBOR data contract address
     uint32  fixCBORLen;   // CBOR data length

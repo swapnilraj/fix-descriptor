@@ -119,17 +119,7 @@ export const abi = [
         "internalType": "struct IFixDescriptor.FixDescriptor",
         "components": [
           {
-            "name": "fixMajor",
-            "type": "uint16",
-            "internalType": "uint16"
-          },
-          {
-            "name": "fixMinor",
-            "type": "uint16",
-            "internalType": "uint16"
-          },
-          {
-            "name": "dictHash",
+            "name": "schemaHash",
             "type": "bytes32",
             "internalType": "bytes32"
           },
@@ -238,17 +228,7 @@ export const abi = [
         "internalType": "struct IFixDescriptor.FixDescriptor",
         "components": [
           {
-            "name": "fixMajor",
-            "type": "uint16",
-            "internalType": "uint16"
-          },
-          {
-            "name": "fixMinor",
-            "type": "uint16",
-            "internalType": "uint16"
-          },
-          {
-            "name": "dictHash",
+            "name": "schemaHash",
             "type": "bytes32",
             "internalType": "bytes32"
           },
@@ -459,7 +439,7 @@ export const abi = [
         "internalType": "bytes32"
       },
       {
-        "name": "dictHash",
+        "name": "schemaHash",
         "type": "bytes32",
         "indexed": true,
         "internalType": "bytes32"

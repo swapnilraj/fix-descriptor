@@ -17,11 +17,11 @@ contract FixDescriptorLibTest is Test {
     // Sample data
     bytes sampleSBE = hex"a2011901f70266555344"; // SBE encoded data
     bytes32 sampleRoot = bytes32(uint256(0x123456));
-    bytes32 sampleDictHash = keccak256("test-dictionary");
+    bytes32 sampleSchemaHash = keccak256("test-dictionary");
 
     event FixDescriptorSet(
         bytes32 indexed fixRoot,
-        bytes32 indexed dictHash,
+        bytes32 indexed schemaHash,
         address fixSBEPtr,
         uint32 fixSBELen
     );
@@ -40,9 +40,7 @@ contract FixDescriptorLibTest is Test {
         address sbePtr = SSTORE2.write(sampleSBE);
 
         IFixDescriptor.FixDescriptor memory descriptor = IFixDescriptor.FixDescriptor({
-            fixMajor: 4,
-            fixMinor: 4,
-            dictHash: sampleDictHash,
+            schemaHash: sampleSchemaHash,
             fixRoot: sampleRoot,
             fixSBEPtr: sbePtr,
             fixSBELen: uint32(sampleSBE.length),
@@ -53,7 +51,7 @@ contract FixDescriptorLibTest is Test {
         vm.expectEmit(true, true, false, true);
         emit FixDescriptorSet(
             sampleRoot,
-            sampleDictHash,
+            sampleSchemaHash,
             sbePtr,
             uint32(sampleSBE.length)
         );
@@ -62,9 +60,7 @@ contract FixDescriptorLibTest is Test {
 
         // Verify descriptor was set
         IFixDescriptor.FixDescriptor memory stored = testToken.getDescriptor();
-        assertEq(stored.fixMajor, 4);
-        assertEq(stored.fixMinor, 4);
-        assertEq(stored.dictHash, sampleDictHash);
+        assertEq(stored.schemaHash, sampleSchemaHash);
         assertEq(stored.fixRoot, sampleRoot);
         assertEq(stored.fixSBEPtr, sbePtr);
         assertEq(stored.fixSBELen, uint32(sampleSBE.length));
@@ -74,9 +70,7 @@ contract FixDescriptorLibTest is Test {
         // Set initial descriptor
         address sbePtr1 = SSTORE2.write(sampleSBE);
         IFixDescriptor.FixDescriptor memory descriptor1 = IFixDescriptor.FixDescriptor({
-            fixMajor: 4,
-            fixMinor: 4,
-            dictHash: sampleDictHash,
+            schemaHash: sampleSchemaHash,
             fixRoot: sampleRoot,
             fixSBEPtr: sbePtr1,
             fixSBELen: uint32(sampleSBE.length),
@@ -91,9 +85,7 @@ contract FixDescriptorLibTest is Test {
         address sbePtr2 = SSTORE2.write(newSBE);
 
         IFixDescriptor.FixDescriptor memory descriptor2 = IFixDescriptor.FixDescriptor({
-            fixMajor: 4,
-            fixMinor: 4,
-            dictHash: sampleDictHash,
+            schemaHash: sampleSchemaHash,
             fixRoot: newRoot,
             fixSBEPtr: sbePtr2,
             fixSBELen: uint32(newSBE.length),
@@ -123,9 +115,7 @@ contract FixDescriptorLibTest is Test {
         address sbePtr = SSTORE2.write(sampleSBE);
 
         IFixDescriptor.FixDescriptor memory descriptor = IFixDescriptor.FixDescriptor({
-            fixMajor: 4,
-            fixMinor: 4,
-            dictHash: sampleDictHash,
+            schemaHash: sampleSchemaHash,
             fixRoot: sampleRoot,
             fixSBEPtr: sbePtr,
             fixSBELen: uint32(sampleSBE.length),
@@ -150,9 +140,7 @@ contract FixDescriptorLibTest is Test {
         address sbePtr = SSTORE2.write(testData);
 
         IFixDescriptor.FixDescriptor memory descriptor = IFixDescriptor.FixDescriptor({
-            fixMajor: 4,
-            fixMinor: 4,
-            dictHash: sampleDictHash,
+            schemaHash: sampleSchemaHash,
             fixRoot: sampleRoot,
             fixSBEPtr: sbePtr,
             fixSBELen: uint32(testData.length),
@@ -187,9 +175,7 @@ contract FixDescriptorLibTest is Test {
 
     function testGetFixSBEChunkNoSBEDeployed() public {
         IFixDescriptor.FixDescriptor memory descriptor = IFixDescriptor.FixDescriptor({
-            fixMajor: 4,
-            fixMinor: 4,
-            dictHash: sampleDictHash,
+            schemaHash: sampleSchemaHash,
             fixRoot: sampleRoot,
             fixSBEPtr: address(0), // No SBE deployed
             fixSBELen: 0,
@@ -207,9 +193,7 @@ contract FixDescriptorLibTest is Test {
 
         address sbePtr = SSTORE2.write(sampleSBE);
         IFixDescriptor.FixDescriptor memory descriptor = IFixDescriptor.FixDescriptor({
-            fixMajor: 4,
-            fixMinor: 4,
-            dictHash: sampleDictHash,
+            schemaHash: sampleSchemaHash,
             fixRoot: sampleRoot,
             fixSBEPtr: sbePtr,
             fixSBELen: uint32(sampleSBE.length),
@@ -240,9 +224,7 @@ contract FixDescriptorLibTest is Test {
         bytes32 testRoot = leaf;
 
         IFixDescriptor.FixDescriptor memory descriptor = IFixDescriptor.FixDescriptor({
-            fixMajor: 4,
-            fixMinor: 4,
-            dictHash: sampleDictHash,
+            schemaHash: sampleSchemaHash,
             fixRoot: testRoot,
             fixSBEPtr: sbePtr,
             fixSBELen: uint32(sampleSBE.length),
@@ -266,18 +248,14 @@ contract FixDescriptorLibTest is Test {
     }
 
     function testFuzzSetDescriptor(
-        uint16 major,
-        uint16 minor,
-        bytes32 dictHash,
+        bytes32 schemaHash,
         bytes32 root,
         uint32 sbeLen
     ) public {
         address sbePtr = address(uint160(uint256(keccak256(abi.encodePacked(sbeLen)))));
 
         IFixDescriptor.FixDescriptor memory descriptor = IFixDescriptor.FixDescriptor({
-            fixMajor: major,
-            fixMinor: minor,
-            dictHash: dictHash,
+            schemaHash: schemaHash,
             fixRoot: root,
             fixSBEPtr: sbePtr,
             fixSBELen: sbeLen,
@@ -287,9 +265,7 @@ contract FixDescriptorLibTest is Test {
         testToken.setDescriptor(descriptor);
 
         IFixDescriptor.FixDescriptor memory stored = testToken.getDescriptor();
-        assertEq(stored.fixMajor, major);
-        assertEq(stored.fixMinor, minor);
-        assertEq(stored.dictHash, dictHash);
+        assertEq(stored.schemaHash, schemaHash);
         assertEq(stored.fixRoot, root);
         assertEq(stored.fixSBELen, sbeLen);
     }

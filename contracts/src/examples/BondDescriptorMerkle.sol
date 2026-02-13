@@ -48,7 +48,7 @@ contract BondDescriptorMerkle is ERC20, Ownable, ERC165, IFixDescriptor {
      * @param initialOwner Address to receive initial supply and ownership
      * @param sbeDescriptor SBE-encoded FIX descriptor to store via SSTORE2
      * @param merkleRoot Merkle root commitment for the descriptor
-     * @param dictHash FIX dictionary/Orchestra hash
+     * @param schemaHash FIX schema/dictionary hash
      * @param schemaURI Optional SBE schema URI (ipfs:// or https://)
      */
     constructor(
@@ -58,7 +58,7 @@ contract BondDescriptorMerkle is ERC20, Ownable, ERC165, IFixDescriptor {
         address initialOwner,
         bytes memory sbeDescriptor,
         bytes32 merkleRoot,
-        bytes32 dictHash,
+        bytes32 schemaHash,
         string memory schemaURI
     ) ERC20(name, symbol) Ownable(initialOwner) {
         _mint(initialOwner, initialSupply);
@@ -67,7 +67,7 @@ contract BondDescriptorMerkle is ERC20, Ownable, ERC165, IFixDescriptor {
         address sbePtr = SSTORE2.write(sbeDescriptor);
 
         // Initialize FIX descriptor with Merkle root
-        _initializeDescriptor(sbePtr, uint32(sbeDescriptor.length), merkleRoot, dictHash, schemaURI);
+        _initializeDescriptor(sbePtr, uint32(sbeDescriptor.length), merkleRoot, schemaHash, schemaURI);
     }
 
     /**
@@ -77,13 +77,11 @@ contract BondDescriptorMerkle is ERC20, Ownable, ERC165, IFixDescriptor {
         address sbePtr,
         uint32 sbeLen,
         bytes32 merkleRoot,
-        bytes32 dictHash,
+        bytes32 schemaHash,
         string memory schemaURI
     ) private {
         _fixDescriptor.descriptor = FixDescriptor({
-            fixMajor: 4,
-            fixMinor: 4,
-            dictHash: dictHash,
+            schemaHash: schemaHash,
             fixRoot: merkleRoot,
             fixSBEPtr: sbePtr,
             fixSBELen: sbeLen,
@@ -91,7 +89,7 @@ contract BondDescriptorMerkle is ERC20, Ownable, ERC165, IFixDescriptor {
         });
         _fixDescriptor.initialized = true;
 
-        emit FixDescriptorSet(merkleRoot, dictHash, sbePtr, sbeLen);
+        emit FixDescriptorSet(merkleRoot, schemaHash, sbePtr, sbeLen);
     }
 
     /// @notice Read bond symbol with Merkle proof verification

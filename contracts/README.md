@@ -89,13 +89,11 @@ The standard interface that all asset contracts with FIX descriptors should impl
 ```solidity
 interface IFixDescriptor {
     struct FixDescriptor {
-        uint16 fixMajor;        // FIX version major (e.g., 4)
-        uint16 fixMinor;        // FIX version minor (e.g., 4)
-        bytes32 dictHash;       // FIX dictionary hash
+        bytes32 schemaHash;      // FIX schema/dictionary hash
         bytes32 fixRoot;        // Merkle root commitment
         address fixSBEPtr;      // SSTORE2 address of SBE data
         uint32 fixSBELen;       // SBE byte length
-        string fixURI;          // Optional URI for off-chain mirror
+        string schemaURI;       // Optional SBE schema URI
     }
 
     function getFixDescriptor() external view returns (FixDescriptor memory);
@@ -109,7 +107,7 @@ interface IFixDescriptor {
     
     event FixDescriptorSet(
         bytes32 indexed fixRoot,
-        bytes32 indexed dictHash,
+        bytes32 indexed schemaHash,
         address fixSBEPtr,
         uint32 fixSBELen
     );
@@ -214,9 +212,7 @@ address sbePtr = dataFactory.deployData(sbeBytes);
 
 // Create descriptor
 IFixDescriptor.FixDescriptor memory descriptor = IFixDescriptor.FixDescriptor({
-    fixMajor: 4,
-    fixMinor: 4,
-    dictHash: keccak256(fixDictionaryBytes),
+    schemaHash: keccak256(fixDictionaryBytes),
     fixRoot: merkleRoot,
     fixSBEPtr: sbePtr,
     fixSBELen: uint32(sbeBytes.length),

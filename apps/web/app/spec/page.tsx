@@ -701,9 +701,7 @@ export default function SpecPage() {
               marginBottom: '2rem'
             }}>
               <pre style={{ margin: 0, color: 'rgba(255,255,255,0.9)', lineHeight: '1.7' }}>{`FixDescriptor {
-  fixMajor: 4,
-  fixMinor: 4,
-  dictHash: 0x...,
+  schemaHash: 0x...,
   fixRoot: 0x7a3f... (Merkle root),
   fixSBEPtr: 0x123... (SSTORE2 address),
   fixSBELen: 243
@@ -1185,12 +1183,10 @@ export default function SpecPage() {
               color: 'rgba(255,255,255,0.8)',
               marginBottom: '1rem'
             }}>
-              <div style={{ marginBottom: '0.5rem' }}>fixMajor, fixMinor (e.g., 4, 4)</div>
-              <div>dictHash = keccak256 of the exact FIX dictionary / FIX Orchestra bytes</div>
+              <div>schemaHash = keccak256 of the exact FIX schema / dictionary bytes</div>
             </div>
             <p style={{ color: 'rgba(255,255,255,0.7)', lineHeight: '1.8', marginBottom: '0', fontSize: '0.9rem' }}>
-              <strong>Example:</strong> FIX 4.4 using FIX Trading Community dictionary would have fixMajor=4, fixMinor=4, 
-              and dictHash computed from the canonical FIX dictionary file.
+              <strong>Example:</strong> FIX schema using FIX Trading Community dictionary would have schemaHash computed from the canonical FIX dictionary file.
             </p>
           </section>
 
@@ -1519,9 +1515,7 @@ export default function SpecPage() {
               overflowX: 'auto'
             }}>
               <pre style={{ margin: 0, color: 'rgba(255,255,255,0.9)', lineHeight: '1.6' }}>{`struct FixDescriptor {
-  uint16  fixMajor;           // e.g., 4
-  uint16  fixMinor;           // e.g., 4
-  bytes32 dictHash;           // FIX dictionary hash
+  bytes32 schemaHash;         // FIX schema/dictionary hash
   bytes32 fixRoot;            // Merkle root
   address fixSBEPtr;          // SSTORE2 data address
   uint32  fixSBELen;          // SBE length
@@ -1576,7 +1570,7 @@ export default function SpecPage() {
               marginBottom: '1rem'
             }}>
               <div style={{ color: 'rgba(255,255,255,0.8)', marginBottom: '0.75rem' }}>
-                event FixDescriptorSet(bytes32 fixRoot, bytes32 dictHash, address fixSBEPtr, uint32 fixSBELen)
+                event FixDescriptorSet(bytes32 fixRoot, bytes32 schemaHash, address fixSBEPtr, uint32 fixSBELen)
               </div>
               <div style={{ color: 'rgba(255,255,255,0.8)' }}>
                 event FixDescriptorUpdated(bytes32 oldRoot, bytes32 newRoot, address newPtr)
@@ -1786,7 +1780,7 @@ export default function SpecPage() {
                 updatable descriptors (governed by issuer). Both patterns are valid; the choice is a business decision.
               </li>
               <li>
-                <strong>Dictionary Hash:</strong> The dictHash ensures all parties use the same FIX dictionary. Mismatched 
+                <strong>Schema Hash:</strong> The schemaHash ensures all parties use the same FIX schema/dictionary. Mismatched 
                 dictionaries can lead to semantic disagreements about field meanings.
               </li>
             </ul>
@@ -2017,7 +2011,7 @@ export default function SpecPage() {
                 { num: 4, title: 'Enumerate Leaves', desc: 'Compute pathSBE for each present field; collect (pathSBE, valueBytes) pairs (see Section 8.1-8.3)' },
                 { num: 5, title: 'Compute Merkle Root', desc: 'Sort leaves by pathSBE; build binary Merkle tree using keccak256 (see Section 8.4)' },
                 { num: 6, title: 'Deploy SBE', desc: 'Deploy as SSTORE2-style data contract; return fixSBEPtr and fixSBELen (see Section 9.4)' },
-                { num: 7, title: 'Set Descriptor', desc: 'Store in the asset contract (not a registry): fixMajor, fixMinor, dictHash, fixRoot, fixSBEPtr, fixSBELen, schemaURI (see Section 9.2)' },
+                { num: 7, title: 'Set Descriptor', desc: 'Store in the asset contract (not a registry): schemaHash, fixRoot, fixSBEPtr, fixSBELen, schemaURI (see Section 9.2)' },
                 { num: 8, title: 'Emit Event', desc: 'Emit FixDescriptorSet event for indexing (see Section 9.5)' },
                 { num: 9, title: 'Produce Utilities', desc: 'Build proof generator and reader tools for fetching SBE data and generating proofs off-chain' }
               ].map((step) => (

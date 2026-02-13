@@ -40,9 +40,7 @@ contract AssetTokenTest is Test {
 
         // Create descriptor
         IFixDescriptor.FixDescriptor memory descriptor = IFixDescriptor.FixDescriptor({
-            fixMajor: 4,
-            fixMinor: 4,
-            dictHash: keccak256("test-dict"),
+            schemaHash: keccak256("test-dict"),
             fixRoot: bytes32(uint256(1)),
             fixSBEPtr: sbePtr,
             fixSBELen: uint32(sbeData.length),
@@ -53,7 +51,7 @@ contract AssetTokenTest is Test {
         vm.expectEmit(true, true, false, true);
         emit IFixDescriptor.FixDescriptorSet(
             descriptor.fixRoot,
-            descriptor.dictHash,
+            descriptor.schemaHash,
             descriptor.fixSBEPtr,
             descriptor.fixSBELen
         );
@@ -61,9 +59,7 @@ contract AssetTokenTest is Test {
 
         // Verify descriptor
         IFixDescriptor.FixDescriptor memory retrieved = erc20Token.getFixDescriptor();
-        assertEq(retrieved.fixMajor, 4);
-        assertEq(retrieved.fixMinor, 4);
-        assertEq(retrieved.dictHash, keccak256("test-dict"));
+        assertEq(retrieved.schemaHash, keccak256("test-dict"));
         assertEq(retrieved.fixRoot, bytes32(uint256(1)));
         assertEq(retrieved.fixSBEPtr, sbePtr);
         assertEq(retrieved.fixSBELen, uint32(sbeData.length));
@@ -76,9 +72,7 @@ contract AssetTokenTest is Test {
 
         // Create descriptor
         IFixDescriptor.FixDescriptor memory descriptor = IFixDescriptor.FixDescriptor({
-            fixMajor: 4,
-            fixMinor: 4,
-            dictHash: keccak256("test-dict"),
+            schemaHash: keccak256("test-dict"),
             fixRoot: bytes32(uint256(1)),
             fixSBEPtr: sbePtr,
             fixSBELen: uint32(sbeData.length),
@@ -95,9 +89,7 @@ contract AssetTokenTest is Test {
 
     function testCannotSetDescriptorUnauthorized() public {
         IFixDescriptor.FixDescriptor memory descriptor = IFixDescriptor.FixDescriptor({
-            fixMajor: 4,
-            fixMinor: 4,
-            dictHash: bytes32(0),
+            schemaHash: bytes32(0),
             fixRoot: bytes32(0),
             fixSBEPtr: address(0),
             fixSBELen: 0,
@@ -116,9 +108,7 @@ contract AssetTokenTest is Test {
         address sbePtr1 = factory.deploy(sbeData1);
 
         IFixDescriptor.FixDescriptor memory descriptor1 = IFixDescriptor.FixDescriptor({
-            fixMajor: 4,
-            fixMinor: 4,
-            dictHash: keccak256("dict1"),
+            schemaHash: keccak256("dict1"),
             fixRoot: bytes32(uint256(1)),
             fixSBEPtr: sbePtr1,
             fixSBELen: uint32(sbeData1.length),
@@ -131,9 +121,7 @@ contract AssetTokenTest is Test {
         address sbePtr2 = factory.deploy(sbeData2);
 
         IFixDescriptor.FixDescriptor memory descriptor2 = IFixDescriptor.FixDescriptor({
-            fixMajor: 4,
-            fixMinor: 4,
-            dictHash: keccak256("dict2"),
+            schemaHash: keccak256("dict2"),
             fixRoot: bytes32(uint256(2)),
             fixSBEPtr: sbePtr2,
             fixSBELen: uint32(sbeData2.length),
