@@ -482,7 +482,7 @@ Full working examples are available in the repository:
 - **Basic ERC721**: [`AssetTokenERC721.sol`](../src/AssetTokenERC721.sol)
 - **Upgradeable ERC20**: [`AssetTokenERC20Upgradeable.sol`](../src/examples/AssetTokenERC20Upgradeable.sol)
 - **Upgradeable ERC721**: [`AssetTokenERC721Upgradeable.sol`](../src/examples/AssetTokenERC721Upgradeable.sol)
-- **Advanced Usage**: [`BondDescriptorReader.sol`](../src/examples/BondDescriptorReader.sol)
+- **Advanced Usage**: [`BondDescriptorMerkle.sol`](../src/examples/BondDescriptorMerkle.sol)
 
 ---
 
