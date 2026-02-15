@@ -55,43 +55,12 @@ contract MyAsset is ERC20, IFixDescriptor {
 
 After deployment, call `setFixDescriptor()` with your descriptor data:
 - Generate descriptor off-chain using the TypeScript library
-- Deploy CBOR data via DataContractFactory
+- Deploy SBE data via DataContractFactory
 - Call `setFixDescriptor()` on your asset contract
 
-### Deploy FIX Dictionary
+### Deploy FIX Dictionary (Optional)
 
-The FIX Dictionary enables human-readable on-chain descriptor output. Deploy it BEFORE deploying new asset tokens that need this feature.
-
-> **Gas Cost Note**: Dictionary deployment costs ~8.7M gas (one-time). On Ethereum L1 this is ~$650 at 30 gwei, but only ~$0.02 on L2 networks like Optimism or Base. Once deployed, all view calls (web apps) are FREE. See `docs/GAS_ANALYSIS_HUMAN_READABLE.md` for detailed cost analysis.
-
-**1. Generate Dictionary Data:**
-
-```bash
-cd packages/fixdescriptorkit-typescript
-npx tsx scripts/generate-dictionary.ts
-# Output: contracts/generated/fix44-dictionary.hex (~23KB)
-```
-
-**2. Deploy Dictionary Contract:**
-
-```bash
-cd ../../contracts
-forge script script/DeployDictionary.s.sol \
-  --rpc-url $RPC_URL \
-  --broadcast \
-  --verify \
-  -vvv
-```
-
-**3. Save Dictionary Address:**
-
-After deployment, note the `FixDictionary` address from the logs and add it to your web app environment:
-
-```bash
-echo "NEXT_PUBLIC_DICTIONARY_ADDRESS=0x..." >> ../apps/web/.env.local
-```
-
-**Important:** This address is required when deploying new tokens with human-readable descriptor support.
+> **Note:** The FIX Dictionary deployment script is not currently available. Dictionary functionality may be added in a future release. For now, you can deploy asset tokens without dictionary support.
 
 ### Contract Addresses
 
@@ -164,7 +133,7 @@ The deployment will:
 ## Features
 
 ✅ FIX message parsing and canonicalization
-✅ CBOR encoding with deterministic output  
+✅ SBE encoding with deterministic output  
 ✅ Merkle tree generation and proof verification
 ✅ Onchain deployment via SSTORE2
 ✅ Smart contract integration with Sepolia testnet
@@ -198,7 +167,7 @@ cp .env.example .env
 
 # 2. Run deployment script from repo root
 cd ..
-./deploy-factory.sh
+./deploy-and-test.sh
 
 # 3. Start web app
 npm run dev

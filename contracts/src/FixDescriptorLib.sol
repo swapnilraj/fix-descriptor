@@ -40,7 +40,7 @@ library FixDescriptorLib {
      */
     function setDescriptor(
         Storage storage self,
-        IFixDescriptor.FixDescriptor calldata descriptor
+        IFixDescriptor.FixDescriptor memory descriptor
     ) internal {
         bytes32 oldRoot = self.descriptor.fixRoot;
         self.descriptor = descriptor;

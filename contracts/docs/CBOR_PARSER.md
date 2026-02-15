@@ -1,6 +1,8 @@
 # FIX CBOR Parser Implementation
 
-This implementation provides gas-efficient onchain libraries for reading FIX tag values from canonical CBOR-encoded descriptors, following the [web specification](https://fixdescriptor.vercel.app/spec).
+> **Note:** This is an **alternative approach** for onchain field access. The primary approach uses **SBE (Simple Binary Encoding)** for descriptor storage with **Merkle proof verification** for field access, which is 2-10x more gas efficient. See [MERKLE_VERIFIER.md](MERKLE_VERIFIER.md) for the recommended approach.
+
+This implementation provides gas-efficient onchain libraries for reading FIX tag values from canonical CBOR-encoded descriptors, following the [web specification](https://fixdescriptor.vercel.app/spec). This approach stores the full CBOR descriptor onchain and parses fields directly, which is useful when you need to enumerate all fields or when Merkle proofs are not suitable.
 
 ## Components
 

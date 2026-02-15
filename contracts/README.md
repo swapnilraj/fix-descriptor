@@ -67,7 +67,7 @@ contract MyToken is ERC20, IFixDescriptor {
 
 ✅ Works with **any token standard** (ERC20, ERC721, ERC1155, custom)  
 ✅ Works with **any upgrade pattern** (UUPS, Transparent, Beacon, or none)  
-✅ All complex logic (SSTORE2, Merkle proofs, CBOR parsing) handled by library  
+✅ All complex logic (SSTORE2, Merkle proofs, SBE reading) handled by library  
 
 **📖 [Complete Integration Guide](./docs/INTEGRATION_GUIDE.md)**
 
@@ -208,7 +208,7 @@ contract MyUpgradeableBond is
 ```solidity
 // Deploy SBE data via SSTORE2
 DataContractFactory dataFactory = new DataContractFactory();
-address sbePtr = dataFactory.deployData(sbeBytes);
+address sbePtr = dataFactory.deploy(sbeBytes);
 
 // Create descriptor
 IFixDescriptor.FixDescriptor memory descriptor = IFixDescriptor.FixDescriptor({

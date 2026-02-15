@@ -80,16 +80,14 @@ contract BondDescriptorMerkle is ERC20, Ownable, ERC165, IFixDescriptor {
         bytes32 schemaHash,
         string memory schemaURI
     ) private {
-        _fixDescriptor.descriptor = FixDescriptor({
-            schemaHash: schemaHash,
+        // Use the library function which handles event emission
+        _fixDescriptor.setDescriptor(IFixDescriptor.FixDescriptor({
             fixRoot: merkleRoot,
+            schemaHash: schemaHash,
             fixSBEPtr: sbePtr,
             fixSBELen: sbeLen,
             schemaURI: schemaURI
-        });
-        _fixDescriptor.initialized = true;
-
-        emit FixDescriptorSet(merkleRoot, schemaHash, sbePtr, sbeLen);
+        }));
     }
 
     /// @notice Read bond symbol with Merkle proof verification

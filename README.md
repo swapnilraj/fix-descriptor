@@ -4,7 +4,7 @@
 
 > **Transform FIX asset descriptors into verifiable onchain commitments**
 
-A comprehensive toolkit for converting FIX (Financial Information eXchange) protocol asset descriptors into canonical CBOR payloads and Merkle commitments for blockchain verification.
+A comprehensive toolkit for converting FIX (Financial Information eXchange) protocol asset descriptors into SBE (Simple Binary Encoding) payloads and Merkle commitments for blockchain verification.
 
 [![License: ISC](https://img.shields.io/badge/License-ISC-blue.svg)](https://opensource.org/licenses/ISC)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue.svg)](https://www.typescriptlang.org/)
@@ -13,7 +13,7 @@ A comprehensive toolkit for converting FIX (Financial Information eXchange) prot
 ## 🚀 Features
 
 - **📋 FIX Message Parsing** - Robust parsing of FIX protocol asset descriptors
-- **🔗 Canonical CBOR Encoding** - Deterministic CBOR serialization for consistent hashing
+- **🔗 SBE Encoding** - Simple Binary Encoding (SBE) for efficient onchain storage
 - **🌳 Merkle Tree Generation** - Efficient tree construction with cryptographic proofs
 - **⛓️ Onchain Verification** - Smart contracts for decentralized proof verification
 - **🌐 Web Interface** - Interactive UI for testing and deployment
@@ -147,16 +147,12 @@ contract MyBondToken is ERC20, Ownable, IFixDescriptor {
     }
     
     function verifyField(
-        bytes calldata pathCBOR,
+        bytes calldata pathSBE,
         bytes calldata value,
         bytes32[] calldata proof,
         bool[] calldata directions
     ) external view returns (bool) {
-        return _fixDescriptor.verifyFieldProof(pathCBOR, value, proof, directions);
-    }
-    
-    function getHumanReadableDescriptor() external view returns (string memory) {
-        return _fixDescriptor.getHumanReadable();
+        return _fixDescriptor.verifyFieldProof(pathSBE, value, proof, directions);
     }
 }
 ```
@@ -191,7 +187,7 @@ contract MyUpgradeableBond is
 - ✅ **Easy Integration** - Just 3 steps, ~10 lines of code
 - ✅ **Works Everywhere** - Any token standard, any upgrade pattern
 - ✅ **No Central Registry** - Fully decentralized, embedded in asset contracts
-- ✅ **All Logic Included** - SSTORE2, Merkle proofs, CBOR parsing handled by library
+- ✅ **All Logic Included** - SSTORE2, Merkle proofs, SBE reading handled by library
 - ✅ **Flexible Access Control** - Use Ownable, AccessControl, or custom logic
 
 **📖 [Complete Integration Guide](./contracts/docs/INTEGRATION_GUIDE.md)**
@@ -272,7 +268,7 @@ If you use GitHub Actions, enable submodule checkout:
 graph TD
     A[FIX Message] --> B[Parse & Validate]
     B --> C[Canonical Tree]
-    C --> D[CBOR Encoding]
+    C --> D[SBE Encoding]
     D --> E[Merkle Tree]
     E --> F[Onchain Storage]
     F --> G[Verification]
@@ -282,7 +278,7 @@ graph TD
 
 1. **Parser** - Converts FIX messages to structured trees
 2. **Canonicalizer** - Normalizes data for deterministic encoding
-3. **CBOR Encoder** - Creates compact binary representations
+3. **SBE Encoder** - Creates compact binary representations using Simple Binary Encoding
 4. **Merkle Engine** - Generates cryptographic commitments and proofs
 5. **Asset Contracts** - ERC20/ERC721 tokens with embedded descriptors
 6. **Verification Library** - Onchain Merkle proof verification
@@ -312,13 +308,13 @@ Generates a cryptographic proof for a specific field path.
 
 Asset contracts implementing `IFixDescriptor` provide:
 
-- `getFixDescriptor()` - Returns the complete descriptor struct
+- `getFixDescriptor()` - Returns the complete descriptor struct with `fixSBEPtr` and `fixSBELen` fields
 - `getFixRoot()` - Returns the Merkle root commitment
-- `verifyField(pathCBOR, value, proof, directions)` - Verifies a field against the commitment
+- `verifyField(pathSBE, value, proof, directions)` - Verifies a field against the commitment
 
 #### `FixMerkleVerifier` Library
 
-- `verify(root, pathCBOR, value, proof, directions)` - Core verification function
+- `verify(root, pathSBE, value, proof, directions)` - Core verification function
 
 ## 🌐 Networks
 
@@ -332,7 +328,7 @@ The repository includes example implementations:
 
 - `AssetTokenERC20` - ERC20 token with embedded FIX descriptor
 - `AssetTokenERC721` - ERC721 NFT with embedded FIX descriptor
-- `DataContractFactory` - SSTORE2 pattern for CBOR storage
+- `DataContractFactory` - SSTORE2 pattern for SBE data storage
 - `FixMerkleVerifier` - Library for proof verification
 
 Deploy your own asset contracts implementing `IFixDescriptor` to use this system.
@@ -363,12 +359,12 @@ This project is licensed under the ISC License - see the [LICENSE](LICENSE) file
 Comprehensive documentation for smart contracts is available in [contracts/docs/](./contracts/docs/):
 
 - 📖 **[Getting Started](./contracts/docs/BUILD_AND_TEST.md)** - Setup, build, and test instructions
-- 📊 **[Gas Comparison Analysis](./contracts/docs/GAS_COMPARISON_ANALYSIS.md)** - CBOR vs Merkle proof costs (key decision)
-- 📚 **[CBOR Parser Guide](./contracts/docs/CBOR_PARSER.md)** - Direct CBOR field access (12k-80k gas)
+- 📊 **[Gas Comparison Analysis](./contracts/docs/GAS_COMPARISON_ANALYSIS.md)** - SBE/CBOR vs Merkle proof costs (key decision)
+- 📚 **[CBOR Parser Guide](./contracts/docs/CBOR_PARSER.md)** - Alternative CBOR field access approach (12k-80k gas)
 - ⭐ **[Merkle Verifier Guide](./contracts/docs/MERKLE_VERIFIER.md)** - Proof-based verification (6k-8.5k gas, **recommended**)
 - 📋 **[Documentation Index](./contracts/docs/README.md)** - Complete documentation overview
 
-**Key Finding:** Merkle proof verification is **2-10x more gas efficient** than CBOR parsing. Use Merkle for production deployments.
+**Key Finding:** Merkle proof verification is **2-10x more gas efficient** than direct field parsing. Use Merkle for production deployments. The system uses SBE (Simple Binary Encoding) for onchain storage.
 
 ### Specifications
 

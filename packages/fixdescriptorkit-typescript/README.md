@@ -17,6 +17,13 @@ This is the **core transformation engine** for FixDescriptorKit. It handles:
 3. **Merkle Tree Generation** - Create cryptographic commitments with proof support
 4. **Type Safety** - Fully typed API with runtime validation
 
+**Note:** This library generates canonical trees and Merkle proofs. For onchain storage, the canonical tree is encoded using SBE (Simple Binary Encoding) via the SBE encoder service. 
+
+**CBOR Usage:** The library uses CBOR encoding internally for **Merkle path encoding only**. Specifically:
+- The `encodePathCBOR()` function (internal) uses the `cbor-x` library to encode path arrays (e.g., `[15]` → `0x811837`, `[454, 0, 455]` → CBOR bytes)
+- These CBOR-encoded paths are used in Merkle leaf computation: `keccak256(pathCBOR || valueBytes)`
+- The canonical tree itself is a JavaScript object, not CBOR-encoded
+
 ## 🎯 Use Cases
 
 - **Blockchain Applications** - Prepare FIX descriptors for onchain storage
@@ -196,12 +203,14 @@ const root = computeRoot(leaves);
 ```
 
 **Algorithm:**
-1. Sort leaves by `pathCBOR` (lexicographic byte order)
+1. Sort leaves by `pathCBOR` (CBOR-encoded path, lexicographic byte order)
 2. Build binary Merkle tree:
    - Pair adjacent leaves
    - Parent = keccak256(left || right)
    - If odd node, promote to next level (no duplicate hashing)
 3. Return final root hash
+
+**Note:** The `pathCBOR` field in leaves uses CBOR encoding for the path array. When used onchain, this is passed as `pathSBE` to the `verifyField` function (the parameter name reflects SBE usage, but the encoding format is CBOR for path arrays).
 
 ---
 
