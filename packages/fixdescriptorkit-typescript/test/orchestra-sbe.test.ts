@@ -9,6 +9,7 @@ import {
     orchestraToSbe,
     extractMessageIdFromSbe,
 } from '../src/orchestraToSbe';
+import { pruneSchemaToMessage } from '../src/sbe/schema-prune.js';
 
 (globalThis as unknown as { DOMParser?: typeof DOMParser }).DOMParser = DOMParser;
 
@@ -230,6 +231,45 @@ describe('Orchestra to SBE Conversion Tests', () => {
             expect(sbe).toContain('dimensionType="groupSizeEncoding"');
             expect(sbe).toMatch(/<group\s+name="SecAltIDGrp"\s+id="454"/);
             expect(sbe).toMatch(/name="SecurityAltID"\s+id="455"/);
+        });
+    });
+
+    describe('schema-prune', () => {
+        const TWO_MESSAGE_ORCHESTRA = `<?xml version="1.0" encoding="UTF-8"?>
+<fixr:repository name="Two" xmlns:fixr="http://fixprotocol.io/2020/orchestra/repository">
+  <fixr:fields>
+    <fixr:field id="11" name="ClOrdID" type="String"/>
+    <fixr:field id="99" name="OtherField" type="String"/>
+  </fixr:fields>
+  <fixr:messages>
+    <fixr:message name="Order" id="1" msgType="D">
+      <fixr:structure><fixr:fieldRef id="11" presence="required"/></fixr:structure>
+    </fixr:message>
+    <fixr:message name="Other" id="2" msgType="X">
+      <fixr:structure><fixr:fieldRef id="99" presence="required"/></fixr:structure>
+    </fixr:message>
+  </fixr:messages>
+</fixr:repository>`;
+
+        it('pruneSchemaToMessage keeps only the message with given id', () => {
+            const fullSchema = orchestraToSbeFullSchema(TWO_MESSAGE_ORCHESTRA);
+            expect(fullSchema).toContain('name="Order" id="1"');
+            expect(fullSchema).toContain('name="Other" id="2"');
+
+            const pruned1 = pruneSchemaToMessage(fullSchema, 1);
+            expect(pruned1).toContain('name="Order"');
+            expect(pruned1).toMatch(/id="1"/);
+            expect(pruned1).not.toContain('name="Other"');
+
+            const pruned2 = pruneSchemaToMessage(fullSchema, 2);
+            expect(pruned2).toContain('name="Other"');
+            expect(pruned2).toMatch(/id="2"/);
+            expect(pruned2).not.toContain('name="Order"');
+        });
+
+        it('pruneSchemaToMessage throws when message id not in schema', () => {
+            const fullSchema = orchestraToSbeFullSchema(TWO_MESSAGE_ORCHESTRA);
+            expect(() => pruneSchemaToMessage(fullSchema, 99)).toThrow('Message id 99 not found in schema');
         });
     });
 
